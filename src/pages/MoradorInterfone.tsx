@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl } from "@/lib/config";
@@ -73,6 +73,7 @@ type ViewState = "listening" | "incoming" | "auth-request" | "connected" | "ende
 export default function MoradorInterfone() {
   const { isDark, p } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [viewState, setViewState] = useState<ViewState>("listening");
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
@@ -191,6 +192,14 @@ export default function MoradorInterfone() {
             console.log("📞 Interfone: ouvindo chamadas...");
             break;
 
+          // Server confirms call handoff from GlobalIncomingCall — resume the active call
+          case "call-resumed": {
+            console.log("[Morador] call-resumed from handoff, callId:", msg.callId);
+            // The call data was set from location.state in the useEffect below
+            // Now we're registered and the visitor's WebRTC offer will arrive on this WS
+            break;
+          }
+
           case "incoming-call":
             setIncomingCall(msg);
             setIsInternalCall(false);
@@ -304,6 +313,35 @@ export default function MoradorInterfone() {
     };
   }, [user]);
 
+  // ─── Resume call handed off from GlobalIncomingCall ───
+  useEffect(() => {
+    const pending = (location.state as any)?.pendingCall;
+    if (!pending?.callId) return;
+    console.log("[Morador] Resuming handed-off call:", pending.callId, pending.callerName);
+
+    // Build IncomingCall from the data passed by GlobalIncomingCall
+    const resumedCall: IncomingCall = {
+      callId: pending.callId,
+      visitanteNome: pending.callerName || "Visitante",
+      visitanteEmpresa: null,
+      visitanteFoto: null,
+      nivelSeguranca: 0,
+      bloco: "",
+      apartamento: "",
+      visitorClientId: "",
+    };
+    setIncomingCall(resumedCall);
+    setIsInternalCall(!!pending.isInternal);
+    peerTypeRef.current = pending.isInternal ? "funcionario" : "visitor";
+    setViewState("connected");
+    setCallDuration(0);
+    setGateOpened(false);
+    timerRef.current = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
+
+    // Clear navigation state so refreshing the page doesn't replay
+    window.history.replaceState({}, "");
+  }, []); // run once on mount
+
   const fetchHistory = async () => {
     try {
       const res = await apiFetch(`${API}/interfone/calls`);
@@ -312,7 +350,10 @@ export default function MoradorInterfone() {
   };
 
   const playRingtone = () => { libPlayRingtone(); };
-  const stopRingtone = () => { libStopRingtone(); };
+  const stopRingtone = () => {
+    libStopRingtone();
+    globalThis.dispatchEvent(new Event("stop-push-ringtone"));
+  };
 
   // Helper: assign remote audio stream to audio element
   const playRemoteAudio = (track: MediaStreamTrack, streams: readonly MediaStream[]) => {

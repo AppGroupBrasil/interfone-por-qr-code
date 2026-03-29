@@ -5,21 +5,12 @@ import { useState, useEffect } from "react";
 import ThemePicker from "@/components/ThemePicker";
 import {
   Home,
-  Menu,
   LogOut,
-  Settings,
   Shield,
   Bell,
-  ShieldCheck,
-  Truck,
-  Car,
   UserCircle,
-  Mail,
-  QrCode,
   Loader2,
   Phone,
-  Navigation,
-  DoorOpen,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import FuncoesIndex from "@/components/FuncoesIndex";
@@ -30,57 +21,12 @@ interface FeatureButton {
   label: string;
   description: string;
   route: string;
-  icon: typeof ShieldCheck;
+  icon: typeof Phone;
   gradient: string;
   delay: string;
 }
 
 const ALL_FEATURES: FeatureButton[] = [
-  {
-    key: "feature_autorizacoes",
-    label: "Autorizar Visitante",
-    description: "Criar autorização prévia de entrada",
-    route: "/morador/autorizacoes",
-    icon: ShieldCheck,
-    gradient: "#003580",
-    delay: "0.15s",
-  },
-  {
-    key: "feature_delivery",
-    label: "Entregas e Delivery",
-    description: "Autorizar recebimento de pedidos",
-    route: "/morador/delivery",
-    icon: Truck,
-    gradient: "#003580",
-    delay: "0.25s",
-  },
-  {
-    key: "feature_veiculos",
-    label: "Autorizar Veículo",
-    description: "Autorizar acesso de veículos",
-    route: "/morador/veiculos",
-    icon: Car,
-    gradient: "#003580",
-    delay: "0.35s",
-  },
-  {
-    key: "feature_qr_visitante",
-    label: "QR Code de Visitante",
-    description: "Gerar QR de autorização para visitantes",
-    route: "/morador/qr-visitante",
-    icon: QrCode,
-    gradient: "#003580",
-    delay: "0.45s",
-  },
-  {
-    key: "feature_correspondencias",
-    label: "Correspondências",
-    description: "Avisos de correspondência na portaria",
-    route: "/morador/correspondencias",
-    icon: Mail,
-    gradient: "#003580",
-    delay: "0.55s",
-  },
   {
     key: "feature_interfone",
     label: "Interfone Digital",
@@ -88,38 +34,11 @@ const ALL_FEATURES: FeatureButton[] = [
     route: "/morador/interfone-config",
     icon: Phone,
     gradient: "#003580",
-    delay: "0.65s",
-  },
-  {
-    key: "feature_estou_chegando",
-    label: "Estou Chegando",
-    description: "Avise a portaria que você está chegando",
-    route: "/morador/estou-chegando",
-    icon: Navigation,
-    gradient: "#003580",
-    delay: "0.75s",
-  },
-  {
-    key: "feature_portaria_virtual",
-    label: "Portaria Virtual",
-    description: "Abrir portões e portas remotamente",
-    route: "/morador/portaria-virtual",
-    icon: DoorOpen,
-    gradient: "#003580",
-    delay: "0.85s",
+    delay: "0.15s",
   },
 ];
 
-// Bottom nav feature mapping (to filter disabled ones)
-const BOTTOM_NAV_FEATURE_MAP: Record<string, string> = {
-  "/morador/autorizacoes": "feature_autorizacoes",
-  "/morador/delivery": "feature_delivery",
-  "/morador/veiculos": "feature_veiculos",
-  "/morador/correspondencias": "feature_correspondencias",
-  "/morador/interfone-config": "feature_interfone",
-  "/morador/estou-chegando": "feature_estou_chegando",
-  "/morador/portaria-virtual": "feature_portaria_virtual",
-};
+
 
 
 export default function DashboardMorador() {

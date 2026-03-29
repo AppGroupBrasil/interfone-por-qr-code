@@ -90,7 +90,7 @@ router.post("/", authenticate, authorize("master", "administradora", "sindico", 
       ).all(condominioId, bloco, apartamento) as { phone: string }[];
       for (const m of moradores) {
         notifyWhatsApp(condominioId, "whatsapp_notify_visitor_arrival", m.phone,
-          `🔔 *Portaria X* — Visitante na portaria\n\n👤 *${nome}*\n📍 Bloco ${bloco}, Apto ${apartamento}\n\nAguardando sua autorização.`);
+          `🔔 *App Interfone* — Visitante na portaria\n\n👤 *${nome}*\n📍 Bloco ${bloco}, Apto ${apartamento}\n\nAguardando sua autorização.`);
       }
     }
 
@@ -187,7 +187,7 @@ router.post("/self-register", (req: Request, res: Response) => {
       ).all(condominio_id, bloco, apartamento) as { phone: string }[];
       for (const m of moradores) {
         notifyWhatsApp(condominio_id, "whatsapp_notify_visitor_arrival", m.phone,
-          `🔔 *Portaria X* — Visitante se registrou\n\n👤 *${nome}*\n📍 Bloco ${bloco}, Apto ${apartamento}\n\nAguardando sua autorização.`);
+          `🔔 *App Interfone* — Visitante se registrou\n\n👤 *${nome}*\n📍 Bloco ${bloco}, Apto ${apartamento}\n\nAguardando sua autorização.`);
       }
     }
 
@@ -332,7 +332,7 @@ router.post("/:id/responder-morador", authenticate, (req: Request, res: Response
     if (visitor.condominio_id) {
       const statusText = action === "liberado" ? "✅ LIBERADO" : "❌ RECUSADO";
       notifyPortariaWhatsApp(visitor.condominio_id, "whatsapp_notify_visitor_arrival",
-        `🔔 *Portaria X* — Visitante ${statusText}\n\n👤 *${visitor.nome}*\n📍 Bloco ${visitor.bloco || "-"}, Apto ${visitor.apartamento || "-"}\n\nMorador respondeu: ${statusText}`);
+        `🔔 *App Interfone* — Visitante ${statusText}\n\n👤 *${visitor.nome}*\n📍 Bloco ${visitor.bloco || "-"}, Apto ${visitor.apartamento || "-"}\n\nMorador respondeu: ${statusText}`);
     }
 
     const updated = db.prepare("SELECT id, nome, documento, foto, bloco, apartamento, status FROM visitors WHERE id = ?").get(req.params.id);

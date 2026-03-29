@@ -93,13 +93,13 @@ export default function Login() {
               width: "100px", height: "100px", marginBottom: "28px",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <img src="/logo.png" alt="Portaria X" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src="/logo.png" alt="App Interfone" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight uppercase" style={{ color: "#fff" }}>
-              Portaria X
+              App Interfone
             </h1>
             <p className="text-sm mt-1" style={{ color: "#fff" }}>
-              Sistema de Gestão de Portaria
+              Interfone Digital para Condomínios
             </p>
           </div>
 
@@ -271,7 +271,7 @@ export default function Login() {
             <div style={{ height: "19px" }} />
             <button
               type="button"
-              onClick={() => window.open("https://portariax.com.br", "_blank")}
+              onClick={() => window.open("https://appinterfone.com.br", "_blank")}
               className="w-full rounded-xl font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2"
               style={{
                 height: "46px",

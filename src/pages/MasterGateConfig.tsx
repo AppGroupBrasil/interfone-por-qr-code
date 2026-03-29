@@ -325,7 +325,7 @@ export default function MasterGateConfig() {
               }}
             >
               <p className="text-base text-amber-600 dark:text-amber-400">
-                ⚠️ Estas credenciais são da <strong>conta eWeLink corporativa da Portaria X</strong>.
+                ⚠️ Estas credenciais são da <strong>conta eWeLink corporativa do App Interfone</strong>.
                 São compartilhadas por TODOS os condomínios. Nunca exponha ao cliente.
               </p>
             </div>

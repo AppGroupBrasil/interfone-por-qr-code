@@ -14,12 +14,12 @@ const envApiBase = envApiBaseRaw.trim();
  * Base URL for all API calls.
  * - Web (dev):  "" → Vite proxy forwards /api to localhost:3001
  * - Web (prod): "" → Express serves SPA + API on same origin
- * - Capacitor:  uses VITE_API_URL env var (e.g. https://portariax.com.br)
+ * - Capacitor:  uses VITE_API_URL env var (e.g. https://appinterfone.com.br)
  */
 export const API_BASE: string =
   // Web always uses same-origin to avoid CORS/env drift between www and apex.
   // Native needs an absolute host; fallback guarantees API reachability.
-  isNative ? (envApiBase || "https://www.portariax.com.br") : "";
+  isNative ? (envApiBase || "https://www.appinterfone.com.br") : "";
 
 /**
  * Public-facing origin used to build shareable links (QR codes, WhatsApp, etc.).
@@ -27,19 +27,18 @@ export const API_BASE: string =
  */
 export const APP_ORIGIN: string =
   (import.meta as any).env?.VITE_APP_ORIGIN ??
-  (isNative ? "https://www.portariax.com.br" : window.location.origin);
+  (isNative ? "https://www.appinterfone.com.br" : window.location.origin);
 
 /**
  * Build a WebSocket URL from the current API base.
  * - Web dev:  ws://<host>:3001/ws/interfone  (direct to backend, bypasses Vite proxy)
- * - Web prod: wss://portariax.com.br/ws/interfone
- * - Capacitor: wss://portariax.com.br/ws/interfone
+ * - Web prod: wss://appinterfone.com.br/ws/interfone
+ * - Capacitor: wss://appinterfone.com.br/ws/interfone
  */
 /**
  * Build a WebSocket URL.
- * In dev, WebSocket servers run on dedicated ports to avoid Vite proxy issues:
- *   /ws/interfone      → port 3002
- *   /ws/estou-chegando  → port 3003
+ * In dev, the WebSocket server runs on a dedicated port to avoid Vite proxy issues:
+ *   /ws/interfone → port 3002
  * In prod / Capacitor, same origin or API_BASE.
  */
 export function buildWsUrl(path: string): string {
@@ -53,8 +52,7 @@ export function buildWsUrl(path: string): string {
 
   // Dev: Vite runs on 5173, route to dedicated WS ports
   if (port && port !== "80" && port !== "443" && port !== "3001") {
-    const wsPort = path.includes("estou-chegando") ? "3003" : "3002";
-    return `${proto}//${hostname}:${wsPort}${path}`;
+    return `${proto}//${hostname}:3002${path}`;
   }
 
   // Prod: same-origin

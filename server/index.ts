@@ -8,7 +8,6 @@ import path from "path";
 import http from "http";
 import { fileURLToPath } from "url";
 import { initSignalingServer } from "./websocket.js";
-import { initArrivalWebSocket } from "./wsEstouChegando.js";
 import authRouter from "./auth.js";
 import funcionariosRouter from "./funcionarios.js";
 import blocosRouter from "./blocos.js";
@@ -26,7 +25,6 @@ import livroProtocoloRouter from "./livroProtocolo.js";
 import camerasRouter from "./cameras.js";
 import rondasRouter from "./rondas.js";
 import interfoneRouter from "./interfone.js";
-import estouChegandoRouter from "./estouChegando.js";
 import deviceTokensRouter from "./deviceTokens.js";
 import visitorQRShareRouter from "./visitorQRShare.js";
 import faceRouter from "./faceRoutes.js";
@@ -77,8 +75,8 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "https://localhost:5173",
   "http://localhost:3001",
-  "https://portariax.com.br",
-  "https://www.portariax.com.br",
+  "https://appinterfone.com.br",
+  "https://www.appinterfone.com.br",
   "capacitor://localhost",
   "http://localhost",
 ];
@@ -174,7 +172,6 @@ app.use("/api/livro-protocolo", livroProtocoloRouter);
 app.use("/api/cameras", camerasRouter);
 app.use("/api/rondas", rondasRouter);
 app.use("/api/interfone", interfoneRouter);
-app.use("/api/estou-chegando", estouChegandoRouter);
 app.use("/api/device-tokens", deviceTokensRouter);
 app.use("/api/visitor-qr", visitorQRShareRouter);
 app.use("/api/face", faceRouter);
@@ -223,10 +220,9 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 // Start
 const server = http.createServer(app);
 initSignalingServer(server);
-initArrivalWebSocket(server);
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n  🚀 Portaria X running at http://0.0.0.0:${PORT}`);
+  console.log(`\n  🚀 App Interfone running at http://0.0.0.0:${PORT}`);
   console.log(`  📦 API: http://localhost:${PORT}/api\n`);
 
   // Carregar modelos de reconhecimento facial em background

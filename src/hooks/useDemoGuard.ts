@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-const DEMO_KEY = "portariax_demo";
+const DEMO_KEY = "appinterfone_demo";
 
 export function isDemoMode(): boolean {
   try {

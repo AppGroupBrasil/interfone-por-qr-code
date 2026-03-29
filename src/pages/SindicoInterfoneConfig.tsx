@@ -179,7 +179,7 @@ export default function SindicoInterfoneConfig() {
       <body>
         <div class="phone-icon">📞</div>
         <div class="logo">Interfone Digital</div>
-        <div class="subtitle">Portaria X</div>
+        <div class="subtitle">App Interfone</div>
         <div class="qr-container">
           <img src="${getQRUrl(url)}" width="300" height="300" alt="QR Code" />
         </div>
@@ -187,7 +187,7 @@ export default function SindicoInterfoneConfig() {
         <div class="instruction">
           Escaneie o QR Code com a câmera do celular para ligar diretamente para o morador.
         </div>
-        <div class="footer">Portaria X — Interfone Digital — www.portariax.com.br</div>
+        <div class="footer">App Interfone — Interfone Digital — www.appinterfone.com.br</div>
         <script>setTimeout(() => { window.print(); }, 500);</script>
       </body>
       </html>
@@ -217,7 +217,7 @@ export default function SindicoInterfoneConfig() {
       </head>
       <body>
         <h1>📞 Interfone Digital</h1>
-        <p class="sub">Portaria X — ${tokens.length} blocos</p>
+        <p class="sub">App Interfone — ${tokens.length} blocos</p>
         <div class="grid">
           ${tokens.map((t) => `
             <div class="item">
@@ -318,7 +318,7 @@ export default function SindicoInterfoneConfig() {
       <body>
         <div class="phone-icon">📞</div>
         <div class="logo">Interfone Digital</div>
-        <div class="subtitle">Portaria X</div>
+        <div class="subtitle">App Interfone</div>
         <div class="qr-container">
           <img src="${getQRUrl(url)}" width="300" height="300" alt="QR Code" />
         </div>
@@ -328,7 +328,7 @@ export default function SindicoInterfoneConfig() {
           Escaneie o QR Code com a câmera do celular.<br>
           Escolha o bloco e apartamento para ligar diretamente para o morador.
         </div>
-        <div class="footer">Portaria X — Interfone Digital — www.portariax.com.br</div>
+        <div class="footer">App Interfone — Interfone Digital — www.appinterfone.com.br</div>
         <script>setTimeout(() => { window.print(); }, 500);</script>
       </body>
       </html>
@@ -435,7 +435,7 @@ export default function SindicoInterfoneConfig() {
                 ["&#128247;", "Substitui o interfone fisico. Cada bloco recebe um QR Code exclusivo fixado na entrada."],
                 ["&#128241;", "O visitante escaneia o QR com a camera do celular — nao precisa instalar nenhum aplicativo."],
                 ["&#127968;", "QR da Entrada Principal: visitante escolhe o bloco e apartamento. QR por Bloco: cai direto na lista do bloco."],
-                ["&#128222;", "Apos escolher o apartamento, o app liga para o morador. O morador recebe a chamada no Portaria X."],
+                ["&#128222;", "Apos escolher o apartamento, o app liga para o morador. O morador recebe a chamada no App Interfone."],
                 ["&#128064;", "O morador ve o video do visitante em tempo real (camera frontal). O visitante nao ve o morador — apenas ouve a voz."],
                 ["&#128682;", "O morador pode abrir o portao ou cancela remotamente durante a chamada, sem precisar sair de casa."],
                 ["&#128274;", "Nivel de seguranca configuravel por morador: Nivel 1 (direto), Nivel 2 (confirmar nome), Nivel 3 (nome + empresa + foto)."],
@@ -503,7 +503,7 @@ export default function SindicoInterfoneConfig() {
           <h2 className="font-bold flex items-center gap-2" style={{ color: "#10b981", fontSize: "16px", marginBottom: "0.6rem" }}>
             <Building2 className="w-5 h-5" /> QR Code da Entrada Principal
           </h2>
-          <p style={{ fontSize: "14px", marginBottom: "0.8rem", color: "rgba(255,255,255,0.7)" }}>
+          <p style={{ fontSize: "14px", marginBottom: "0.8rem", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>
             QR Code único para a <strong>entrada do condomínio</strong>. O visitante escolhe o bloco e depois o apartamento.
             Ideal para condomínios grandes com muitos blocos.
           </p>
@@ -568,18 +568,18 @@ export default function SindicoInterfoneConfig() {
         {/* Separator */}
         <div className="flex items-center gap-3" style={{ marginBottom: "1.2rem" }}>
           <div className="flex-1 h-px bg-border" />
-          <span className="font-semibold" style={{ fontSize: "14px", color: "rgba(255,255,255,0.7)" }}>QR Codes por Bloco (individual)</span>
+          <span className="font-semibold" style={{ fontSize: "14px", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>QR Codes por Bloco (individual)</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
         {loading ? (
-          <div className="text-center py-12" style={{ color: "rgba(255,255,255,0.7)" }}>Carregando...</div>
+          <div className="text-center py-12" style={{ color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>Carregando...</div>
         ) : (
           <>
             {/* Existing tokens */}
             {tokens.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", marginBottom: "1.2rem" }}>
-                <h2 className="font-bold flex items-center gap-2" style={{ color: "#ffffff", fontSize: "16px" }}>
+                <h2 className="font-bold flex items-center gap-2" style={{ color: isDark ? "#ffffff" : "#1e293b", fontSize: "16px" }}>
                   <QrCode className="w-5 h-5" /> QR Codes Gerados ({tokens.length})
                 </h2>
                 {tokens.map((token) => (
@@ -646,7 +646,7 @@ export default function SindicoInterfoneConfig() {
             {/* Missing blocks */}
             {missingBlocks.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
-                <h2 className="font-bold flex items-center gap-2" style={{ fontSize: "16px", color: "rgba(255,255,255,0.7)" }}>
+                <h2 className="font-bold flex items-center gap-2" style={{ fontSize: "16px", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>
                   <Building2 className="w-5 h-5" /> Blocos sem QR Code ({missingBlocks.length})
                 </h2>
                 {missingBlocks.map((block) => (
@@ -678,7 +678,7 @@ export default function SindicoInterfoneConfig() {
             {blocks.length === 0 && (
               <div className="text-center py-12">
                 <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p style={{ fontSize: "14px", marginBottom: "0.6rem", color: "rgba(255,255,255,0.7)" }}>Nenhum bloco cadastrado</p>
+                <p style={{ fontSize: "14px", marginBottom: "0.6rem", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>Nenhum bloco cadastrado</p>
                 <button
                   onClick={() => navigate("/cadastros/blocos")}
                   className="font-bold px-4 py-2 rounded-lg text-white"

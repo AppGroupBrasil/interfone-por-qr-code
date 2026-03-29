@@ -6,7 +6,7 @@ import { notifyPortariaWhatsApp } from "./whatsappService.js";
  * Arquitetura:
  *   - Credenciais do serviço são GLOBAIS (system_config, somente Master)
  *   - Cada condomínio tem pontos de acesso configuráveis (gate_access_points)
- *   - O síndico/funcionário NUNCA vê detalhes internos — tudo é "Portaria X"
+ *   - O síndico/funcionário NUNCA vê detalhes internos — tudo é "App Interfone"
  * 
  * Endpoints:
  *   POST /api/gate/open             - Pulsa o portão (porteiro/funcionário)
@@ -160,13 +160,13 @@ router.post(
 
       const deviceId = config.gate_device_id;
       if (!deviceId) {
-        res.status(400).json({ error: "Dispositivo do portão não configurado. Contate o suporte Portaria X." });
+        res.status(400).json({ error: "Dispositivo do portão não configurado. Contate o suporte App Interfone." });
         return;
       }
 
       const creds = getGlobalCreds();
       if (!creds.appId || !creds.email) {
-        res.status(500).json({ error: "Sistema de portão não configurado. Contate o suporte Portaria X." });
+        res.status(500).json({ error: "Sistema de portão não configurado. Contate o suporte App Interfone." });
         return;
       }
 
@@ -1031,7 +1031,7 @@ router.post(
 
       const creds = getGlobalCreds();
       if (!creds.appId || !creds.email) {
-        res.status(500).json({ error: "Sistema não configurado. Contate o suporte Portaria X." });
+        res.status(500).json({ error: "Sistema não configurado. Contate o suporte App Interfone." });
         return;
       }
 

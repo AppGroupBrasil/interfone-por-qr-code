@@ -66,7 +66,7 @@ export default function VisitanteQRCode() {
       style={{ width: "210mm", minHeight: "297mm", padding: "30mm 25mm", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
     >
       <div style={{ borderBottom: "3px solid #003580", paddingBottom: "16px", marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#003580", margin: 0 }}>Portaria X</h1>
+        <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#003580", margin: 0 }}>App Interfone</h1>
         <p style={{ fontSize: "14px", color: "#64748b", marginTop: "4px" }}>Sistema de Controle de Acesso</p>
       </div>
       <div style={{ textAlign: "center", marginBottom: "32px" }}>
@@ -95,7 +95,7 @@ export default function VisitanteQRCode() {
         ))}
       </div>
       <div style={{ marginTop: "40px", borderTop: "1px solid #e2e8f0", paddingTop: "16px", textAlign: "center" }}>
-        <p style={{ fontSize: "11px", color: "#94a3b8" }}>Portaria X — Sistema de Gerenciamento de Condomínios</p>
+        <p style={{ fontSize: "11px", color: "#94a3b8" }}>App Interfone — Sistema de Gerenciamento de Condomínios</p>
         <p style={{ fontSize: "10px", color: "#cbd5e1", marginTop: "4px" }}>{selfRegisterUrl}</p>
       </div>
     </div>
@@ -111,7 +111,7 @@ export default function VisitanteQRCode() {
       <div style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", padding: "40px 50px 32px", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0, letterSpacing: "-0.5px" }}>PORTARIA X</h1>
+            <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0, letterSpacing: "-0.5px" }}>APP INTERFONE</h1>
             <p style={{ fontSize: "13px", opacity: 0.75, marginTop: "4px", letterSpacing: "2px", textTransform: "uppercase" }}>Controle de Acesso Inteligente</p>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -170,7 +170,7 @@ export default function VisitanteQRCode() {
 
       {/* Footer bar */}
       <div style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", padding: "16px 50px", textAlign: "center", marginTop: "auto" }}>
-        <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>Portaria X — Sistema de Gerenciamento de Condomínios</p>
+        <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>App Interfone — Sistema de Gerenciamento de Condomínios</p>
         <p style={{ fontSize: "10px", color: "#cbd5e1", marginTop: "4px" }}>{selfRegisterUrl}</p>
       </div>
     </div>
@@ -189,7 +189,7 @@ export default function VisitanteQRCode() {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
           <div>
-            <h1 style={{ fontSize: "30px", fontWeight: "800", margin: 0, letterSpacing: "3px", textTransform: "uppercase" }}>Portaria X</h1>
+            <h1 style={{ fontSize: "30px", fontWeight: "800", margin: 0, letterSpacing: "3px", textTransform: "uppercase" }}>App Interfone</h1>
             <div style={{ width: "60px", height: "3px", background: "#daa520", marginTop: "8px", borderRadius: "2px" }} />
           </div>
           <div style={{ border: "1.5px solid rgba(218,165,32,0.4)", borderRadius: "12px", padding: "8px 16px" }}>
@@ -231,7 +231,7 @@ export default function VisitanteQRCode() {
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px", textAlign: "center" }}>
-          <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Portaria X — Sistema de Gerenciamento de Condomínios</p>
+          <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>App Interfone — Sistema de Gerenciamento de Condomínios</p>
           <p style={{ fontSize: "10px", color: "#475569", marginTop: "4px" }}>{selfRegisterUrl}</p>
         </div>
       </div>
@@ -248,7 +248,7 @@ export default function VisitanteQRCode() {
         {/* Small logo */}
         <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }} />
-          <span style={{ fontSize: "13px", fontWeight: "700", color: "#003580", letterSpacing: "3px", textTransform: "uppercase" }}>Portaria X</span>
+          <span style={{ fontSize: "13px", fontWeight: "700", color: "#003580", letterSpacing: "3px", textTransform: "uppercase" }}>App Interfone</span>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }} />
         </div>
 
@@ -288,7 +288,7 @@ export default function VisitanteQRCode() {
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
-          <p style={{ fontSize: "10px", color: "#cbd5e1", margin: 0 }}>Portaria X — Sistema de Gerenciamento de Condomínios</p>
+          <p style={{ fontSize: "10px", color: "#cbd5e1", margin: 0 }}>App Interfone — Sistema de Gerenciamento de Condomínios</p>
           <p style={{ fontSize: "9px", color: "#e2e8f0", marginTop: "4px" }}>{selfRegisterUrl}</p>
         </div>
       </div>
@@ -319,7 +319,7 @@ export default function VisitanteQRCode() {
                 <Shield style={{ width: 22, height: 22, color: "#fff" }} />
               </div>
               <div>
-                <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#1e293b", margin: 0, letterSpacing: "-0.5px" }}>PORTARIA X</h1>
+                <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#1e293b", margin: 0, letterSpacing: "-0.5px" }}>APP INTERFONE</h1>
                 <p style={{ fontSize: "10px", letterSpacing: "4px", textTransform: "uppercase", color: "#94a3b8", margin: "2px 0 0", fontWeight: "600" }}>Platinum Access</p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function VisitanteQRCode() {
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "16px", textAlign: "center" }}>
-          <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, fontWeight: "500" }}>Portaria X — Platinum Access Control</p>
+          <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, fontWeight: "500" }}>App Interfone — Platinum Access Control</p>
           <p style={{ fontSize: "9px", color: "#cbd5e1", marginTop: "4px" }}>{selfRegisterUrl}</p>
         </div>
       </div>
@@ -420,7 +420,7 @@ export default function VisitanteQRCode() {
               <Cpu style={{ width: 24, height: 24, color: "#fff" }} />
             </div>
             <div>
-              <h1 style={{ fontSize: "26px", fontWeight: "800", margin: 0, letterSpacing: "-0.3px", background: "linear-gradient(135deg, #e2e8f0, #fff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>PORTARIA X</h1>
+              <h1 style={{ fontSize: "26px", fontWeight: "800", margin: 0, letterSpacing: "-0.3px", background: "linear-gradient(135deg, #e2e8f0, #fff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>APP INTERFONE</h1>
               <p style={{ fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase", color: "#0ea5e9", margin: "2px 0 0", fontWeight: "600" }}>Smart Access Platform</p>
             </div>
           </div>
@@ -491,7 +491,7 @@ export default function VisitanteQRCode() {
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "16px", textAlign: "center" }}>
-          <p style={{ fontSize: "11px", color: "#475569", margin: 0, fontWeight: "500" }}>Portaria X — Smart Access Platform</p>
+          <p style={{ fontSize: "11px", color: "#475569", margin: 0, fontWeight: "500" }}>App Interfone — Smart Access Platform</p>
           <p style={{ fontSize: "9px", color: "#334155", marginTop: "4px" }}>{selfRegisterUrl}</p>
         </div>
       </div>
@@ -509,7 +509,7 @@ export default function VisitanteQRCode() {
       style={{ width: "210mm", minHeight: "297mm", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}
     >
       {/* Watermark */}
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%) rotate(-30deg)", fontSize: "120px", fontWeight: "900", color: "rgba(0,53,128,0.02)", letterSpacing: "20px", textTransform: "uppercase", pointerEvents: "none", whiteSpace: "nowrap" }}>PORTARIA X</div>
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%) rotate(-30deg)", fontSize: "120px", fontWeight: "900", color: "rgba(0,53,128,0.02)", letterSpacing: "20px", textTransform: "uppercase", pointerEvents: "none", whiteSpace: "nowrap" }}>APP INTERFONE</div>
 
       {/* Navy top bar */}
       <div style={{ background: "#0f2847", padding: "32px 50px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -519,7 +519,7 @@ export default function VisitanteQRCode() {
             <Building2 style={{ width: 28, height: 28, color: "#e2e8f0" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#fff", margin: 0, letterSpacing: "1px" }}>PORTARIA X</h1>
+            <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#fff", margin: 0, letterSpacing: "1px" }}>APP INTERFONE</h1>
             <p style={{ fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", margin: "4px 0 0", fontWeight: "500" }}>Sistema Institucional de Controle de Acesso</p>
           </div>
         </div>
@@ -604,7 +604,7 @@ export default function VisitanteQRCode() {
         {/* Footer */}
         <div style={{ borderTop: "2px solid #0f2847", paddingTop: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <p style={{ fontSize: "11px", color: "#0f2847", margin: 0, fontWeight: "700" }}>Portaria X</p>
+            <p style={{ fontSize: "11px", color: "#0f2847", margin: 0, fontWeight: "700" }}>App Interfone</p>
             <p style={{ fontSize: "9px", color: "#94a3b8", marginTop: "2px" }}>Sistema Institucional de Gerenciamento de Condomínios</p>
           </div>
           <div style={{ textAlign: "right" }}>

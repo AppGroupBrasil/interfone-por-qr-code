@@ -79,7 +79,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
 
     // 📱 WhatsApp: notificar portaria sobre delivery autorizado
     notifyPortariaWhatsApp(user.condominio_id, "whatsapp_notify_delivery",
-      `📦 *Portaria X* — Delivery Autorizado\n\n👤 ${user.name} (${user.block || "-"}/${user.unit || "-"})\n🛵 ${servico}${numero_pedido ? ` — Pedido: ${numero_pedido}` : ""}\n\nAguardando chegada.`);
+      `📦 *App Interfone* — Delivery Autorizado\n\n👤 ${user.name} (${user.block || "-"}/${user.unit || "-"})\n🛵 ${servico}${numero_pedido ? ` — Pedido: ${numero_pedido}` : ""}\n\nAguardando chegada.`);
 
     res.status(201).json({
       id: result.lastInsertRowid,
@@ -143,7 +143,7 @@ router.post("/portaria", authenticate, (req: Request, res: Response) => {
     // WhatsApp: notify morador about delivery arrival
     if (morador_id) {
       notifyUserWhatsApp(user.condominio_id, "whatsapp_notify_delivery", morador_id,
-        `*Portaria X* — Delivery na Portaria\n\n${servico_custom || servico}${numero_pedido ? ` — Pedido: ${numero_pedido}` : ""}\nBloco ${bloco || "-"}, Apto ${apartamento || "-"}\n\nSua entrega chegou e esta na portaria. Por favor, venha retirar.`);
+        `*App Interfone* — Delivery na Portaria\n\n${servico_custom || servico}${numero_pedido ? ` — Pedido: ${numero_pedido}` : ""}\nBloco ${bloco || "-"}, Apto ${apartamento || "-"}\n\nSua entrega chegou e esta na portaria. Por favor, venha retirar.`);
     }
 
     // Email: notify morador
@@ -231,7 +231,7 @@ router.post("/:id/recebido", authenticate, (req: Request, res: Response) => {
     // 📱 WhatsApp: notificar morador que delivery foi recebido
     if (delivery.morador_id) {
       notifyUserWhatsApp(delivery.condominio_id, "whatsapp_notify_delivery", delivery.morador_id,
-        `📦 *Portaria X* — Delivery Recebido!\n\n🛵 ${delivery.servico_custom || delivery.servico}${delivery.numero_pedido ? ` — Pedido: ${delivery.numero_pedido}` : ""}\n📍 Bloco ${delivery.bloco || "-"}, Apto ${delivery.apartamento || "-"}\n\nJá está na portaria.`);
+        `📦 *App Interfone* — Delivery Recebido!\n\n🛵 ${delivery.servico_custom || delivery.servico}${delivery.numero_pedido ? ` — Pedido: ${delivery.numero_pedido}` : ""}\n📍 Bloco ${delivery.bloco || "-"}, Apto ${delivery.apartamento || "-"}\n\nJá está na portaria.`);
     }
 
     res.json({ message: "Delivery marcado como recebido.", delivery: updated });

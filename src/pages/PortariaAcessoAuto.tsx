@@ -340,7 +340,7 @@ export default function PortariaAcessoAuto() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Shield style={{ width: 18, height: 18, color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8" }} />
-            <span style={{ fontSize: "0.7rem", color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8", fontWeight: 700, letterSpacing: "0.05em" }}>PORTARIA X</span>
+            <span style={{ fontSize: "0.7rem", color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8", fontWeight: 700, letterSpacing: "0.05em" }}>APP INTERFONE</span>
           </div>
         </div>
       </header>

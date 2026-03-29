@@ -24,6 +24,21 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
+    // Local Notifications — notification channels for Android
+    LocalNotifications: {
+      channels: [
+        {
+          id: 'interfone_calls',
+          name: 'Chamadas do Interfone',
+          description: 'Notificações de chamadas do interfone digital',
+          importance: 5, // IMPORTANCE_HIGH — heads-up, sound, vibrate
+          visibility: 1, // PUBLIC
+          sound: 'ringtone', // Uses system ringtone
+          vibration: true,
+          lights: true,
+        },
+      ],
+    },
   },
 };
 

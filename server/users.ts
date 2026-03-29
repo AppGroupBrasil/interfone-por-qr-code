@@ -68,7 +68,7 @@ router.get("/administradoras", authorize("master"), (_req, res) => {
 // ─── LIST SUB-USERS OF AN ADMINISTRADORA (MASTER ONLY) ──
 router.get("/administradora/:id/sub-usuarios", authorize("master"), (req, res) => {
   try {
-    const parentId = parseInt(req.params.id);
+    const parentId = parseInt(String(req.params.id));
     const parent = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'administradora' AND parent_administradora_id IS NULL").get(parentId);
     if (!parent) {
       res.status(404).json({ error: "Administradora principal não encontrada." });
@@ -87,7 +87,7 @@ router.get("/administradora/:id/sub-usuarios", authorize("master"), (req, res) =
 // ─── CREATE SUB-USER FOR ADMINISTRADORA (MASTER ONLY) ───
 router.post("/administradora/:id/sub-usuario", authorize("master"), async (req, res) => {
   try {
-    const parentId = parseInt(req.params.id);
+    const parentId = parseInt(String(req.params.id));
     const parent = db.prepare("SELECT id, name FROM users WHERE id = ? AND role = 'administradora' AND parent_administradora_id IS NULL").get(parentId) as DbUser | undefined;
     if (!parent) {
       res.status(404).json({ error: "Administradora principal não encontrada." });

@@ -4,14 +4,14 @@ import {
   ShieldCheck, Users, Building2, Check, Star,
   ArrowLeft, Phone, Eye, Fingerprint,
   QrCode, Printer, Copy, MessageCircle, Share2,
-  Monitor, Route, ScanLine, BarChart3, Cog, Navigation,
+  Monitor, Route, ScanLine, BarChart3, Cog,
   Cpu, Globe, Wifi, Signal, Wrench,
 } from "lucide-react";
 import { useState } from "react";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
 
 const WHATSAPP_NUMBER = "5511933284364";
-const SITE_URL = "https://www.portariax.com.br";
+const SITE_URL = "https://www.appinterfone.com.br";
 
 /* ─── Profile badge config ─── */
 const PROFILES = {
@@ -29,7 +29,6 @@ const allFeatures = [
   { icon: Package, title: "Correspondências", desc: "Registro de encomendas com foto. Morador recebe aviso no WhatsApp na hora. Controle de retirada.", profiles: ["portaria", "morador"] as ProfileKey[] },
   { icon: Truck, title: "Delivery", desc: "Morador avisa que espera delivery. Porteiro já tem o código. Notificação automática quando chegar.", profiles: ["portaria", "morador"] as ProfileKey[] },
   { icon: Phone, title: "Interfone Digital", desc: "QR Code por bloco. Visitante escaneia e liga direto pro morador com vídeo. 3 níveis de segurança configuráveis.", profiles: ["portaria", "morador", "sindico"] as ProfileKey[] },
-  { icon: Navigation, title: "Estou Chegando", desc: "Morador avisa que está chegando via GPS. Porteiro recebe alerta sonoro em tempo real com mapa, veículo e distância.", profiles: ["portaria", "morador", "sindico"] as ProfileKey[] },
   { icon: DoorOpen, title: "Portaria Virtual (IoT)", desc: "Abra portões e portas dos blocos pelo app com ESP32 + relé. Multi-portão. Sem fio. Instalação simples.", profiles: ["portaria", "morador", "sindico"] as ProfileKey[], badge: "+R$200/mês" },
   { icon: BookOpen, title: "Livro de Protocolo", desc: "Registro digital com assinatura na tela. Gera PDF oficial. Síndico e administradora acompanham em tempo real.", profiles: ["portaria"] as ProfileKey[] },
   { icon: Camera, title: "Espelho de Portaria", desc: "Monitore tudo que acontece na portaria em tempo real, de qualquer lugar. Visão completa para o síndico.", profiles: ["portaria", "sindico"] as ProfileKey[] },
@@ -46,7 +45,7 @@ const allFeatures = [
 const planFeatures = [
   "Cadastro de Visitantes com QR Code", "Autorizações Prévias", "Controle de Veículos + OCR",
   "Correspondências com Notificação", "Delivery", "Interfone Digital com QR Code",
-  "Estou Chegando (GPS)", "Livro de Protocolo Digital", "Espelho de Portaria",
+  "Livro de Protocolo Digital", "Espelho de Portaria",
   "Monitoramento de Câmeras (CFTV)", "Controle de Rondas", "Relatórios em PDF e Gráficos",
   "Configuração de Features", "App do Morador completo", "Multi-perfil (5 níveis)",
   "Integração com WhatsApp", "Suporte por WhatsApp",
@@ -83,7 +82,7 @@ export default function ApresentacaoPage() {
   };
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent(`Conheça o Portaria X — Portaria Inteligente para Condomínios!\n\n${SITE_URL}`);
+    const text = encodeURIComponent(`Conheça o App Interfone — Interfone Digital para Condomínios!\n\n${SITE_URL}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
@@ -154,9 +153,9 @@ export default function ApresentacaoPage() {
         background: "linear-gradient(135deg, #001533 0%, #002a66 40%, #003580 70%, #004aad 100%)",
         padding: "80px 32px", textAlign: "center", color: "#ffffff",
       }}>
-        <img src="/logo.png" alt="Portaria X" style={{ width: "100px", height: "100px", borderRadius: "20px", marginBottom: "24px", objectFit: "cover", border: "3px solid #ffffff" }} />
+        <img src="/logo.png" alt="App Interfone" style={{ width: "100px", height: "100px", borderRadius: "20px", marginBottom: "24px", objectFit: "cover", border: "3px solid #ffffff" }} />
         <h1 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, lineHeight: 1.15, marginBottom: "16px" }}>
-          Portaria X<br />Portaria Inteligente para o seu Condomínio
+          App Interfone<br />Interfone Digital para o seu Condomínio
         </h1>
         <p style={{ fontSize: "17px", color: "rgba(255,255,255,0.8)", maxWidth: "600px", margin: "0 auto 32px", lineHeight: 1.7 }}>
           Visitantes, veículos, correspondências, delivery, protocolo digital e portaria virtual — tudo em um só sistema.
@@ -177,7 +176,7 @@ export default function ApresentacaoPage() {
             </div>
           ))}
         </div>
-        <p style={{ marginTop: "24px", fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>www.portariax.com.br</p>
+        <p style={{ marginTop: "24px", fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>www.appinterfone.com.br</p>
       </section>
 
       {/* ═══════════════════════════════════
@@ -278,7 +277,7 @@ export default function ApresentacaoPage() {
           </div>
 
           <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre a parceria e ser sócio do Portaria X.")}`}
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre a parceria e ser sócio do App Interfone.")}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -439,10 +438,10 @@ export default function ApresentacaoPage() {
             📱 (11) 93328-4364
           </div>
           <div style={{ border: "1.5px solid rgba(255,255,255,0.4)", borderRadius: "10px", padding: "12px 24px", fontSize: "15px", fontWeight: 600 }}>
-            🌐 www.portariax.com.br
+            🌐 www.appinterfone.com.br
           </div>
         </div>
-        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>© 2026 Portaria X — APP GROUP LTDA-ME</p>
+        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>© 2026 App Interfone — APP GROUP LTDA-ME</p>
       </section>
 
       {/* ═══ BOTTOM ACTION BAR ═══ */}

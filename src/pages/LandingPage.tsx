@@ -166,9 +166,17 @@ const plans = [
   },
   {
     name: "Plano",
-    subtitle: "Acima de 24 unidades",
+    subtitle: "De 25 a 300 unidades",
     price: "199",
     color: "#0ea5e9",
+    features: baseFeatures,
+    popular: false,
+  },
+  {
+    name: "Plano",
+    subtitle: "Acima de 300 unidades",
+    price: "299",
+    color: "#f59e0b",
     features: baseFeatures,
     popular: false,
   },
@@ -950,15 +958,16 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px", maxWidth: "1000px", margin: "0 auto" }}>
+          <div style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: "20px", maxWidth: "1100px", margin: "0 auto" }}>
             {plans.map((plan) => (
               <div
                 key={`${plan.name}-${plan.price}`}
                 style={{
                   background: "#ffffff",
-                  borderRadius: "20px", padding: "36px 28px",
+                  borderRadius: "20px", padding: "32px 22px",
                   border: "2px solid #003580",
                   position: "relative", transition: "transform 0.2s, background 0.4s",
+                  flex: "1 1 0", minWidth: 0,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-6px)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
@@ -1017,7 +1026,7 @@ export default function LandingPage() {
           {/* Addons – valor adicional */}
           <div style={{ marginTop: "40px", maxWidth: "700px", margin: "40px auto 0", display: "flex", flexDirection: "column", gap: "16px" }}>
             {[
-              { icon: DoorOpen, title: "Abertura Remota (IoT)", desc: "Abra portões e portas pelo app com ESP32 + relé. Taxa única de instalação:", price: "R$200", label: "na instalação", link: "/portaria-virtual-tutorial" },
+              { icon: DoorOpen, title: "Abertura Remota (IoT)", desc: "Abra portões e portas pelo app com ESP32 + relé. Taxa única de configuração:", price: "R$200", label: "na configuração", link: "/portaria-virtual-tutorial" },
             ].map((addon, idx) => (
               <button type="button" key={addon.title} tabIndex={0} onClick={() => navigate(addon.link)} onKeyDown={(e) => handleKeyActivate(e, () => navigate(addon.link))} style={{
                 background: modeStyle(mode, "transparent", "#003580"),
@@ -1025,7 +1034,7 @@ export default function LandingPage() {
                 padding: "24px 28px", display: "flex", alignItems: "center", gap: "16px",
                 flexWrap: "wrap", cursor: "pointer",
                 fontFamily: "inherit", fontSize: "inherit", color: "inherit", textAlign: "left", width: "100%",
-              }>
+              }}>
                 <div style={{
                   width: "48px", height: "48px", borderRadius: "12px",
                   background: modeStyle(mode, "rgba(255,255,255,0.1)", "rgba(255,255,255,0.15)"),
@@ -1147,16 +1156,16 @@ export default function LandingPage() {
             Conheça as soluções completas do nosso ecossistema
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
-            {/* Portaria X */}
-            <a href="https://www.portariax.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
+            {/* App Interfone */}
+            <a href="https://www.appinterfone.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
               <div style={{ width: "90px", height: "90px", borderRadius: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,53,128,0.15)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s" }}
                 onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
                 onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
               >
-                <img src="/logo-portariax.png" alt="Portaria X" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
+                <img src="/logo-appinterfone.png" alt="App Interfone" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
               </div>
-              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>Portaria X</span>
-              <span style={{ fontSize: "12px", color: "#336699" }}>portariax.com.br</span>
+              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>App Interfone</span>
+              <span style={{ fontSize: "12px", color: "#336699" }}>appinterfone.com.br</span>
             </a>
             {/* Gestão e Limpeza */}
             <a href="https://www.gestaoelimpeza.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>

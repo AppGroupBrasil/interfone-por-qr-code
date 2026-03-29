@@ -129,7 +129,7 @@ export default function PorteiroQRScanner() {
   const processQRData = (data: string) => {
     try {
       const parsed: VisitorPayload = JSON.parse(data);
-      if (parsed.type !== "PORTARIAX_VISITOR" || !parsed.visitante?.nome) {
+      if ((parsed.type !== "APPINTERFONE_VISITOR" && parsed.type !== "PORTARIAX_VISITOR") || !parsed.visitante?.nome) {
         setScanStatus("invalido");
         setVisitor(null);
         setMode("result");

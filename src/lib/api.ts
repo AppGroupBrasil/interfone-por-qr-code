@@ -32,7 +32,7 @@ export function clearToken() {
 }
 
 // ─── Demo mode helpers ───────────────────────────────────
-const DEMO_KEY = "portariax_demo";
+const DEMO_KEY = "appinterfone_demo";
 function _isDemoMode(): boolean {
   try { return localStorage.getItem(DEMO_KEY) === "1"; } catch { return false; }
 }
@@ -42,8 +42,8 @@ const DEMO_ALLOW = ["/api/auth/demo", "/api/auth/me", "/api/auth/logout"];
 
 // Custom event fired when a mutating action is blocked in demo mode
 export function onDemoBlocked(cb: () => void) {
-  window.addEventListener("portariax:demo-blocked", cb);
-  return () => window.removeEventListener("portariax:demo-blocked", cb);
+  window.addEventListener("appinterfone:demo-blocked", cb);
+  return () => window.removeEventListener("appinterfone:demo-blocked", cb);
 }
 
 // ─── apiFetch — drop-in replacement for fetch() ─────────
@@ -59,7 +59,7 @@ export async function apiFetch(
 ): Promise<Response> {
   let url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
-  // Prepend API_BASE to relative paths (e.g. "/api/auth/me" → "https://portariax.com.br/api/auth/me")
+  // Prepend API_BASE to relative paths (e.g. "/api/auth/me" → "https://appinterfone.com.br/api/auth/me")
   if (url.startsWith("/")) {
     url = API_BASE + url;
   }
@@ -69,7 +69,7 @@ export async function apiFetch(
   if (_isDemoMode() && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     const path = url.replace(API_BASE, "");
     if (!DEMO_ALLOW.some(a => path.startsWith(a))) {
-      window.dispatchEvent(new Event("portariax:demo-blocked"));
+      window.dispatchEvent(new Event("appinterfone:demo-blocked"));
       return new Response(JSON.stringify({ error: "Modo demonstração — ação bloqueada.", demo: true }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
@@ -99,10 +99,10 @@ export async function apiFetch(
     response = await fetch(url, fetchInit);
   } catch (err) {
     // Mobile fallback: some networks/devices fail on one host but work on the other.
-    if (isNative && (url.startsWith("https://www.portariax.com.br") || url.startsWith("https://portariax.com.br"))) {
-      const altUrl = url.startsWith("https://www.portariax.com.br")
-        ? url.replace("https://www.portariax.com.br", "https://portariax.com.br")
-        : url.replace("https://portariax.com.br", "https://www.portariax.com.br");
+    if (isNative && (url.startsWith("https://www.appinterfone.com.br") || url.startsWith("https://appinterfone.com.br"))) {
+      const altUrl = url.startsWith("https://www.appinterfone.com.br")
+        ? url.replace("https://www.appinterfone.com.br", "https://appinterfone.com.br")
+        : url.replace("https://appinterfone.com.br", "https://www.appinterfone.com.br");
 
       try {
         response = await fetch(altUrl, fetchInit);

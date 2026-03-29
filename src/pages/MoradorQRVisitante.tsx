@@ -84,7 +84,7 @@ function saveVisitors(list: VisitorQR[]) {
 
 function generateQRData(visitor: VisitorQR, morador: { nome?: string; block?: string; unit?: string; condominio_nome?: string }) {
   const payload = {
-    type: "PORTARIAX_VISITOR",
+    type: "APPINTERFONE_VISITOR",
     v: 1,
     id: visitor.id,
     visitante: {

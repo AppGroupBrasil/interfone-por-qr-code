@@ -62,7 +62,7 @@ function ensureDemoData() {
   // Create demo condomínio
   const condoResult = db.prepare(
     `INSERT INTO condominios (name, cnpj, address, city, state, units_count) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run("Residencial Portaria X — Demonstração", DEMO_CONDO_CNPJ, "Av. Paulista, 1000", "São Paulo", "SP", 48);
+  ).run("Residencial App Interfone — Demonstração", DEMO_CONDO_CNPJ, "Av. Paulista, 1000", "São Paulo", "SP", 48);
   const condoId = condoResult.lastInsertRowid as number;
 
   // Create blocks
@@ -74,20 +74,20 @@ function ensureDemoData() {
   // Create demo síndico
   const sindicoRes = db.prepare(
     `INSERT INTO users (name, email, phone, password, role, perfil, unit, block, condominio_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run("Carlos Mendes", "demo.sindico@portariax.com", "(11) 99999-0001", hashedPw, "sindico", null, "101", "Bloco A", condoId);
+  ).run("Carlos Mendes", "demo.sindico@appinterfone.com", "(11) 99999-0001", hashedPw, "sindico", null, "101", "Bloco A", condoId);
   const sindicoId = sindicoRes.lastInsertRowid as number;
   db.prepare("UPDATE condominios SET admin_user_id = ? WHERE id = ?").run(sindicoId, condoId);
 
   // Create demo porteiro (funcionario)
   db.prepare(
     `INSERT INTO users (name, email, phone, password, role, perfil, unit, block, condominio_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run("Roberto Silva", "demo.porteiro@portariax.com", "(11) 99999-0002", hashedPw, "funcionario", null, null, null, condoId);
+  ).run("Roberto Silva", "demo.porteiro@appinterfone.com", "(11) 99999-0002", hashedPw, "funcionario", null, null, null, condoId);
 
   // Create demo moradores
   const moradores = [
-    { name: "Ana Souza", email: "demo.morador@portariax.com", phone: "(11) 99999-0003", unit: "201", block: "Bloco A", perfil: "proprietario" },
-    { name: "Marcos Lima", email: "demo.morador2@portariax.com", phone: "(11) 99999-0004", unit: "302", block: "Bloco B", perfil: "inquilino" },
-    { name: "Juliana Costa", email: "demo.morador3@portariax.com", phone: "(11) 99999-0005", unit: "103", block: "Bloco C", perfil: "proprietario" },
+    { name: "Ana Souza", email: "demo.morador@appinterfone.com", phone: "(11) 99999-0003", unit: "201", block: "Bloco A", perfil: "proprietario" },
+    { name: "Marcos Lima", email: "demo.morador2@appinterfone.com", phone: "(11) 99999-0004", unit: "302", block: "Bloco B", perfil: "inquilino" },
+    { name: "Juliana Costa", email: "demo.morador3@appinterfone.com", phone: "(11) 99999-0005", unit: "103", block: "Bloco C", perfil: "proprietario" },
   ];
   const moradorIds: number[] = [];
   for (const m of moradores) {
@@ -163,9 +163,9 @@ function ensureDemoData() {
 try { ensureDemoData(); } catch (e) { console.warn("[DEMO] Demo data may already exist:", e); }
 
 const DEMO_EMAILS: Record<string, string> = {
-  sindico: "demo.sindico@portariax.com",
-  portaria: "demo.porteiro@portariax.com",
-  morador: "demo.morador@portariax.com",
+  sindico: "demo.sindico@appinterfone.com",
+  portaria: "demo.porteiro@appinterfone.com",
+  morador: "demo.morador@appinterfone.com",
 };
 
 router.post("/demo", (req, res) => {

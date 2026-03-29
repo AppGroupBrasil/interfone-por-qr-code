@@ -62,6 +62,8 @@ export default function GlobalIncomingCall() {
       if (osc) { osc.stop(); (ringtoneRef as any)._osc = null; }
       if (ctx) { ctx.close(); (ringtoneRef as any)._ctx = null; }
     } catch {}
+    // Also stop push ringtone (from Web Push notification)
+    globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   }, []);
 
   const connectWs = useCallback(() => {
@@ -157,20 +159,34 @@ export default function GlobalIncomingCall() {
 
   const handleAnswer = () => {
     stopRingtone();
-    // Close global WS first so the interfone page can take over
+    const callData = incomingCall;
+    // Send call-answer so the visitor gets notified immediately
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && callData) {
+      wsRef.current.send(JSON.stringify({
+        type: "call-answer",
+        callId: callData.callId,
+      }));
+      // Tell server to preserve the call during WS handoff
+      wsRef.current.send(JSON.stringify({
+        type: "call-handoff",
+        callId: callData.callId,
+      }));
+    }
+    // Close global WS — server won’t end the call because call-handoff cleared callId
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     setIncomingCall(null);
-    navigate("/morador/interfone");
+    // Navigate with call data so MoradorInterfone can pick up the active call
+    navigate("/morador/interfone", { state: { pendingCall: callData } });
   };
 
   const handleReject = () => {
     stopRingtone();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: "reject-call",
+        type: "call-reject",
         callId: incomingCall?.callId,
       }));
     }

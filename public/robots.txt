@@ -1,5 +1,5 @@
-# Portaria X — robots.txt
-# https://www.portariax.com.br
+# App Interfone — robots.txt
+# https://www.appinterfone.com.br
 
 User-agent: *
 Allow: /
@@ -14,4 +14,4 @@ Disallow: /auto-cadastro-pre-auth
 Disallow: /interfone-visitor
 
 # Sitemap
-Sitemap: https://www.portariax.com.br/sitemap.xml
+Sitemap: https://www.appinterfone.com.br/sitemap.xml

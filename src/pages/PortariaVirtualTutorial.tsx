@@ -692,7 +692,7 @@ export default function PortariaVirtualTutorial() {
               Quer usar a Portaria Virtual?
             </p>
             <p style={{ fontSize: "14px", color: isDark ? "rgba(255,255,255,0.8)" : "#334155", marginTop: "8px", lineHeight: 1.6 }}>
-              Assine o Portaria X e adicione o módulo IoT por apenas +R$200/mês
+              Assine o App Interfone e adicione o módulo IoT por apenas +R$200/mês
             </p>
             <button
               onClick={() => navigate("/register/condominio")}

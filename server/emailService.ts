@@ -11,9 +11,9 @@ import crypto from "crypto";
 
 // ─── Configuration ───
 const AWS_REGION = process.env.AWS_SES_REGION || "sa-east-1";
-const FROM_EMAIL = process.env.SES_FROM_EMAIL || "naoresponda@portariax.com.br";
-const FROM_NAME = process.env.SES_FROM_NAME || "Portaria X";
-const APP_URL = process.env.APP_URL || "https://portariax.com.br";
+const FROM_EMAIL = process.env.SES_FROM_EMAIL || "naoresponda@appinterfone.com.br";
+const FROM_NAME = process.env.SES_FROM_NAME || "App Interfone";
+const APP_URL = process.env.APP_URL || "https://appinterfone.com.br";
 
 let sesClient: SESClient | null = null;
 let sesInitialized = false;
@@ -69,7 +69,7 @@ function emailLayout(title: string, bodyContent: string): string {
           <tr>
             <td style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);padding:24px 32px;text-align:center;">
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:0.5px;">
-                🏢 Portaria X
+                🏢 App Interfone
               </h1>
             </td>
           </tr>
@@ -84,9 +84,9 @@ function emailLayout(title: string, bodyContent: string): string {
           <tr>
             <td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="color:#94a3b8;font-size:12px;margin:0;">
-                Este é um email automático do sistema Portaria X.<br>
+                Este é um email automático do sistema App Interfone.<br>
                 Por favor, não responda a este email.<br>
-                <a href="${APP_URL}" style="color:#3b82f6;text-decoration:none;">portariax.com.br</a>
+                <a href="${APP_URL}" style="color:#3b82f6;text-decoration:none;">appinterfone.com.br</a>
               </p>
             </td>
           </tr>
@@ -147,7 +147,7 @@ async function sendEmail(to: string | string[], subject: string, htmlBody: strin
   if (validEmails.length === 0) return false;
 
   // Generate unique Message-ID for deliverability
-  const messageId = `${crypto.randomUUID()}@portariax.com.br`;
+  const messageId = `${crypto.randomUUID()}@appinterfone.com.br`;
 
   // Build raw email with anti-spam headers
   const boundary = `----=_Part_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -159,7 +159,7 @@ async function sendEmail(to: string | string[], subject: string, htmlBody: strin
     `Date: ${new Date().toUTCString()}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    `X-Mailer: PortariaX/1.0`,
+    `X-Mailer: AppInterfone/1.0`,
     `X-Priority: 3`,
     ``,
     `--${boundary}`,
@@ -286,7 +286,7 @@ export async function emailCorrespondenciaChegou(data: {
       infoRow("Descrição", data.descricao)
     )}
     ${alertBox("Por favor, retire sua correspondência na portaria o mais breve possível.", "info")}
-    ${actionButton("Abrir Portaria X", APP_URL)}
+    ${actionButton("Abrir App Interfone", APP_URL)}
   `;
 
   await sendEmail(email, `📦 Correspondência chegou — ${condo}`, emailLayout("Nova Correspondência", body));
@@ -320,7 +320,7 @@ export async function emailCorrespondenciaNaoRetirada(data: {
       infoRow("Dias pendente", `${data.diasPendente} dia(s)`)
     )}
     ${alertBox("⚠️ Por favor, retire sua correspondência na portaria.", "warning")}
-    ${actionButton("Abrir Portaria X", APP_URL)}
+    ${actionButton("Abrir App Interfone", APP_URL)}
   `;
 
   await sendEmail(email, `⚠️ Correspondência pendente há ${data.diasPendente} dias — ${condo}`, emailLayout("Correspondência Pendente", body));
@@ -414,7 +414,7 @@ export async function emailDeliveryRecebido(data: {
       infoRow("Bloco/Apto", `${data.bloco} - ${data.apartamento}`)
     )}
     ${alertBox("🛵 Seu pedido está na portaria aguardando retirada!", "success")}
-    ${actionButton("Abrir Portaria X", APP_URL)}
+    ${actionButton("Abrir App Interfone", APP_URL)}
   `;
 
   await sendEmail(email, `🛵 Delivery recebido na portaria — ${condo}`, emailLayout("Delivery Recebido", body));
@@ -514,7 +514,7 @@ export async function emailVeiculoEncerrado(data: {
       infoRow("Destino", `Bloco ${data.bloco} - Apto ${data.apartamento}`) +
       infoRow("Motivo", motivo)
     )}
-    ${actionButton("Acessar Portaria X", APP_URL, "#3b82f6")}
+    ${actionButton("Acessar App Interfone", APP_URL, "#3b82f6")}
   `;
 
   await sendEmail(email, `⚠️ Liberação de veículo encerrada — ${condo}`, emailLayout("Liberação de Veículo Encerrada", body));
@@ -534,25 +534,24 @@ export async function emailBoasVindasMorador(data: {
 }): Promise<void> {
   const body = `
     <p style="color:#475569;font-size:15px;">Olá <strong>${data.nome}</strong>,</p>
-    <p style="color:#475569;font-size:15px;">Bem-vindo(a) ao <strong>Portaria X</strong>! Sua conta foi criada com sucesso no condomínio <strong>${data.condominioNome}</strong>.</p>
+    <p style="color:#475569;font-size:15px;">Bem-vindo(a) ao <strong>App Interfone</strong>! Sua conta foi criada com sucesso no condomínio <strong>${data.condominioNome}</strong>.</p>
     ${infoTable(
       infoRow("Condomínio", data.condominioNome) +
       infoRow("Bloco", data.bloco) +
       infoRow("Apartamento", data.apartamento)
     )}
-    <p style="color:#475569;font-size:15px;">Com o Portaria X você pode:</p>
+    <p style="color:#475569;font-size:15px;">Com o App Interfone você pode:</p>
     <ul style="color:#475569;font-size:14px;line-height:1.8;">
       <li>📦 Receber notificações de correspondências</li>
       <li>👤 Autorizar visitantes remotamente</li>
       <li>🛵 Gerenciar entregas de delivery</li>
       <li>🚗 Autorizar veículos</li>
       <li>📞 Usar o interfone digital</li>
-      <li>📍 Ativar o "Estou Chegando"</li>
     </ul>
-    ${actionButton("Acessar Portaria X", APP_URL)}
+    ${actionButton("Acessar App Interfone", APP_URL)}
   `;
 
-  await sendEmail(data.email, `🏢 Bem-vindo ao Portaria X — ${data.condominioNome}`, emailLayout("Bem-vindo!", body));
+  await sendEmail(data.email, `🏢 Bem-vindo ao App Interfone — ${data.condominioNome}`, emailLayout("Bem-vindo!", body));
 }
 
 /** Welcome email on condominio/sindico registration */
@@ -563,7 +562,7 @@ export async function emailBoasVindasSindico(data: {
 }): Promise<void> {
   const body = `
     <p style="color:#475569;font-size:15px;">Olá <strong>${data.nome}</strong>,</p>
-    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi cadastrado com sucesso no <strong>Portaria X</strong>!</p>
+    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi cadastrado com sucesso no <strong>App Interfone</strong>!</p>
     <p style="color:#475569;font-size:15px;">Como síndico, você tem acesso a:</p>
     <ul style="color:#475569;font-size:14px;line-height:1.8;">
       <li>👥 Cadastro de moradores e funcionários</li>
@@ -668,7 +667,7 @@ export async function emailChamadaPerdida(data: {
       infoRow("Horário", data.horario)
     )}
     ${alertBox("📞 Chamada não atendida. Verifique se precisa retornar contato.", "warning")}
-    ${actionButton("Abrir Portaria X", APP_URL)}
+    ${actionButton("Abrir App Interfone", APP_URL)}
   `;
 
   await sendEmail(email, `📞 Chamada perdida no interfone — ${condo}`, emailLayout("Chamada Perdida", body));
@@ -751,7 +750,7 @@ export async function emailCondominioBloqueado(data: {
   if (!email) return;
 
   const body = `
-    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi <strong style="color:#ef4444;">bloqueado</strong> no sistema Portaria X.</p>
+    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi <strong style="color:#ef4444;">bloqueado</strong> no sistema App Interfone.</p>
     ${infoTable(
       infoRow("Condomínio", data.condominioNome) +
       infoRow("Motivo", data.motivo)
@@ -771,9 +770,9 @@ export async function emailCondominioDesbloqueado(data: {
   if (!email) return;
 
   const body = `
-    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi <strong style="color:#22c55e;">desbloqueado</strong> no sistema Portaria X.</p>
+    <p style="color:#475569;font-size:15px;">O condomínio <strong>${data.condominioNome}</strong> foi <strong style="color:#22c55e;">desbloqueado</strong> no sistema App Interfone.</p>
     ${alertBox("✅ O acesso ao sistema foi restabelecido. Todas as funcionalidades estão disponíveis.", "success")}
-    ${actionButton("Acessar Portaria X", APP_URL)}
+    ${actionButton("Acessar App Interfone", APP_URL)}
   `;
 
   await sendEmail(email, `✅ Condomínio desbloqueado — ${data.condominioNome}`, emailLayout("Condomínio Desbloqueado", body));
@@ -794,7 +793,7 @@ export async function emailContaCriada(data: {
 }): Promise<void> {
   const body = `
     <p style="color:#475569;font-size:15px;">Olá <strong>${data.nome}</strong>,</p>
-    <p style="color:#475569;font-size:15px;">Uma conta foi criada para você no sistema <strong>Portaria X</strong> do condomínio <strong>${data.condominioNome}</strong>.</p>
+    <p style="color:#475569;font-size:15px;">Uma conta foi criada para você no sistema <strong>App Interfone</strong> do condomínio <strong>${data.condominioNome}</strong>.</p>
     ${infoTable(
       infoRow("Condomínio", data.condominioNome) +
       infoRow("Bloco", data.bloco) +
@@ -803,10 +802,10 @@ export async function emailContaCriada(data: {
       (data.senhaProvisoria ? infoRow("Senha provisória", data.senhaProvisoria) : "")
     )}
     ${data.senhaProvisoria ? alertBox("⚠️ Recomendamos alterar sua senha no primeiro acesso.", "warning") : ""}
-    ${actionButton("Acessar Portaria X", APP_URL)}
+    ${actionButton("Acessar App Interfone", APP_URL)}
   `;
 
-  await sendEmail(data.email, `🏢 Sua conta no Portaria X — ${data.condominioNome}`, emailLayout("Conta Criada", body));
+  await sendEmail(data.email, `🏢 Sua conta no App Interfone — ${data.condominioNome}`, emailLayout("Conta Criada", body));
 }
 
 // ──────────────────────────────────────────
@@ -849,11 +848,11 @@ export async function emailSenhaAlterada(data: {
 }): Promise<void> {
   const body = `
     <p style="color:#475569;font-size:15px;">Olá <strong>${data.nome}</strong>,</p>
-    <p style="color:#475569;font-size:15px;">Sua senha no <strong>Portaria X</strong> foi alterada com sucesso.</p>
+    <p style="color:#475569;font-size:15px;">Sua senha no <strong>App Interfone</strong> foi alterada com sucesso.</p>
     ${alertBox("Se você não realizou esta alteração, entre em contato imediatamente com o suporte.", "warning")}
   `;
 
-  await sendEmail(data.email, `🔒 Senha alterada — Portaria X`, emailLayout("Senha Alterada", body));
+  await sendEmail(data.email, `🔒 Senha alterada — App Interfone`, emailLayout("Senha Alterada", body));
 }
 
 // ──────────────────────────────────────────

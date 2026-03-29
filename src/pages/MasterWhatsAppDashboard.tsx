@@ -67,7 +67,7 @@ export default function MasterWhatsAppDashboard() {
   const [globalConfigOpen, setGlobalConfigOpen] = useState(false);
   const [globalApiKey, setGlobalApiKey] = useState("");
   const [globalSource, setGlobalSource] = useState("");
-  const [globalAppName, setGlobalAppName] = useState("Portaria X");
+  const [globalAppName, setGlobalAppName] = useState("App Interfone");
   const [globalConfigured, setGlobalConfigured] = useState(false);
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savedGlobal, setSavedGlobal] = useState(false);
@@ -100,7 +100,7 @@ export default function MasterWhatsAppDashboard() {
         const data = await res.json();
         setGlobalApiKey(data.whatsapp_gupshup_apikey || "");
         setGlobalSource(data.whatsapp_gupshup_source || "");
-        setGlobalAppName(data.whatsapp_gupshup_appname || "Portaria X");
+        setGlobalAppName(data.whatsapp_gupshup_appname || "App Interfone");
         setGlobalConfigured(data._configured === "true");
       }
     } catch {}
@@ -263,7 +263,7 @@ export default function MasterWhatsAppDashboard() {
               gap: 12,
             }}>
               <p style={{ fontSize: 12, color: p.textMuted, lineHeight: 1.5, margin: 0 }}>
-                Estas credenciais são compartilhadas por <strong>todos os condomínios</strong>. O número WhatsApp aparecerá como <strong>"Portaria X"</strong> para todos.
+                Estas credenciais são compartilhadas por <strong>todos os condomínios</strong>. O número WhatsApp aparecerá como <strong>"App Interfone"</strong> para todos.
               </p>
 
               {/* API Key */}
@@ -309,7 +309,7 @@ export default function MasterWhatsAppDashboard() {
                   type="text"
                   value={globalAppName}
                   onChange={e => setGlobalAppName(e.target.value)}
-                  placeholder="Portaria X"
+                  placeholder="App Interfone"
                   style={inputStyle}
                 />
               </div>

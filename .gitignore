@@ -23,3 +23,10 @@ Thumbs.db
 firebase-service-account.json
 *.key
 *.pem
+
+# Database & build artifacts
+data.db
+data.db-shm
+data.db-wal
+backups/
+dist-server/

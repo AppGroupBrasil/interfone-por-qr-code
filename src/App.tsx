@@ -58,9 +58,6 @@ import MoradorInterfone from "@/pages/MoradorInterfone";
 import FuncionarioInterfone from "@/pages/FuncionarioInterfone";
 import InterfoneVisitor from "@/pages/InterfoneVisitor";
 import LandingPage from "@/pages/LandingPage";
-import MoradorEstouChegando from "@/pages/MoradorEstouChegando";
-import PortariaEstouChegando from "@/pages/PortariaEstouChegando";
-import SindicoEstouChegandoConfig from "@/pages/SindicoEstouChegandoConfig";
 import SindicoGateConfig from "@/pages/SindicoGateConfig";
 import SindicoAccessConfig from "@/pages/SindicoAccessConfig";
 import SindicoWhatsAppConfig from "@/pages/SindicoWhatsAppConfig";
@@ -232,11 +229,8 @@ function AppRoutes() {
       <Route path="/sindico/interfone-config" element={<ProtectedRoute minRole="sindico"><SindicoInterfoneConfig /></ProtectedRoute>} />
       <Route path="/morador/interfone-config" element={<ProtectedRoute><MoradorInterfoneConfig /></ProtectedRoute>} />
       <Route path="/morador/interfone" element={<ProtectedRoute><MoradorInterfone /></ProtectedRoute>} />
-      <Route path="/morador/estou-chegando" element={<ProtectedRoute><MoradorEstouChegando /></ProtectedRoute>} />
       <Route path="/portaria/interfone" element={<ProtectedRoute><FuncionarioInterfone /></ProtectedRoute>} />
-      <Route path="/portaria/estou-chegando" element={<ProtectedRoute><PortariaEstouChegando /></ProtectedRoute>} />
       <Route path="/portaria/centro-comando" element={<ProtectedRoute><CentroComando /></ProtectedRoute>} />
-      <Route path="/sindico/estou-chegando" element={<ProtectedRoute minRole="sindico"><SindicoEstouChegandoConfig /></ProtectedRoute>} />
       <Route path="/sindico/portao" element={<ProtectedRoute minRole="sindico"><SindicoGateConfig /></ProtectedRoute>} />
       <Route path="/sindico/acessos" element={<ProtectedRoute minRole="sindico"><SindicoAccessConfig /></ProtectedRoute>} />
       <Route path="/sindico/whatsapp" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppConfig /></ProtectedRoute>} />

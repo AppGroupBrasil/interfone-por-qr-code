@@ -1,14 +1,12 @@
 import { useAuth, getRoleLabel } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/api";
+import { useState } from "react";
 import FuncoesIndex from "@/components/FuncoesIndex";
 import ThemePicker from "@/components/ThemePicker";
 import {
   Home,
   LogOut,
-  Settings,
   Shield,
   Building2,
   Layers,
@@ -16,19 +14,8 @@ import {
   Wrench,
   Bell,
   UserPlus,
-  ClipboardList,
   UserCircle,
-  QrCode,
-  Camera,
-  MapPin,
   Phone,
-  Navigation,
-  DoorOpen,
-  ShieldCheck,
-  Cpu,
-  BookOpen,
-  Zap,
-  MessageCircle,
 } from "lucide-react";
 
 /* ═══ Mock data for Síndico ═══ */
@@ -50,14 +37,6 @@ export default function DashboardSindico() {
   const { toggleTheme, p } = useTheme();
   const navigate = useNavigate();
   const [activeModule, setActiveModule] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-
-  useEffect(() => {
-    apiFetch("/api/moradores/pendentes/count")
-      .then((r) => r.ok ? r.json() : { count: 0 })
-      .then((d) => setPendingCount(d.count))
-      .catch(() => {});
-  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -149,27 +128,7 @@ export default function DashboardSindico() {
               <span style={{ fontSize: 12, fontWeight: 600, color: p.textDim, marginTop: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</span>
             </button>
           ))}
-          {/* Liberações card */}
-          <button
-            onClick={() => navigate("/liberacao-cadastros")}
-            className={`flex flex-col items-center justify-center cursor-pointer ${pendingCount > 0 ? "animate-pulse" : ""}`}
-            style={{
-              padding: "18px 8px",
-              borderRadius: 20,
-              background: pendingCount > 0 ? "linear-gradient(135deg, rgba(239,68,68,0.25), rgba(220,38,38,0.15))" : "rgba(255,255,255,0.06)",
-              border: pendingCount > 0 ? "2px solid rgba(239,68,68,0.4)" : "2px solid rgba(255,255,255,0.12)",
-              transition: "all 0.2s ease",
-              boxShadow: pendingCount > 0 ? "0 4px 16px rgba(239,68,68,0.2)" : "0 2px 12px rgba(0,0,0,0.08)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            <div className="flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: 12, background: pendingCount > 0 ? "rgba(239,68,68,0.2)" : "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)", border: pendingCount > 0 ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.1)", marginBottom: 8 }}>
-              <ShieldCheck style={{ width: 18, height: 18, color: pendingCount > 0 ? "#f87171" : "#fff" }} />
-            </div>
-            <span style={{ fontSize: 28, fontWeight: 800, color: pendingCount > 0 ? "#f87171" : "#fff" }}>{pendingCount}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: pendingCount > 0 ? "rgba(248,113,113,0.7)" : "rgba(255,255,255,0.5)", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>Liberações</span>
-          </button>
+
         </div>
 
         {/* ═══════════ ROW 2: Distribuição + Blocos ═══════════ */}
@@ -183,13 +142,11 @@ export default function DashboardSindico() {
                   { label: "Blocos", value: mockStats.blocos, icon: Layers, color: "#60a5fa" },
                   { label: "Funcionários", value: mockStats.funcionarios, icon: Wrench, color: "#34d399" },
                   { label: "Moradores", value: mockStats.moradores, icon: Users2, color: "#a78bfa" },
-                  { label: "Liberações", value: pendingCount, icon: ShieldCheck, color: pendingCount > 0 ? "#f87171" : "#fbbf24" },
                 ];
                 const maxVal = Math.max(...barData.map(b => b.value), 1);
                 return barData.map((bar, index) => {
                   const BarIcon = bar.icon;
                   const pct = Math.max((bar.value / maxVal) * 100, 6);
-                  const isLiberacoes = bar.label === "Liberações";
                   return (
                     <div
                       key={bar.label}
@@ -197,11 +154,9 @@ export default function DashboardSindico() {
                       style={{
                         padding: "14px 18px",
                         gap: 12,
-                        cursor: isLiberacoes ? "pointer" : "default",
                         borderBottom: index < barData.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                         transition: "background 0.15s",
                       }}
-                      onClick={isLiberacoes ? () => navigate("/liberacao-cadastros") : undefined}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
@@ -259,58 +214,13 @@ export default function DashboardSindico() {
           </div>
         </div>
 
-        {/* ═══════════ ROW 3: Liberação Cadastros (if pending) ═══════════ */}
-        {pendingCount > 0 && (
-          <div
-            className="animate-fade-in cursor-pointer"
-            style={{ animationDelay: "0.3s" }}
-            onClick={() => navigate("/liberacao-cadastros")}
-          >
-            <button
-              className="w-full flex items-center"
-              style={{
-                padding: "18px 22px",
-                borderRadius: 20,
-                background: "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.08))",
-                border: "2px solid rgba(239,68,68,0.3)",
-                color: p.text,
-                gap: 16,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                boxShadow: "0 4px 16px rgba(239,68,68,0.15)",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(239,68,68,0.25), rgba(220,38,38,0.15))"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.08))"; e.currentTarget.style.transform = "translateY(0)"; }}
-            >
-              <div className="flex items-center justify-center shrink-0" style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                <ShieldCheck style={{ width: 22, height: 22, color: "#f87171" }} />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <p style={{ fontWeight: 700, fontSize: 15 }}>Cadastros Pendentes</p>
-                <p style={{ color: p.textDim, fontSize: 13 }}>{pendingCount} morador{pendingCount !== 1 ? "es" : ""} aguardando liberação</p>
-              </div>
-              <span style={{ fontSize: 24, fontWeight: 800, color: "#f87171", flexShrink: 0 }}>{pendingCount}</span>
-            </button>
-          </div>
-        )}
-
-        {/* ═══════════ ROW 4: Feature Cards  ═══════════ */}
+        {/* ═══════════ ROW 3: Feature Cards  ═══════════ */}
         <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: p.accentBright, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.08em" }}>Funções</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }} className="sindico-features-grid">
             {[
               { icon: UserPlus, label: "Cadastro", description: "Gerenciar moradores e funcionários", route: "/cadastros", delay: "0.15s" },
-              { icon: Camera, label: "Câmeras", description: "Monitorar câmeras do condomínio", route: "/sindico/cameras", delay: "0.25s" },
-              { icon: MapPin, label: "Rondas", description: "Controlar rondas de segurança", route: "/sindico/rondas", delay: "0.35s" },
-              { icon: Phone, label: "Interfone", description: "Configurar interfone digital", route: "/sindico/interfone-config", delay: "0.45s" },
-              { icon: Navigation, label: "Estou Chegando", description: "Configurar notificações de chegada", route: "/sindico/estou-chegando", delay: "0.55s" },
-              { icon: DoorOpen, label: "Acessos", description: "Gerenciar pontos de acesso", route: "/sindico/acessos", delay: "0.65s" },
-              { icon: DoorOpen, label: "Portaria Virtual", description: "Abrir portas e portões remotamente", route: "/morador/portaria-virtual", delay: "0.70s" },
-              { icon: Cpu, label: "Dispositivos", description: "Biblioteca de dispositivos IoT", route: "/biblioteca-dispositivos", delay: "0.75s" },
-              { icon: QrCode, label: "Config QR", description: "Configurar QR Code para visitantes", route: "/sindico/qr-config", delay: "0.85s" },
-              { icon: Zap, label: "Portão", description: "Configurar portões e dispositivos IoT", route: "/sindico/portao", delay: "0.90s" },
-              { icon: BookOpen, label: "Livro Protocolo", description: "Livro de ocorrências da portaria", route: "/portaria/livro-protocolo", delay: "0.95s" },
-              { icon: MessageCircle, label: "WhatsApp", description: "Configurar notificações WhatsApp", route: "/sindico/whatsapp", delay: "1.00s" },
+              { icon: Phone, label: "Interfone", description: "Configurar interfone digital", route: "/sindico/interfone-config", delay: "0.25s" },
             ].map((item) => (
               <div key={item.label} className="animate-fade-in" style={{ animationDelay: item.delay }}>
                 <button
@@ -351,12 +261,10 @@ export default function DashboardSindico() {
 
       {/* ═══════════ Bottom Nav ═══════════ */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 premium-bottom-nav safe-area-bottom">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", height: "6rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", height: "6rem" }}>
           {[
             { icon: Home, label: "Home", route: "/dashboard" },
-            { icon: ClipboardList, label: "Espelho Portaria", route: "/espelho-portaria" },
             { icon: UserCircle, label: "Minha Conta", route: "/minha-conta" },
-            { icon: Settings, label: "Config", route: "/sindico/features-config" },
           ].map((item) => (
             <button
               key={item.label}

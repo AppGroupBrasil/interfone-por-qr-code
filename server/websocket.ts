@@ -15,6 +15,7 @@ import type { Server } from "http";
 import type { IncomingMessage } from "http";
 import jwt from "jsonwebtoken";
 import db, { type DbUser } from "./db.js";
+import { sendPushToUser } from "./pushService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production-32chars!!";
 const COOKIE_NAME = "session_token";
@@ -64,32 +65,44 @@ const clients = new Map<string, WsClient>();
 const moradorConnections = new Map<number, WsClient>();
 // Funcionario connections indexed by condominioId for portaria calls
 const funcionarioConnections = new Map<number, WsClient[]>();
+// Pending call handoffs — morador switching from GlobalIncomingCall WS to MoradorInterfone WS
+const pendingHandoffs = new Map<number, { callId: string; timestamp: number }>();
+// Pending push calls — visitor waiting for morador to come online after push notification
+const pendingPushCalls = new Map<string, { callId: string; visitorClientId: string; moradorId: number; visitanteNome: string; visitanteEmpresa: string | null; visitanteFoto: string | null; nivelSeguranca: number; bloco: string; apartamento: string; timestamp: number }>();
 
 export function initSignalingServer(_server?: Server) {
-  // Create a standalone HTTPS server for WebSocket on port 3002
-  // Uses self-signed cert for local dev, avoids Vite proxy frame corruption
-  const certsDir = path.resolve(process.cwd(), "certs");
-  const hasCerts = fs.existsSync(path.join(certsDir, "key.pem")) && fs.existsSync(path.join(certsDir, "cert.pem"));
+  const isProd = process.env.NODE_ENV === "production";
+  let wss: WebSocketServer;
 
-  const wsHttpServer = hasCerts
-    ? https.createServer({
-        key: fs.readFileSync(path.join(certsDir, "key.pem")),
-        cert: fs.readFileSync(path.join(certsDir, "cert.pem")),
-      }, (_req, res) => {
-        res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
-        res.end("WSS server");
-      })
-    : http.createServer((_req, res) => {
-        res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
-        res.end("WS server");
-      });
+  if (isProd && _server) {
+    // Production: attach to main HTTP server (same port, path-based routing)
+    wss = new WebSocketServer({ server: _server, path: "/ws/interfone", perMessageDeflate: false });
+    console.log(`  📞 Interfone WebSocket attached to main server at /ws/interfone`);
+  } else {
+    // Dev: standalone server on dedicated port to avoid Vite proxy frame corruption
+    const certsDir = path.resolve(process.cwd(), "certs");
+    const hasCerts = fs.existsSync(path.join(certsDir, "key.pem")) && fs.existsSync(path.join(certsDir, "cert.pem"));
 
-  const wss = new WebSocketServer({ server: wsHttpServer, path: "/ws/interfone", perMessageDeflate: false });
+    const wsHttpServer = hasCerts
+      ? https.createServer({
+          key: fs.readFileSync(path.join(certsDir, "key.pem")),
+          cert: fs.readFileSync(path.join(certsDir, "cert.pem")),
+        }, (_req, res) => {
+          res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
+          res.end("WSS server");
+        })
+      : http.createServer((_req, res) => {
+          res.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
+          res.end("WS server");
+        });
 
-  const WS_PORT = parseInt(process.env.WS_PORT || "3002");
-  wsHttpServer.listen(WS_PORT, "0.0.0.0", () => {
-    console.log(`  \u{1F4DE} Interfone WebSocket ready at ${hasCerts ? 'wss' : 'ws'}://0.0.0.0:${WS_PORT}/ws/interfone`);
-  });
+    wss = new WebSocketServer({ server: wsHttpServer, path: "/ws/interfone", perMessageDeflate: false });
+
+    const WS_PORT = parseInt(process.env.WS_PORT || "3002");
+    wsHttpServer.listen(WS_PORT, "0.0.0.0", () => {
+      console.log(`  📞 Interfone WebSocket ready at ${hasCerts ? 'wss' : 'ws'}://0.0.0.0:${WS_PORT}/ws/interfone`);
+    });
+  }
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     let clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -118,7 +131,41 @@ export function initSignalingServer(_server?: Server) {
             client.moradorId = authUser.id;
             client.condominioId = authUser.condominio_id ?? undefined;
             moradorConnections.set(authUser.id, client);
-            ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+
+            // Check for pending call handoff (GlobalIncomingCall → MoradorInterfone)
+            const handoff = pendingHandoffs.get(authUser.id);
+            if (handoff && (Date.now() - handoff.timestamp < 15000)) {
+              client.callId = handoff.callId;
+              pendingHandoffs.delete(authUser.id);
+              console.log(`  [WS] Handoff resumed: moradorId=${authUser.id} callId=${handoff.callId}`);
+              ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+              ws.send(JSON.stringify({ type: "call-resumed", callId: handoff.callId }));
+            } else {
+              pendingHandoffs.delete(authUser.id); // clean up expired
+              ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+            }
+
+            // Check for pending push call (visitor called while morador was offline)
+            for (const [pcCallId, pc] of pendingPushCalls) {
+              if (pc.moradorId === authUser.id && (Date.now() - pc.timestamp < 60000)) {
+                console.log(`  [WS] Push call found: moradorId=${authUser.id} callId=${pcCallId}`);
+                client.callId = pcCallId;
+                pendingPushCalls.delete(pcCallId);
+                // Send the incoming call to the morador
+                ws.send(JSON.stringify({
+                  type: "incoming-call",
+                  callId: pcCallId,
+                  visitanteNome: pc.visitanteNome,
+                  visitanteEmpresa: pc.visitanteEmpresa,
+                  visitanteFoto: pc.visitanteFoto,
+                  nivelSeguranca: pc.nivelSeguranca,
+                  bloco: pc.bloco,
+                  apartamento: pc.apartamento,
+                  visitorClientId: pc.visitorClientId,
+                }));
+                break;
+              }
+            }
             break;
           }
 
@@ -195,7 +242,38 @@ export function initSignalingServer(_server?: Server) {
                 visitorClientId: clientId,
               }));
             } else {
-              ws.send(JSON.stringify({ type: "call-unavailable", callId, reason: "morador_offline" }));
+              // Morador offline — send push notification and keep visitor waiting
+              console.log(`  [WS] Morador ${moradorId} offline, sending push notification...`);
+              pendingPushCalls.set(callId, {
+                callId, visitorClientId: clientId, moradorId,
+                visitanteNome: visitanteNome || "Visitante",
+                visitanteEmpresa: visitanteEmpresa || null,
+                visitanteFoto: visitanteFoto || null,
+                nivelSeguranca: nivelSeguranca || 0,
+                bloco: bloco || "", apartamento: apartamento || "",
+                timestamp: Date.now(),
+              });
+              // Send push via FCM
+              sendPushToUser(moradorId, {
+                title: "\uD83D\uDCDE Chamada do Interfone",
+                body: `${visitanteNome || "Visitante"} está chamando no interfone`,
+                data: { type: "interfone-call", callId, moradorId: String(moradorId) },
+                channelId: "interfone_calls",
+                sound: "ringtone",
+              }).then((sent) => {
+                console.log(`  [WS] Push sent to moradorId=${moradorId}: ${sent} device(s)`);
+                if (sent === 0) {
+                  // No push tokens — morador truly unreachable
+                  pendingPushCalls.delete(callId);
+                  ws.send(JSON.stringify({ type: "call-unavailable", callId, reason: "morador_offline" }));
+                } else {
+                  // Tell visitor to keep waiting
+                  ws.send(JSON.stringify({ type: "call-waiting-push", callId }));
+                }
+              }).catch(() => {
+                pendingPushCalls.delete(callId);
+                ws.send(JSON.stringify({ type: "call-unavailable", callId, reason: "morador_offline" }));
+              });
             }
             break;
           }
@@ -238,9 +316,23 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── Answer call (works for external AND internal calls) ───
           case "call-answer": {
+            // Ensure this client has the callId set (for handoff scenarios)
+            if (msg.callId && !client.callId) {
+              client.callId = msg.callId;
+            }
             const answerPeer = findPeerByCallId(msg.callId, clientId);
             if (answerPeer) {
               answerPeer.ws.send(JSON.stringify({ type: "call-answered", callId: msg.callId }));
+            }
+            break;
+          }
+
+          // ─── Call handoff (GlobalIncomingCall → MoradorInterfone page) ───
+          case "call-handoff": {
+            if (client.moradorId && client.callId) {
+              console.log(`  [WS] Call handoff: moradorId=${client.moradorId} callId=${client.callId}`);
+              pendingHandoffs.set(client.moradorId, { callId: client.callId, timestamp: Date.now() });
+              client.callId = undefined; // prevent close handler from ending the call
             }
             break;
           }
@@ -392,6 +484,8 @@ export function initSignalingServer(_server?: Server) {
       }
       // Notify other party if in call
       if (client.callId) {
+        // Clean up any pending push call
+        pendingPushCalls.delete(client.callId);
         const otherType = client.type === "visitor" ? "morador" : "visitor";
         const other = findClientByCallId(client.callId, otherType);
         if (!other) {

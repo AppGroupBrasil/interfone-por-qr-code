@@ -6,6 +6,7 @@
  */
 
 import admin from "firebase-admin";
+import webpush from "web-push";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -48,6 +49,30 @@ function initFirebase() {
 // Initialize on module load
 initFirebase();
 
+// ─── Initialize Web Push (VAPID) ───
+let webPushInitialized = false;
+
+function initWebPush() {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || "mailto:contato@appinterfone.com.br";
+
+  if (!publicKey || !privateKey) {
+    console.warn("⚠️  VAPID keys not set. Web Push notifications disabled.");
+    return;
+  }
+
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    webPushInitialized = true;
+    console.log("  🌐 Web Push (VAPID) initialized");
+  } catch (err) {
+    console.error("Web Push init error:", err);
+  }
+}
+
+initWebPush();
+
 // ─── Types ───
 interface PushPayload {
   title: string;
@@ -61,15 +86,25 @@ interface PushPayload {
 
 // ─── Send push to a specific user ───
 export async function sendPushToUser(userId: number, payload: PushPayload): Promise<number> {
-  if (!firebaseInitialized) return 0;
+  if (!firebaseInitialized && !webPushInitialized) return 0;
 
   const tokens = db.prepare(
-    "SELECT token FROM device_tokens WHERE user_id = ? AND active = 1"
-  ).all(userId) as { token: string }[];
+    "SELECT token, platform, web_push_keys FROM device_tokens WHERE user_id = ? AND active = 1"
+  ).all(userId) as { token: string; platform: string; web_push_keys: string | null }[];
 
   if (tokens.length === 0) return 0;
 
-  return sendPushToTokens(tokens.map(t => t.token), payload);
+  const fcmTokens = tokens.filter(t => t.platform !== "web").map(t => t.token);
+  const webTokens = tokens.filter(t => t.platform === "web" && t.web_push_keys);
+
+  let sent = 0;
+  if (fcmTokens.length > 0 && firebaseInitialized) {
+    sent += await sendPushToTokens(fcmTokens, payload);
+  }
+  if (webTokens.length > 0 && webPushInitialized) {
+    sent += await sendWebPush(webTokens, payload);
+  }
+  return sent;
 }
 
 // ─── Send push to all users with a specific role in a condominium ───
@@ -78,21 +113,31 @@ export async function sendPushToCondominioRole(
   roles: string[],
   payload: PushPayload
 ): Promise<number> {
-  if (!firebaseInitialized) return 0;
+  if (!firebaseInitialized && !webPushInitialized) return 0;
 
   const placeholders = roles.map(() => "?").join(",");
   const tokens = db.prepare(`
-    SELECT dt.token 
+    SELECT dt.token, dt.platform, dt.web_push_keys
     FROM device_tokens dt
     INNER JOIN users u ON u.id = dt.user_id
     WHERE u.condominio_id = ? 
       AND u.role IN (${placeholders})
       AND dt.active = 1
-  `).all(condominioId, ...roles) as { token: string }[];
+  `).all(condominioId, ...roles) as { token: string; platform: string; web_push_keys: string | null }[];
 
   if (tokens.length === 0) return 0;
 
-  return sendPushToTokens(tokens.map(t => t.token), payload);
+  const fcmTokens = tokens.filter(t => t.platform !== "web").map(t => t.token);
+  const webTokens = tokens.filter(t => t.platform === "web" && t.web_push_keys);
+
+  let sent = 0;
+  if (fcmTokens.length > 0 && firebaseInitialized) {
+    sent += await sendPushToTokens(fcmTokens, payload);
+  }
+  if (webTokens.length > 0 && webPushInitialized) {
+    sent += await sendWebPush(webTokens, payload);
+  }
+  return sent;
 }
 
 // ─── Send push to all portaria staff (funcionario + sindico) of a condominium ───
@@ -119,9 +164,19 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
     android: {
       priority: "high",
       notification: {
-        channelId: payload.channelId || "portariax_default",
+        channelId: payload.channelId || "appinterfone_default",
         sound: payload.sound || "default",
-        priority: "high",
+        priority: "max",
+        defaultVibrateTimings: false,
+        vibrateTimingsMillis: ["0", "1000", "200", "1000", "3000", "1000", "200", "1000"],
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: payload.sound === "ringtone" ? "default" : (payload.sound || "default"),
+          "interruption-level": "time-sensitive",
+        },
       },
     },
   };
@@ -151,4 +206,41 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
   }
 }
 
-export { firebaseInitialized };
+// ─── Web Push: send to browser subscriptions ───
+async function sendWebPush(
+  tokens: { token: string; web_push_keys: string | null }[],
+  payload: PushPayload
+): Promise<number> {
+  if (!webPushInitialized) return 0;
+
+  const webPayload = JSON.stringify({
+    title: payload.title,
+    body: payload.body,
+    data: payload.data || {},
+  });
+
+  let successCount = 0;
+
+  for (const t of tokens) {
+    if (!t.web_push_keys) continue;
+    try {
+      const keys = JSON.parse(t.web_push_keys);
+      const subscription = {
+        endpoint: t.token,
+        keys: { p256dh: keys.p256dh, auth: keys.auth },
+      };
+      await webpush.sendNotification(subscription, webPayload);
+      successCount++;
+    } catch (err: any) {
+      if (err?.statusCode === 410 || err?.statusCode === 404) {
+        // Subscription expired or invalid — deactivate
+        db.prepare("UPDATE device_tokens SET active = 0 WHERE token = ?").run(t.token);
+      }
+      console.error("Web Push send error:", err?.statusCode || err);
+    }
+  }
+
+  return successCount;
+}
+
+export { firebaseInitialized, webPushInitialized };

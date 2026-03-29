@@ -256,7 +256,6 @@ export default function DashboardAdmin() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }} className="sindico-features-grid">
             {[
               { icon: FileTextIcon, label: "Logs", description: "Histórico de atividades", route: "/master/logs" },
-              ...(user?.role === "master" ? [{ icon: DoorOpen, label: "Portão", description: "Configurar portões IoT", route: "/master/portao" }] : []),
             ].map((item) => (
               <div key={item.label} onClick={() => navigate(item.route)} className="ui-card-mini rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform" style={{ padding: "1.25rem 0.75rem", minHeight: "120px", ...gradientBorder, textAlign: "center" }}>
                 <item.icon className="w-7 h-7 mb-2" style={{ color: "#fff" }} />
@@ -277,7 +276,7 @@ export default function DashboardAdmin() {
             { icon: BarChart3, label: "Painel", route: "/master/painel", active: false },
             { icon: UserPlus, label: "Cadastro", route: "/cadastros", active: false },
             { icon: Users, label: "Usuários", route: "/master/usuarios", active: false },
-            ...(user?.role === "master" ? [{ icon: DoorOpen, label: "Portão", route: "/master/portao", active: false }] : []),
+            ...(user?.role === "master" ? [] : []),
             { icon: Settings, label: "Config", route: "/admin/features-config", active: false },
           ].map((item) => (
             <button

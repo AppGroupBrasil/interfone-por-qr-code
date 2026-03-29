@@ -207,7 +207,7 @@ export default function MoradorPortariaVirtual() {
         const credential = await navigator.credentials.create({
           publicKey: {
             challenge,
-            rp: { name: "Portaria X" },
+            rp: { name: "App Interfone" },
             user: {
               id: new Uint8Array(16),
               name: user?.email || "morador",
@@ -490,7 +490,7 @@ export default function MoradorPortariaVirtual() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Shield className="w-5 h-5" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : "#94a3b8" }} />
-            <span style={{ fontSize: '0.75rem', color: isDark ? 'rgba(255,255,255,0.4)' : "#94a3b8", fontWeight: 700, letterSpacing: '0.05em' }}>PORTARIA X</span>
+            <span style={{ fontSize: '0.75rem', color: isDark ? 'rgba(255,255,255,0.4)' : "#94a3b8", fontWeight: 700, letterSpacing: '0.05em' }}>APP INTERFONE</span>
           </div>
         </div>
       </header>

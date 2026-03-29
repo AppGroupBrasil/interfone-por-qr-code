@@ -7,24 +7,12 @@ import ThemePicker from "@/components/ThemePicker";
 import FuncoesIndex from "@/components/FuncoesIndex";
 import { loadLayout, getItemById, getIconComponent } from "@/pages/PersonalizarDashboard";
 import {
-  Home,
   LogOut,
   Settings,
   Shield,
   Bell,
-  UserPlus,
-  Car,
-  Package,
-  Camera,
   ShieldCheck,
-  Truck,
   UserCircle,
-  BookOpen,
-  DoorOpen,
-  Scan,
-  MapPin,
-  Phone,
-  LayoutDashboard,
   EyeOff,
 } from "lucide-react";
 

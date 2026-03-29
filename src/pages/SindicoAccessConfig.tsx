@@ -348,7 +348,7 @@ export default function SindicoAccessConfig() {
           </div>
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" style={{ color: p.textDim }} />
-            <span style={{ fontSize: 12, color: p.textDim, fontWeight: 700, letterSpacing: "0.05em" }}>PORTARIA X</span>
+            <span style={{ fontSize: 12, color: p.textDim, fontWeight: 700, letterSpacing: "0.05em" }}>APP INTERFONE</span>
           </div>
         </div>
       </header>

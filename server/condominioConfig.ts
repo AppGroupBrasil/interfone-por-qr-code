@@ -40,7 +40,6 @@ const ALLOWED_KEYS = new Set([
   "whatsapp_notify_delivery",
   "whatsapp_notify_security_alert",
   "whatsapp_notify_gate_opened",
-  "whatsapp_notify_estou_chegando",
   "whatsapp_notify_pre_authorization",
   "whatsapp_notify_vehicle_access",
   "whatsapp_notify_ronda",

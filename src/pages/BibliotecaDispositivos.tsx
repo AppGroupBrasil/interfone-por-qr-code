@@ -132,7 +132,7 @@ function DeviceCard({ device }: { device: DeviceModel }) {
           letterSpacing: "0.5px",
         }}>
           <Star style={{ width: 12, height: 12 }} fill="#fbbf24" color="#fbbf24" />
-          RECOMENDADO PORTARIA X
+          RECOMENDADO APP INTERFONE
         </div>
       )}
 
@@ -492,7 +492,7 @@ export default function BibliotecaDispositivos() {
               Biblioteca de Dispositivos
             </h1>
             <p style={{ margin: "4px 0 0", fontSize: "13px", opacity: 0.8 }}>
-              Hardware compatível com Portaria X
+              Hardware compatível com App Interfone
             </p>
           </div>
         </div>
@@ -837,7 +837,7 @@ export default function BibliotecaDispositivos() {
           textAlign: "center",
         }}>
           <p style={{ fontSize: "13px", color: "#64748b", margin: 0, lineHeight: 1.6 }}>
-            💡 A Portaria X está constantemente adicionando suporte a novos dispositivos.
+            💡 O App Interfone está constantemente adicionando suporte a novos dispositivos.
             Hardware marcado como <strong>"Em breve"</strong> será integrado nas próximas atualizações.
           </p>
         </div>

@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Landing Page (principal) -->
   <url>
-    <loc>https://www.portariax.com.br/</loc>
+    <loc>https://www.appinterfone.com.br/</loc>
     <lastmod>2026-02-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -10,7 +10,7 @@
 
   <!-- Login -->
   <url>
-    <loc>https://www.portariax.com.br/login</loc>
+    <loc>https://www.appinterfone.com.br/login</loc>
     <lastmod>2026-02-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

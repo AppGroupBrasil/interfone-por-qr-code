@@ -393,32 +393,6 @@ db.exec(`
   );
 `);
 
-// ─── Estou Chegando (Arrival Notification) tables ───
-db.exec(`
-  CREATE TABLE IF NOT EXISTS estou_chegando_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    condominio_id INTEGER NOT NULL REFERENCES condominios(id),
-    morador_id INTEGER NOT NULL REFERENCES users(id),
-    morador_name TEXT NOT NULL,
-    bloco TEXT,
-    apartamento TEXT,
-    status TEXT NOT NULL DEFAULT 'approaching',
-    vehicle_type TEXT NOT NULL DEFAULT 'proprio',
-    vehicle_plate TEXT,
-    vehicle_model TEXT,
-    vehicle_color TEXT,
-    driver_name TEXT,
-    latitude REAL,
-    longitude REAL,
-    distance_meters REAL,
-    radius_meters INTEGER NOT NULL DEFAULT 200,
-    confirmed_by INTEGER REFERENCES users(id),
-    confirmed_at TEXT,
-    cancelled_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-`);
-
 // Migration: add latitude/longitude to condominios
 try {
   db.prepare("SELECT latitude FROM condominios LIMIT 1").get();
@@ -619,7 +593,7 @@ db.exec(`
 const existingConfig = db.prepare("SELECT COUNT(*) as count FROM system_config").get() as { count: number };
 if (existingConfig.count === 0) {
   db.prepare(`INSERT OR IGNORE INTO system_config (key, value) VALUES
-    ('app_name', 'Portaria X'),
+    ('app_name', 'App Interfone'),
     ('maintenance_mode', 'false'),
     ('max_moradores_per_unit', '10'),
     ('allow_self_register', 'true'),
@@ -653,8 +627,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_interfone_calls_condominio ON interfone_calls(condominio_id);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_condominios_cnpj ON condominios(cnpj);
-  CREATE INDEX IF NOT EXISTS idx_estou_chegando_condominio_status ON estou_chegando_events(condominio_id, status);
-  CREATE INDEX IF NOT EXISTS idx_estou_chegando_morador ON estou_chegando_events(morador_id, status);
 `);
 
 // ─── Device tokens (FCM push notifications) ───
@@ -734,6 +706,13 @@ try {
   db.prepare("SELECT face_descriptor FROM users LIMIT 1").get();
 } catch {
   db.exec("ALTER TABLE users ADD COLUMN face_descriptor TEXT");
+}
+
+// ─── Migration: add web_push_keys to device_tokens (Web Push subscriptions) ───
+try {
+  db.prepare("SELECT web_push_keys FROM device_tokens LIMIT 1").get();
+} catch {
+  db.exec("ALTER TABLE device_tokens ADD COLUMN web_push_keys TEXT");
 }
 
 // ─── Database Backup ───

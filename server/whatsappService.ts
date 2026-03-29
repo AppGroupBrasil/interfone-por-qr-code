@@ -44,7 +44,7 @@ function getGlobalCredentials(): { apiKey: string; sourceNumber: string; appName
   return {
     apiKey: cfg.whatsapp_gupshup_apikey,
     sourceNumber: cfg.whatsapp_gupshup_source,
-    appName: cfg.whatsapp_gupshup_appname || "Portaria X",
+    appName: cfg.whatsapp_gupshup_appname || "App Interfone",
   };
 }
 
@@ -382,7 +382,7 @@ export async function testWhatsAppConnection(
   const dest = normalizePhone(testPhone);
 
   // Try sending a simple text (within session window for testing)
-  const result = await sendTextMessage(apiKey, sourceNumber, appName, dest, "✅ Teste Portaria X — WhatsApp configurado com sucesso!");
+  const result = await sendTextMessage(apiKey, sourceNumber, appName, dest, "✅ Teste App Interfone — WhatsApp configurado com sucesso!");
 
   logMessage(condominioId, dest, "test_connection", result.success ? "sent" : "failed", result.messageId, result.error);
 

@@ -62,7 +62,7 @@ const STEPS: Step[] = [
       "Pesquise por \"eWeLink\"",
       "Baixe e instale o aplicativo (ícone verde com uma casinha branca)",
       "Abra o aplicativo e crie uma conta com seu e-mail",
-      "Guarde o e-mail e senha — serão usados depois para conectar ao sistema Portaria X",
+      "Guarde o e-mail e senha — serão usados depois para conectar ao sistema App Interfone",
     ],
     tip: "Use o e-mail do responsável técnico ou do síndico. Essa conta será vinculada ao sistema.",
   },
@@ -132,18 +132,18 @@ const STEPS: Step[] = [
   },
   {
     number: 6,
-    title: "Vincule a conta eWeLink ao sistema Portaria X",
+    title: "Vincule a conta eWeLink ao sistema App Interfone",
     icon: Shield,
     description: "Agora vamos conectar o eWeLink ao sistema do condomínio.",
     details: [
-      "Acesse o sistema Portaria X pelo navegador (computador ou celular)",
+      "Acesse o sistema App Interfone pelo navegador (computador ou celular)",
       "Faça login com a conta Master",
       "Vá no menu \"Portão\" (barra inferior)",
       "Na aba \"Credenciais\", clique em \"Autorizar com eWeLink\"",
       "Você será redirecionado para o site do eWeLink",
       "Faça login com a mesma conta que usou no passo 2",
       "Autorize o acesso — o sistema vai conectar automaticamente",
-      "Volte ao Portaria X — a aba \"Dispositivos\" agora vai mostrar o módulo SONOFF",
+      "Volte ao App Interfone — a aba \"Dispositivos\" agora vai mostrar o módulo SONOFF",
     ],
     tip: "Essa vinculação só precisa ser feita uma vez. Depois disso, o sistema já tem acesso ao módulo.",
   },
@@ -153,7 +153,7 @@ const STEPS: Step[] = [
     icon: Settings,
     description: "Diga ao sistema qual módulo pertence a qual condomínio.",
     details: [
-      "No sistema Portaria X (conta Master), vá em \"Portão\" → aba \"Dispositivos\"",
+      "No sistema App Interfone (conta Master), vá em \"Portão\" → aba \"Dispositivos\"",
       "Localize o dispositivo \"Portaria Virtual\" (ou o nome que você deu)",
       "Clique em \"Atribuir\" e selecione o condomínio desejado",
       "O dispositivo agora pertence àquele condomínio",
@@ -165,7 +165,7 @@ const STEPS: Step[] = [
     icon: DoorOpen,
     description: "O síndico configura qual saída do módulo controla qual entrada.",
     details: [
-      "O síndico acessa o Portaria X com a conta dele",
+      "O síndico acessa o App Interfone com a conta dele",
       "Vai em \"Acessos\" no menu de Funções",
       "Para cada entrada (Portão Veicular, Portão Pedestres, etc.):",
       "  → Seleciona o dispositivo (Portaria Virtual)",
@@ -189,7 +189,7 @@ const STEPS: Step[] = [
       "Teste todas as entradas que foram configuradas",
       "Se alguma não funcionar, verifique se o canal correto foi selecionado",
     ],
-    warning: "Se o comando funciona no eWeLink mas não no Portaria X, é provável que o canal selecionado esteja errado. Confira a tabela de canais no passo 8.",
+    warning: "Se o comando funciona no eWeLink mas não no App Interfone, é provável que o canal selecionado esteja errado. Confira a tabela de canais no passo 8.",
   },
 ];
 
@@ -252,7 +252,7 @@ export default function MasterGuiaInstalacao() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Shield style={{ width: 20, height: 20, color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8" }} />
-            <span style={{ fontSize: "0.75rem", color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8", fontWeight: 700, letterSpacing: "0.05em" }}>PORTARIA X</span>
+            <span style={{ fontSize: "0.75rem", color: isDark ? "rgba(255,255,255,0.4)" : "#94a3b8", fontWeight: 700, letterSpacing: "0.05em" }}>APP INTERFONE</span>
           </div>
         </div>
       </header>
@@ -261,7 +261,7 @@ export default function MasterGuiaInstalacao() {
 
         {/* ═══ Print Header (only visible on print) ═══ */}
         <div className="print-only" style={{ display: "none", textAlign: "center", marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Portaria X — Guia de Instalação</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>App Interfone — Guia de Instalação</h1>
           <p style={{ fontSize: 14, color: "#666", marginTop: 4 }}>Portaria Virtual IoT — Passo a Passo Completo</p>
         </div>
 
@@ -469,7 +469,7 @@ export default function MasterGuiaInstalacao() {
             Precisa de ajuda?
           </p>
           <p style={{ fontSize: 13, color: isDark ? "#93c5fd" : "#475569", lineHeight: 1.6 }}>
-            Se tiver dúvidas durante a instalação, entre em contato com o suporte técnico Portaria X.
+            Se tiver dúvidas durante a instalação, entre em contato com o suporte técnico App Interfone.
             <br />
             Nosso time pode auxiliar remotamente em todos os passos.
           </p>

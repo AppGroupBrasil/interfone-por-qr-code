@@ -180,7 +180,7 @@ export default function SindicoGateConfig() {
           )}
           {!config.gate_device_configured && (
             <p style={{ fontSize: 12, color: p.textMuted, marginTop: 6, marginBottom: 0 }}>
-              O dispositivo do portão será configurado pela equipe Portaria X durante a instalação.
+              O dispositivo do portão será configurado pela equipe App Interfone durante a instalação.
             </p>
           )}
         </div>
@@ -333,13 +333,13 @@ export default function SindicoGateConfig() {
           )}
         </div>
 
-        {/* Info Card — Portaria X branded */}
+        {/* Info Card — App Interfone branded */}
         <div style={{ background: p.cardBg, border: p.cardBorder, borderRadius: 16, padding: "1rem 1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: p.iconBoxBg, border: p.iconBoxBorder, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Shield className="w-4 h-4" style={{ color: p.iconColor }} />
             </div>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: p.text, margin: 0 }}>Módulo Portão — Portaria X</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: p.text, margin: 0 }}>Módulo Portão — App Interfone</h3>
           </div>
           <p style={{ fontSize: 12, color: p.textMuted, marginBottom: 8, marginTop: 0 }}>
             O módulo de controle do portão permite que os funcionários abram o portão
@@ -353,7 +353,7 @@ export default function SindicoGateConfig() {
           </ul>
           {!config.gate_device_configured && (
             <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 10, marginBottom: 0 }}>
-              Para ativar, solicite a instalação do módulo de portão à equipe Portaria X.
+              Para ativar, solicite a instalação do módulo de portão à equipe App Interfone.
             </p>
           )}
         </div>

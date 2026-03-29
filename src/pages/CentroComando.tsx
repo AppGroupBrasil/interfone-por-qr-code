@@ -10,7 +10,6 @@ import {
   Mail,
   Car,
   ShieldCheck,
-  MapPin,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -84,23 +83,12 @@ interface PreAuth {
   created_at: string;
 }
 
-interface EstouChegando {
-  id: number;
-  morador_name: string;
-  bloco?: string;
-  unit?: string;
-  status: string;
-  created_at: string;
-  distance_meters?: number;
-}
-
 interface SummaryData {
   visitors: { pending: Visitor[]; inside: Visitor[]; total: number };
   correspondences: { pending: Correspondence[]; total: number };
   deliveries: { pending: Delivery[]; total: number };
   vehicles: { pending: Vehicle[]; total: number };
   preAuths: { active: PreAuth[]; total: number };
-  approaching: { active: EstouChegando[]; total: number };
 }
 
 function timeAgo(dateStr: string): string {
@@ -130,13 +118,12 @@ export default function CentroComando() {
     else setRefreshing(true);
 
     try {
-      const [visitorsRes, corrRes, delivRes, vehRes, preAuthRes, approachRes] = await Promise.all([
+      const [visitorsRes, corrRes, delivRes, vehRes, preAuthRes] = await Promise.all([
         apiFetch("/api/visitors?status=todos").then(r => r.ok ? r.json() : []),
         apiFetch("/api/correspondencias?status=todas").then(r => r.ok ? r.json() : []),
         apiFetch("/api/delivery-authorizations?status=todas").then(r => r.ok ? r.json() : []),
         apiFetch("/api/vehicle-authorizations?status=todas").then(r => r.ok ? r.json() : []),
         apiFetch("/api/pre-authorizations?status=todas").then(r => r.ok ? r.json() : []),
-        apiFetch("/api/estou-chegando/active").then(r => r.ok ? r.json() : []),
       ]);
 
       const visitors = Array.isArray(visitorsRes) ? visitorsRes : [];
@@ -144,7 +131,6 @@ export default function CentroComando() {
       const deliveries = Array.isArray(delivRes) ? delivRes : [];
       const vehicles = Array.isArray(vehRes) ? vehRes : [];
       const preAuths = Array.isArray(preAuthRes) ? preAuthRes : [];
-      const approaching = Array.isArray(approachRes) ? approachRes : [];
 
       setData({
         visitors: {
@@ -168,10 +154,6 @@ export default function CentroComando() {
           active: preAuths.filter((p: PreAuth) => p.status === "ativa"),
           total: preAuths.length,
         },
-        approaching: {
-          active: approaching,
-          total: approaching.length,
-        },
       });
 
       setLastUpdate(new Date());
@@ -193,8 +175,7 @@ export default function CentroComando() {
     (data?.visitors.pending.length || 0) +
     (data?.correspondences.pending.length || 0) +
     (data?.deliveries.pending.length || 0) +
-    (data?.vehicles.pending.length || 0) +
-    (data?.approaching.active.length || 0);
+    (data?.vehicles.pending.length || 0);
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: p.pageBg }}>
@@ -308,14 +289,6 @@ export default function CentroComando() {
               color="#10b981"
               onClick={() => navigate("/portaria/acesso-pedestres")}
             />
-            <StatCard
-              icon={MapPin}
-              value={data?.approaching.active.length || 0}
-              label="Chegando"
-              sublabel="agora"
-              color="#ec4899"
-              onClick={() => navigate("/portaria/estou-chegando")}
-            />
           </div>
 
           {/* ═══════════ Sections ═══════════ */}
@@ -337,29 +310,6 @@ export default function CentroComando() {
                   time={timeAgo(v.created_at)}
                   status="pendente"
                   onClick={() => navigate("/portaria/acesso-pedestres")}
-                />
-              ))}
-            </PendingSection>
-          )}
-
-          {/* Estou Chegando */}
-          {(data?.approaching.active.length || 0) > 0 && (
-            <PendingSection
-              title="Moradores Chegando"
-              icon={MapPin}
-              color="#ec4899"
-              count={data!.approaching.active.length}
-              onViewAll={() => navigate("/portaria/estou-chegando")}
-            >
-              {data!.approaching.active.slice(0, 5).map((a) => (
-                <PendingItem
-                  key={a.id}
-                  title={a.morador_name}
-                  subtitle={`${a.bloco || ""}${a.unit ? ` • Apto ${a.unit}` : ""}`}
-                  time={timeAgo(a.created_at)}
-                  status="chegando"
-                  badge={a.distance_meters ? `${Math.round(a.distance_meters)}m` : undefined}
-                  onClick={() => navigate("/portaria/estou-chegando")}
                 />
               ))}
             </PendingSection>

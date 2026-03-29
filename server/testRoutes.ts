@@ -27,7 +27,7 @@ router.get("/status", authenticate, (_req: Request, res: Response) => {
       enabled: hasSES,
       provider: "Amazon SES",
       region: process.env.AWS_SES_REGION || "sa-east-1",
-      from: process.env.SES_FROM_EMAIL || "naoresponda@portariax.com.br",
+      from: process.env.SES_FROM_EMAIL || "naoresponda@appinterfone.com.br",
     },
   });
 });
@@ -60,7 +60,7 @@ router.post("/push", authenticate, async (req: Request, res: Response) => {
       return;
     }
 
-    const title = req.body.title || "🔔 Teste Push — Portaria X";
+    const title = req.body.title || "🔔 Teste Push — App Interfone";
     const body = req.body.body || `Notificação de teste enviada às ${new Date().toLocaleTimeString("pt-BR")}`;
 
     const sent = await sendPushToUser(user.id, {
@@ -117,9 +117,9 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
       },
     });
 
-    const fromEmail = process.env.SES_FROM_EMAIL || "naoresponda@portariax.com.br";
-    const fromName = process.env.SES_FROM_NAME || "Portaria X";
-    const subject = req.body.subject || "Teste de Email - Portaria X";
+    const fromEmail = process.env.SES_FROM_EMAIL || "naoresponda@appinterfone.com.br";
+    const fromName = process.env.SES_FROM_NAME || "App Interfone";
+    const subject = req.body.subject || "Teste de Email - App Interfone";
     const timestamp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     const htmlBody = `<!DOCTYPE html>
@@ -130,11 +130,11 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <tr><td style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);padding:24px 32px;text-align:center;">
-          <h1 style="color:#fff;margin:0;font-size:24px;">Portaria X</h1>
+          <h1 style="color:#fff;margin:0;font-size:24px;">App Interfone</h1>
         </td></tr>
         <tr><td style="padding:32px;">
           <h2 style="color:#1e293b;margin:0 0 16px;">Email de Teste</h2>
-          <p style="color:#475569;font-size:15px;">Este e um email de teste do sistema <strong>Portaria X</strong>.</p>
+          <p style="color:#475569;font-size:15px;">Este e um email de teste do sistema <strong>App Interfone</strong>.</p>
           <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:12px 16px;border-radius:4px;margin:16px 0;color:#166534;font-size:14px;">
             Se voce esta vendo este email, o servico de envio esta funcionando corretamente.
           </div>
@@ -154,7 +154,7 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
           </table>
         </td></tr>
         <tr><td style="background-color:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
-          <p style="color:#94a3b8;font-size:12px;margin:0;">Portaria X - Sistema de gestao condominial</p>
+          <p style="color:#94a3b8;font-size:12px;margin:0;">App Interfone - Sistema de gestao condominial</p>
         </td></tr>
       </table>
     </td></tr>
@@ -162,9 +162,9 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
 </body>
 </html>`;
 
-    const plainText = `Portaria X - Email de Teste\n\nEste e um email de teste do sistema Portaria X.\nSe voce esta vendo este email, o servico de envio esta funcionando corretamente.\n\nEnviado em: ${timestamp}\nDestinatario: ${targetEmail}\nRemetente: ${fromName} <${fromEmail}>`;
+    const plainText = `App Interfone - Email de Teste\n\nEste e um email de teste do sistema App Interfone.\nSe voce esta vendo este email, o servico de envio esta funcionando corretamente.\n\nEnviado em: ${timestamp}\nDestinatario: ${targetEmail}\nRemetente: ${fromName} <${fromEmail}>`;
 
-    const messageId = `${crypto.randomUUID()}@portariax.com.br`;
+    const messageId = `${crypto.randomUUID()}@appinterfone.com.br`;
     const boundary = `----=_Part_${crypto.randomUUID().replace(/-/g, "")}`;
     const rawEmail = [
       `From: ${fromName} <${fromEmail}>`,
@@ -174,7 +174,7 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
       `Date: ${new Date().toUTCString()}`,
       `MIME-Version: 1.0`,
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
-      `X-Mailer: PortariaX/1.0`,
+      `X-Mailer: AppInterfone/1.0`,
       `X-Priority: 3`,
       ``,
       `--${boundary}`,

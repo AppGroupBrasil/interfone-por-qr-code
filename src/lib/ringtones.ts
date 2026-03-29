@@ -1,5 +1,5 @@
 /**
- * Biblioteca de Toques – Portaria X
+ * Biblioteca de Toques – App Interfone
  * -----------------------------------
  * 6 toques distintos gerados via Web Audio API (AudioContext).
  * Cada toque possui id, nome, descrição e funções play/stop.

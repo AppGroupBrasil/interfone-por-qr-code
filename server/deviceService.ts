@@ -1,5 +1,5 @@
 /**
- * Device Service – Portaria X
+ * Device Service – App Interfone
  * ────────────────────────────
  * Camada de abstração multi-protocolo para acionamento de dispositivos.
  * Suporta: eWeLink, Shelly (HTTP local), ESP32 (HTTP), Tuya, Intelbras, Hikvision.
@@ -238,7 +238,7 @@ async function shellyGen2Pulse(host: string, ch: number, durationMs: number, con
 /* ══════════════════════════════════════════════════
    Driver: ESP32/ESP8266 HTTP (rede local)
    ══════════════════════════════════════════════════
-   Firmware Portaria X — endpoints esperados:
+   Firmware App Interfone — endpoints esperados:
      POST http://<ip>/relay/<ch>/pulse?duration=<ms>
      POST http://<ip>/relay/<ch>/on
      POST http://<ip>/relay/<ch>/off
@@ -457,7 +457,7 @@ const intelbrasDriver: DeviceDriver = {
         : undefined;
 
       const r = await fetch(
-        `http://${host}/cgi-bin/accessControl.cgi?action=openDoor&channel=${channel}&UserID=PortariaX&Type=Remote`,
+        `http://${host}/cgi-bin/accessControl.cgi?action=openDoor&channel=${channel}&UserID=AppInterfone&Type=Remote`,
         {
           method: "GET",
           headers: auth ? { Authorization: auth } : {},

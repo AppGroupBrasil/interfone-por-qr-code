@@ -96,7 +96,7 @@ export default function ContratoPage() {
   };
 
   const handleShareWhatsApp = () => {
-    const text = encodeURIComponent("Confira o modelo de contrato do Portaria X: " + window.location.href);
+    const text = encodeURIComponent("Confira o modelo de contrato do App Interfone: " + window.location.href);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
@@ -181,7 +181,7 @@ export default function ContratoPage() {
             CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE SOFTWARE
           </h1>
           <p style={{ fontSize: "14px", color: "#64748b" }}>
-            Modelo de Contrato — Portaria X
+            Modelo de Contrato — App Interfone
           </p>
         </div>
 
@@ -220,7 +220,7 @@ export default function ContratoPage() {
         <Section n="2" title="DO OBJETO">
           <p>
             O presente contrato tem por objeto a prestação de serviços de licenciamento,
-            hospedagem e manutenção do sistema de gestão condominial <strong>"Portaria X"</strong>,
+            hospedagem e manutenção do sistema de gestão condominial <strong>"App Interfone"</strong>,
             plataforma digital (SaaS — Software as a Service) acessível via navegador web e
             dispositivos móveis, compreendendo:
           </p>
@@ -231,7 +231,6 @@ export default function ContratoPage() {
             <li>Correspondências com Notificação Push</li>
             <li>Gestão de Delivery</li>
             <li>Interfone Digital com QR Code por Bloco</li>
-            <li>Estou Chegando (rastreamento GPS em tempo real)</li>
             <li>Livro de Protocolo Digital com assinatura na tela</li>
             <li>Espelho de Portaria (monitoramento remoto)</li>
             <li>Monitoramento de Câmeras CFTV (RTSP)</li>
@@ -403,7 +402,7 @@ export default function ContratoPage() {
         {/* Cláusula 10 */}
         <Section n="10" title="DA PROPRIEDADE INTELECTUAL">
           <p>
-            <strong>10.1.</strong> O sistema "Portaria X", incluindo código-fonte, design, documentação e
+            <strong>10.1.</strong> O sistema "App Interfone", incluindo código-fonte, design, documentação e
             marca, é de propriedade exclusiva da APP GROUP LTDA - ME.
           </p>
           <p>

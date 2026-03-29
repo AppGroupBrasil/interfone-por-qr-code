@@ -39,7 +39,7 @@ export default function ForgotPassword() {
   const [devCode, setDevCode] = useState("");
 
   const whatsappNumber = "5511999999999";
-  const whatsappMsg = encodeURIComponent("Olá! Preciso de ajuda para recuperar minha senha no Portaria X.");
+  const whatsappMsg = encodeURIComponent("Olá! Preciso de ajuda para recuperar minha senha no App Interfone.");
 
   /* ── Helpers ── */
   const formatPhone = (v: string) => {

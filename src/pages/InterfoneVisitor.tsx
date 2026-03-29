@@ -175,6 +175,10 @@ export default function InterfoneVisitor() {
           callStateRef.current = "unavailable";
           cleanup();
           break;
+        case "call-waiting-push":
+          // Morador was offline but push was sent — keep ringing, they may open the app
+          console.log("[Visitor] Push sent to morador, waiting...");
+          break;
         case "auth-accepted":
           setCallState("calling");
           callStateRef.current = "calling";
@@ -1221,7 +1225,7 @@ export default function InterfoneVisitor() {
 
         {/* Footer */}
         <div className="text-center" style={{ paddingBottom: 24 }}>
-          <p style={{ fontSize: 12, color: "#4b7dc7", fontWeight: 500, letterSpacing: "0.03em" }}>Interfone Digital — Portaria X</p>
+          <p style={{ fontSize: 12, color: "#4b7dc7", fontWeight: 500, letterSpacing: "0.03em" }}>Interfone Digital — App Interfone</p>
         </div>
       </div>
     );
@@ -1394,7 +1398,7 @@ export default function InterfoneVisitor() {
 
       {/* Footer */}
       <div className="text-center" style={{ paddingBottom: 24 }}>
-        <p style={{ fontSize: 12, color: "#4b7dc7", fontWeight: 500, letterSpacing: "0.03em" }}>Interfone Digital — Portaria X</p>
+        <p style={{ fontSize: 12, color: "#4b7dc7", fontWeight: 500, letterSpacing: "0.03em" }}>Interfone Digital — App Interfone</p>
       </div>
     </div>
   );

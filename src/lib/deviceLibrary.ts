@@ -1,5 +1,5 @@
 /**
- * Biblioteca de Dispositivos – Portaria X
+ * Biblioteca de Dispositivos – App Interfone
  * ─────────────────────────────────────────
  * Catálogo completo de hardware compatível com informações,
  * especificações, protocolos e guias de instalação.
@@ -57,7 +57,7 @@ export interface DeviceModel {
   installNotes: string;     // Notas de instalação
   purchaseUrl?: string;     // Link de compra
   imageUrl?: string;        // URL da imagem
-  recommended?: boolean;    // Recomendado pela Portaria X
+  recommended?: boolean;    // Recomendado pela App Interfone
   available: boolean;       // Integração já implementada
   priceRange?: string;      // Faixa de preço aproximada
 }
@@ -377,7 +377,7 @@ export const DEVICES: DeviceModel[] = [
     category: "relay",
     protocol: "esp_http",
     integrationType: "local",
-    description: "Solução DIY 4 canais. Um ESP32 controla 4 relés independentes via HTTP. Firmware customizado incluso no Portaria X.",
+    description: "Solução DIY 4 canais. Um ESP32 controla 4 relés independentes via HTTP. Firmware customizado incluso no App Interfone.",
     specs: {
       channels: 4,
       voltage: "5V DC / 250V AC 10A por canal",
@@ -387,13 +387,13 @@ export const DEVICES: DeviceModel[] = [
     },
     features: [
       "4 canais independentes",
-      "Firmware Portaria X disponível",
+      "Firmware App Interfone disponível",
       "Custo muito baixo vs soluções comerciais",
       "Totalmente customizável",
       "Expansível com sensores",
     ],
-    useCase: "Múltiplos acessos com custo mínimo. Firmware Portaria X já pronto para download.",
-    installNotes: "Programar ESP32 com firmware Portaria X. Conectar cada GPIO em um módulo relé. Cada relé liga na botoeira do portão.",
+    useCase: "Múltiplos acessos com custo mínimo. Firmware App Interfone já pronto para download.",
+    installNotes: "Programar ESP32 com firmware App Interfone. Conectar cada GPIO em um módulo relé. Cada relé liga na botoeira do portão.",
     purchaseUrl: "https://www.amazon.com.br/s?k=esp32+modulo+rele+4+canais",
     available: false,
     priceRange: "R$ 50–90",

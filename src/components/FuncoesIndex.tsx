@@ -5,32 +5,17 @@ import {
   ChevronDown,
   ChevronUp,
   List,
-  ShieldCheck,
-  Truck,
-  Car,
-  Mail,
-  QrCode,
   Phone,
-  Navigation,
-  DoorOpen,
-  Camera,
-  MapPin,
   Users2,
   Wrench,
   Layers,
-  Cpu,
   BookOpen,
-  Zap,
   Building2,
   FileText,
   Shield,
   BarChart3,
   UserPlus,
-  ClipboardList,
-  Scan,
-  Package,
   Settings,
-  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,34 +46,13 @@ const ALL_FUNCOES: FuncaoGroup[] = [
   {
     title: "Morador",
     items: [
-      { icon: ShieldCheck, label: "Autorizar Visitante", description: "Criar autorização prévia de entrada", route: "/morador/autorizacoes", minRole: "morador" },
-      { icon: Truck, label: "Delivery", description: "Autorizar recebimento de pedidos", route: "/morador/delivery", minRole: "morador" },
-      { icon: Car, label: "Autorizar Veículo", description: "Autorizar acesso de veículos", route: "/morador/veiculos", minRole: "morador" },
-      { icon: QrCode, label: "QR Code Visitante", description: "Gerar QR de autorização para visitantes", route: "/morador/qr-visitante", minRole: "morador" },
-      { icon: Mail, label: "Correspondências", description: "Avisos de correspondência na portaria", route: "/morador/correspondencias", minRole: "morador" },
       { icon: Phone, label: "Interfone Digital", description: "Receber chamadas de visitantes com vídeo", route: "/morador/interfone-config", minRole: "morador" },
-      { icon: Navigation, label: "Estou Chegando", description: "Avisar a portaria que está chegando", route: "/morador/estou-chegando", minRole: "morador" },
-      { icon: DoorOpen, label: "Portaria Virtual", description: "Abrir portões e portas remotamente", route: "/morador/portaria-virtual", minRole: "morador" },
     ],
   },
   {
     title: "Portaria / Funcionário",
     items: [
-      { icon: UserPlus, label: "Controle de Pedestres", description: "Visitantes e autorizacoes previas", route: "/portaria/acesso-pedestres", minRole: "funcionario" },
-      { icon: Car, label: "Acesso Veículos", description: "Controlar entrada de veículos", route: "/portaria/acesso-veiculos", minRole: "funcionario" },
-      { icon: Package, label: "Delivery Porteiro", description: "Gerenciar entregas recebidas", route: "/portaria/delivery", minRole: "funcionario" },
-      { icon: Mail, label: "Correspondências", description: "Registrar correspondências recebidas", route: "/portaria/correspondencias", minRole: "funcionario" },
-      { icon: Camera, label: "Monitoramento", description: "Visualizar câmeras do condomínio", route: "/portaria/monitoramento", minRole: "funcionario" },
-      { icon: MapPin, label: "Rondas", description: "Registrar rondas de segurança", route: "/portaria/rondas", minRole: "funcionario" },
       { icon: Phone, label: "Interfone", description: "Atender chamadas de visitantes", route: "/portaria/interfone", minRole: "funcionario" },
-      { icon: Navigation, label: "Estou Chegando", description: "Ver moradores a caminho", route: "/portaria/estou-chegando", minRole: "funcionario" },
-      { icon: DoorOpen, label: "Portaria Virtual", description: "Controle remoto de portões", route: "/portaria/portaria-virtual", minRole: "funcionario" },
-      { icon: LayoutDashboard, label: "Centro de Comando", description: "Painel unificado da portaria", route: "/portaria/centro-comando", minRole: "funcionario" },
-      { icon: Scan, label: "Scanner QR", description: "Escanear QR de visitantes", route: "/portaria/qr-scanner", minRole: "funcionario" },
-      { icon: BookOpen, label: "Livro Protocolo", description: "Livro de ocorrências da portaria", route: "/portaria/livro-protocolo", minRole: "funcionario" },
-      { icon: ClipboardList, label: "Espelho Portaria", description: "Visão geral do espelho da portaria", route: "/espelho-portaria", minRole: "funcionario" },
-
-      { icon: Car, label: "Acesso Automático", description: "Liberação automática de veículos", route: "/portaria/acesso-auto", minRole: "funcionario" },
     ],
   },
   {
@@ -98,16 +62,7 @@ const ALL_FUNCOES: FuncaoGroup[] = [
       { icon: Layers, label: "Blocos", description: "Cadastrar e gerenciar blocos", route: "/cadastros/blocos", minRole: "sindico" },
       { icon: Users2, label: "Moradores", description: "Cadastrar e gerenciar moradores", route: "/cadastros/moradores", minRole: "sindico" },
       { icon: Wrench, label: "Funcionários", description: "Cadastrar e gerenciar funcionários", route: "/cadastros/funcionarios", minRole: "sindico" },
-      { icon: Camera, label: "Câmeras", description: "Configurar câmeras do condomínio", route: "/sindico/cameras", minRole: "sindico" },
-      { icon: MapPin, label: "Rondas", description: "Controlar rondas de segurança", route: "/sindico/rondas", minRole: "sindico" },
       { icon: Phone, label: "Interfone Config", description: "Configurar sistema de interfone", route: "/sindico/interfone-config", minRole: "sindico" },
-      { icon: Navigation, label: "Estou Chegando Config", description: "Configurar notificações de chegada", route: "/sindico/estou-chegando", minRole: "sindico" },
-      { icon: DoorOpen, label: "Acessos", description: "Gerenciar pontos de acesso", route: "/sindico/acessos", minRole: "sindico" },
-      { icon: Zap, label: "Portão", description: "Configurar portões e dispositivos IoT", route: "/sindico/portao", minRole: "sindico" },
-      { icon: QrCode, label: "Config QR", description: "Configurar QR Code para visitantes", route: "/sindico/qr-config", minRole: "sindico" },
-      { icon: Cpu, label: "Dispositivos", description: "Biblioteca de dispositivos IoT", route: "/biblioteca-dispositivos", minRole: "sindico" },
-      { icon: ShieldCheck, label: "Liberação Cadastros", description: "Aprovar cadastros pendentes", route: "/liberacao-cadastros", minRole: "sindico" },
-      { icon: Settings, label: "Config Funcionalidades", description: "Ativar/desativar funções do condomínio", route: "/sindico/features-config", minRole: "sindico" },
     ],
   },
   {
@@ -118,7 +73,6 @@ const ALL_FUNCOES: FuncaoGroup[] = [
       { icon: BarChart3, label: "Painel", description: "Painel de condomínios gerenciados", route: "/master/painel", minRole: "administradora" },
       { icon: Users2, label: "Usuários", description: "Gerenciar todos os usuários", route: "/master/usuarios", minRole: "administradora" },
       { icon: FileText, label: "Logs", description: "Histórico de atividades do sistema", route: "/master/logs", minRole: "administradora" },
-      { icon: DoorOpen, label: "Portão Master", description: "Configurar portões (nível admin)", route: "/master/portao", minRole: "administradora" },
       { icon: Settings, label: "Config Admin", description: "Configurações da administradora", route: "/admin/features-config", minRole: "administradora" },
     ],
   },
@@ -181,7 +135,7 @@ export default function FuncoesIndex({ userRole }: Props) {
         <div className="flex items-center" style={{ gap: 10 }}>
           <List style={{ width: 18, height: 18, color: p.accentBright }} />
           <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Funções Portaria X
+            Funções App Interfone
           </span>
           <span style={{
             fontSize: 11,
