@@ -123,7 +123,7 @@ export default function Login() {
                   background: "#ffffff",
                   border: "1px solid rgba(255,255,255,0.25)",
                   color: "#1e293b",
-                  paddingLeft: 19,
+                  paddingLeft: 24,
                 }}
               />
             </div>
@@ -154,7 +154,7 @@ export default function Login() {
                   className="h-12 rounded-xl pr-12"
                   style={{
                     outline: "none",
-                    paddingLeft: 19,
+                    paddingLeft: 24,
                     background: "#ffffff",
                     border: "1px solid rgba(255,255,255,0.25)",
                     color: "#1e293b",

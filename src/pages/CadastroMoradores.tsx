@@ -273,7 +273,7 @@ export default function CadastroMoradores() {
               <form onSubmit={handleSaveEdit}>
                 <div style={{ marginBottom: 19 }}>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Nome completo *</label>
-                  <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} style={{ paddingLeft: 19 }} />
+                  <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} style={{ paddingLeft: 24 }} />
                 </div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 19 }}>
                   <div style={{ flex: 1 }}>
@@ -281,17 +281,17 @@ export default function CadastroMoradores() {
                     {blocos.length > 0 ? (
                       <select value={editBloco} onChange={(e) => setEditBloco(e.target.value)}
                         className="w-full h-10 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        style={{ paddingLeft: 19, backgroundColor: "#ffffff", color: "#000000", borderColor: isDark ? "rgba(255,255,255,0.2)" : undefined }}>
+                        style={{ paddingLeft: 24, backgroundColor: "#ffffff", color: "#000000", borderColor: isDark ? "rgba(255,255,255,0.2)" : undefined }}>
                         <option value="">Selecione</option>
                         {blocos.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
                       </select>
                     ) : (
-                      <Input value={editBloco} onChange={(e) => setEditBloco(e.target.value)} placeholder="Ex: Bloco A" style={{ paddingLeft: 19 }} />
+                      <Input value={editBloco} onChange={(e) => setEditBloco(e.target.value)} placeholder="Ex: Bloco A" style={{ paddingLeft: 24 }} />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Unidade / Apto *</label>
-                    <Input value={editUnidade} onChange={(e) => setEditUnidade(e.target.value)} style={{ paddingLeft: 19 }} />
+                    <Input value={editUnidade} onChange={(e) => setEditUnidade(e.target.value)} style={{ paddingLeft: 24 }} />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 19 }}>
@@ -299,26 +299,26 @@ export default function CadastroMoradores() {
                     <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Perfil *</label>
                     <select value={editPerfil} onChange={(e) => setEditPerfil(e.target.value)}
                       className="w-full h-10 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      style={{ paddingLeft: 19, backgroundColor: "#ffffff", color: "#000000", borderColor: isDark ? "rgba(255,255,255,0.2)" : undefined }}>
+                      style={{ paddingLeft: 24, backgroundColor: "#ffffff", color: "#000000", borderColor: isDark ? "rgba(255,255,255,0.2)" : undefined }}>
                       <option value="">Selecione</option>
                       {perfis.map((pf) => <option key={pf} value={pf}>{pf}</option>)}
                     </select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>WhatsApp</label>
-                    <Input type="tel" value={editWhatsapp} onChange={(e) => setEditWhatsapp(formatPhone(e.target.value))} style={{ paddingLeft: 19 }} />
+                    <Input type="tel" value={editWhatsapp} onChange={(e) => setEditWhatsapp(formatPhone(e.target.value))} style={{ paddingLeft: 24 }} />
                   </div>
                 </div>
                 <div style={{ marginBottom: 19 }}>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>E-mail *</label>
-                  <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ paddingLeft: 19 }} />
+                  <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ paddingLeft: 24 }} />
                 </div>
                 <div style={{ marginBottom: 19 }}>
                   <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Nova senha (6 dígitos)</label>
                   <p style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", marginBottom: 4 }}>Deixe em branco para manter a senha atual.</p>
                   <div className="relative">
                     <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6} placeholder="••••••"
-                      value={editPassword} onChange={(e) => setEditPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} className="pr-10" style={{ paddingLeft: 19 }} />
+                      value={editPassword} onChange={(e) => setEditPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} className="pr-10" style={{ paddingLeft: 24 }} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
                       style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#64748b" }}>
@@ -330,7 +330,7 @@ export default function CadastroMoradores() {
                   <div style={{ marginBottom: 19 }}>
                     <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Confirmar senha</label>
                     <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6} placeholder="••••••"
-                      value={editConfirmPassword} onChange={(e) => setEditConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ paddingLeft: 19 }} />
+                      value={editConfirmPassword} onChange={(e) => setEditConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ paddingLeft: 24 }} />
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 16, marginTop: 32 }}>

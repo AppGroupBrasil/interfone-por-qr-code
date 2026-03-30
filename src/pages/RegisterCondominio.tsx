@@ -441,7 +441,7 @@ export default function RegisterCondominio() {
                       id="state"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="flex h-11 w-full rounded-lg border border-input bg-white dark:bg-secondary/50 pl-5 pr-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary"
+                      className="flex h-11 w-full rounded-lg border border-input bg-white dark:bg-secondary/50 pl-6 pr-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary"
                     >
                       <option value="">--</option>
                       {estados.map((uf) => (
