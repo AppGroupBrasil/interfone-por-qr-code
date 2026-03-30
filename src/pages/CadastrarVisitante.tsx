@@ -985,7 +985,7 @@ export default function CadastrarVisitante() {
 
       {/* Search */}
       <div style={{ padding: "0 24px 8px", display: "flex", gap: "8px", alignItems: "center" }}>
-        <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-card" style={{ paddingLeft: "16px", paddingRight: "12px", flex: 1 }}>
+        <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-card" style={{ paddingLeft: "24px", paddingRight: "12px", flex: 1 }}>
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="text"

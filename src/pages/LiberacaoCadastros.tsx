@@ -411,7 +411,7 @@ export default function LiberacaoCadastros() {
         )}
 
         {/* Search */}
-        <div className="flex items-center gap-2 h-11 rounded-lg border border-border bg-card" style={{ paddingLeft: "16px", paddingRight: "12px", marginBottom: "20px" }}>
+        <div className="flex items-center gap-2 h-11 rounded-lg border border-border bg-card" style={{ paddingLeft: "24px", paddingRight: "12px", marginBottom: "20px" }}>
           <Search className="w-4 h-4 shrink-0" style={{ color: "#64748b" }} />
           <input
             type="text"

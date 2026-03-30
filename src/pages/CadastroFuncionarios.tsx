@@ -249,7 +249,7 @@ export default function CadastroFuncionarios() {
                   value={cargo}
                   onChange={(e) => setCargo(e.target.value)}
                   className="w-full h-10 rounded-md border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  style={isDark ? { paddingLeft: "19px", background: "#ffffff", color: "#000000" } : { paddingLeft: "19px" }}
+                  style={isDark ? { paddingLeft: "24px", background: "#ffffff", color: "#000000" } : { paddingLeft: "24px" }}
                 >
                   <option value="" style={{ color: "#000000" }}>Selecione o cargo</option>
                   {cargos.map((c) => (
@@ -269,7 +269,7 @@ export default function CadastroFuncionarios() {
                     placeholder=""
                     value={nome}
                     onChange={(e) => handleNomeChange(e.target.value)}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -279,7 +279,7 @@ export default function CadastroFuncionarios() {
                     placeholder=""
                     value={sobrenome}
                     onChange={(e) => handleSobrenomeChange(e.target.value)}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function CadastroFuncionarios() {
                   placeholder=""
                   value={login}
                   onChange={(e) => handleLoginChange(e.target.value)}
-                  style={{ paddingLeft: "19px" }}
+                  style={{ paddingLeft: "24px" }}
                 />
                 {!login && <p style={{ color: "#facc15", fontSize: "13px", marginTop: "4px" }}>Atenção: Para acessar o sistema utilize esse login e senha abaixo.</p>}
               </div>
@@ -317,7 +317,7 @@ export default function CadastroFuncionarios() {
                         setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))
                       }
                       className="pr-10"
-                      style={{ paddingLeft: "19px" }}
+                      style={{ paddingLeft: "24px" }}
                     />
                     <button
                       type="button"
@@ -344,7 +344,7 @@ export default function CadastroFuncionarios() {
                     onChange={(e) =>
                       setConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>

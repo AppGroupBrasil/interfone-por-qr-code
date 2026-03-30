@@ -218,7 +218,7 @@ export default function CadastroMoradoresManual() {
                   placeholder="Ex: João da Silva"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  style={{ paddingLeft: "19px" }}
+                  style={{ paddingLeft: "24px" }}
                 />
               </div>
 
@@ -248,7 +248,7 @@ export default function CadastroMoradoresManual() {
                         placeholder="Ex: Bloco A, Torre 1..."
                         value={bloco}
                         onChange={(e) => setBloco(e.target.value)}
-                        style={{ paddingLeft: "19px" }}
+                        style={{ paddingLeft: "24px" }}
                       />
                       <p className="text-[11px] text-amber-400" style={{ marginTop: "4px" }}>
                         Nenhum bloco cadastrado.
@@ -263,7 +263,7 @@ export default function CadastroMoradoresManual() {
                     placeholder="Ex: 101, Casa 5..."
                     value={unidade}
                     onChange={(e) => setUnidade(e.target.value)}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>
@@ -295,7 +295,7 @@ export default function CadastroMoradoresManual() {
                     placeholder="(11) 99999-9999"
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(formatPhone(e.target.value))}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>
@@ -310,7 +310,7 @@ export default function CadastroMoradoresManual() {
                     placeholder="morador@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -321,7 +321,7 @@ export default function CadastroMoradoresManual() {
                     placeholder="Repita o e-mail"
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>
@@ -342,7 +342,7 @@ export default function CadastroMoradoresManual() {
                         setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))
                       }
                       className="pr-10"
-                      style={{ paddingLeft: "19px" }}
+                      style={{ paddingLeft: "24px" }}
                     />
                     <button
                       type="button"
@@ -370,7 +370,7 @@ export default function CadastroMoradoresManual() {
                     onChange={(e) =>
                       setConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
-                    style={{ paddingLeft: "19px" }}
+                    style={{ paddingLeft: "24px" }}
                   />
                 </div>
               </div>

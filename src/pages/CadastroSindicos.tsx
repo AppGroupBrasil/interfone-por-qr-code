@@ -242,19 +242,19 @@ export default function CadastroSindicos() {
                 {/* Nome completo */}
                 <div style={{ marginBottom: "19px" }}>
                   <Label htmlFor="nome" style={{ display: "block", marginBottom: "4px", color: isDark ? "#ffffff" : undefined }}>Nome completo *</Label>
-                  <Input id="nome" placeholder="Ex: Carlos Silva" value={nome} onChange={(e) => setNome(e.target.value)} style={{ paddingLeft: "19px" }} />
+                  <Input id="nome" placeholder="Ex: Carlos Silva" value={nome} onChange={(e) => setNome(e.target.value)} style={{ paddingLeft: "24px" }} />
                 </div>
 
                 {/* E-mail */}
                 <div style={{ marginBottom: "19px" }}>
                   <Label htmlFor="email" style={{ display: "block", marginBottom: "4px", color: isDark ? "#ffffff" : undefined }}>E-mail *</Label>
-                  <Input id="email" type="email" placeholder="sindico@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ paddingLeft: "19px" }} />
+                  <Input id="email" type="email" placeholder="sindico@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ paddingLeft: "24px" }} />
                 </div>
 
                 {/* WhatsApp */}
                 <div style={{ marginBottom: "19px" }}>
                   <Label htmlFor="whatsapp" style={{ display: "block", marginBottom: "4px", color: isDark ? "#ffffff" : undefined }}>WhatsApp</Label>
-                  <Input id="whatsapp" type="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={(e) => setWhatsapp(formatPhone(e.target.value))} style={{ paddingLeft: "19px" }} />
+                  <Input id="whatsapp" type="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={(e) => setWhatsapp(formatPhone(e.target.value))} style={{ paddingLeft: "24px" }} />
                 </div>
 
                 {/* Condomínio */}
@@ -266,7 +266,7 @@ export default function CadastroSindicos() {
                       value={condominioId}
                       onChange={(e) => setCondominioId(e.target.value)}
                       className="w-full h-10 rounded-md border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      style={isDark ? { paddingLeft: "19px", background: "#ffffff", color: "#000000" } : { paddingLeft: "19px" }}
+                      style={isDark ? { paddingLeft: "24px", background: "#ffffff", color: "#000000" } : { paddingLeft: "24px" }}
                     >
                       <option value="" style={{ color: "#000000" }}>Selecionar condomínio (opcional)</option>
                       {condominios.map((c) => (
@@ -297,7 +297,7 @@ export default function CadastroSindicos() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                         className="pr-10"
-                        style={{ paddingLeft: "19px" }}
+                        style={{ paddingLeft: "24px" }}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -314,7 +314,7 @@ export default function CadastroSindicos() {
                       placeholder="••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      style={{ paddingLeft: "19px" }}
+                      style={{ paddingLeft: "24px" }}
                     />
                   </div>
                 </div>

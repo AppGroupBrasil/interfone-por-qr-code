@@ -206,7 +206,7 @@ export default function MasterCondominios() {
 
       {/* Search */}
       <div style={{ padding: "12px 24px", marginBottom: "8px" }}>
-        <div className="flex items-center gap-2 h-10 rounded-lg border" style={{ paddingLeft: "16px", paddingRight: "12px", background: p.cardBg, borderColor: p.divider }}>
+        <div className="flex items-center gap-2 h-10 rounded-lg border" style={{ paddingLeft: "24px", paddingRight: "12px", background: p.cardBg, borderColor: p.divider }}>
           <Search className="w-4 h-4 shrink-0" style={{ color: p.textMuted }} />
           <input
             type="text"

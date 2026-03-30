@@ -372,7 +372,7 @@ export default function CadastroMoradores() {
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="h-11"
-                  style={{ paddingLeft: "20px" }}
+                  style={{ paddingLeft: "24px" }}
                 />
               </div>
 

@@ -464,7 +464,7 @@ export default function AutorizacoesPrevias() {
       {/* Search + Face Scan Button */}
       <div style={{ padding: "12px 20px" }}>
         <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0 flex items-center gap-2 h-10 rounded-lg border border-border bg-card" style={{ paddingLeft: "16px", paddingRight: "12px" }}>
+          <div className="flex-1 min-w-0 flex items-center gap-2 h-10 rounded-lg border border-border bg-card" style={{ paddingLeft: "24px", paddingRight: "12px" }}>
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
               type="text"

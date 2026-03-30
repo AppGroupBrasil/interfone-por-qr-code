@@ -192,7 +192,7 @@ export default function CadastroBlocos() {
                     value={formCondominioId}
                     onChange={(e) => setFormCondominioId(e.target.value)}
                     className="w-full h-10 rounded-md border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    style={isDark ? { paddingLeft: "19px", background: "#ffffff", color: "#000000" } : { paddingLeft: "19px" }}
+                    style={isDark ? { paddingLeft: "24px", background: "#ffffff", color: "#000000" } : { paddingLeft: "24px" }}
                   >
                     <option value="" style={{ color: "#000000" }}>Selecione o condomínio</option>
                     {condominios.map((c) => (
@@ -235,7 +235,7 @@ export default function CadastroBlocos() {
                       placeholder="Ex: 5"
                       value={quantidade}
                       onChange={(e) => setQuantidade(e.target.value)}
-                      style={{ paddingLeft: "19px" }}
+                      style={{ paddingLeft: "24px" }}
                     />
                     <p style={{ color: "#facc15", fontSize: "13px", marginTop: "4px" }}>
                       O sistema criará automaticamente Bloco 1, Bloco 2, Bloco 3...
@@ -252,7 +252,7 @@ export default function CadastroBlocos() {
                       placeholder="Ex: Torre A, Bloco Norte, Casa 1..."
                       value={nomeBloco}
                       onChange={(e) => setNomeBloco(e.target.value)}
-                      style={{ paddingLeft: "19px" }}
+                      style={{ paddingLeft: "24px" }}
                     />
                   </div>
                 </>
@@ -313,7 +313,7 @@ export default function CadastroBlocos() {
                     value={selectedCondominioId}
                     onChange={(e) => setSelectedCondominioId(e.target.value === "all" ? "all" : Number(e.target.value))}
                     className="flex-1 h-10 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                    style={isDark ? { paddingLeft: "19px", background: "#ffffff", color: "#000000" } : { paddingLeft: "19px" }}
+                    style={isDark ? { paddingLeft: "24px", background: "#ffffff", color: "#000000" } : { paddingLeft: "24px" }}
                   >
                     <option value="all">Todos os condomínios</option>
                     {condominios.map((c) => (

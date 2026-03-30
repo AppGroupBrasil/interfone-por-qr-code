@@ -163,7 +163,7 @@ export default function EspelhoPortaria() {
 
       {/* Search */}
       <div style={{ padding: "12px 24px" }}>
-        <div className="flex items-center gap-2 h-10 rounded-lg" style={{ paddingLeft: "16px", paddingRight: "12px", background: "#ffffff", border: "1px solid #e2e8f0" }}>
+        <div className="flex items-center gap-2 h-10 rounded-lg" style={{ paddingLeft: "24px", paddingRight: "12px", background: "#ffffff", border: "1px solid #e2e8f0" }}>
           <Search className="w-4 h-4 shrink-0" style={{ color: "#64748b" }} />
           <input
             type="text"
