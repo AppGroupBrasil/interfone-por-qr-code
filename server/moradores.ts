@@ -12,6 +12,7 @@ router.use(authenticate);
 // POST /api/moradores - Cadastrar morador (sindico+)
 router.post("/", authorize("master", "administradora", "sindico"), async (req, res) => {
   try {
+    const user = req.user!;
     const { nome, bloco, unidade, perfil, whatsapp, email, password } = req.body;
 
     if (!nome || !bloco || !unidade || !perfil || !email || !password) {
@@ -37,7 +38,7 @@ router.post("/", authorize("master", "administradora", "sindico"), async (req, r
     }
 
     // Verificar se o bloco existe no condomínio
-    const condoId = req.user.condominio_id || (req.body.condominioId ? Number(req.body.condominioId) : null);
+    const condoId = user.condominio_id || (req.body.condominioId ? Number(req.body.condominioId) : null);
     if (!condoId) {
       res.status(400).json({ error: "Selecione um condomínio." });
       return;
@@ -118,9 +119,10 @@ router.get("/", (req, res) => {
 // PUT /api/moradores/:id - Editar morador (sindico+)
 router.put("/:id", authorize("master", "administradora", "sindico"), async (req, res) => {
   try {
+    const user = req.user!;
     const id = req.params.id as string;
     const { nome, bloco, unidade, perfil, whatsapp, email, password } = req.body;
-    const scope = condominioScope(req.user!);
+    const scope = condominioScope(user);
 
     const morador = db.prepare(
       `SELECT id FROM users WHERE id = ? AND role = 'morador' AND ${scope.clause}`
@@ -133,7 +135,7 @@ router.put("/:id", authorize("master", "administradora", "sindico"), async (req,
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "E-mail inválido." }); return; }
 
     // Verificar se o bloco existe no condomínio
-    const condoId = req.user.condominio_id || null;
+    const condoId = user.condominio_id || null;
     if (condoId) {
       const blocoExists = db.prepare("SELECT id FROM blocks WHERE condominio_id = ? AND name = ?").get(condoId, bloco);
       if (!blocoExists) {
@@ -186,7 +188,8 @@ router.delete("/:id", authorize("master", "administradora", "sindico"), (req, re
 // POST /api/moradores/gerar-link - Gerar link de cadastro (sindico+)
 router.post("/gerar-link", authorize("master", "administradora", "sindico"), (req, res) => {
   try {
-    let condoId = req.user.condominio_id;
+    const user = req.user!;
+    let condoId = user.condominio_id;
     // Administradora/master may not have condominio_id directly — try from body or query
     if (!condoId && req.body.condominio_id) {
       condoId = req.body.condominio_id;
@@ -237,7 +240,7 @@ router.get("/pendentes/count", authorize("master", "administradora", "sindico"),
 // PUT /api/moradores/:id/aprovar - Aprovar cadastro
 router.put("/:id/aprovar", authorize("master", "administradora", "sindico"), (req, res) => {
   try {
-    const id = Number.parseInt(req.params.id);
+    const id = Number.parseInt(String(req.params.id));
     const scope = condominioScope(req.user!);
     const morador = db.prepare(
       `SELECT id, name FROM users WHERE id = ? AND role = 'morador' AND aprovado = 0 AND ${scope.clause}`
@@ -257,7 +260,7 @@ router.put("/:id/aprovar", authorize("master", "administradora", "sindico"), (re
 // DELETE /api/moradores/:id/rejeitar - Rejeitar cadastro (remove user)
 router.delete("/:id/rejeitar", authorize("master", "administradora", "sindico"), (req, res) => {
   try {
-    const id = Number.parseInt(req.params.id);
+    const id = Number.parseInt(String(req.params.id));
     const scope = condominioScope(req.user!);
     const morador = db.prepare(
       `SELECT id, name FROM users WHERE id = ? AND role = 'morador' AND aprovado = 0 AND ${scope.clause}`
@@ -277,13 +280,14 @@ router.delete("/:id/rejeitar", authorize("master", "administradora", "sindico"),
 // POST /api/moradores/importar - Importar moradores em lote (sindico+)
 router.post("/importar", authorize("master", "administradora", "sindico"), async (req, res) => {
   try {
+    const user = req.user!;
     const { moradores } = req.body;
     if (!Array.isArray(moradores) || moradores.length === 0) {
       res.status(400).json({ error: "Lista de moradores vazia." });
       return;
     }
 
-    const condoId = req.user.condominio_id || null;
+    const condoId = user.condominio_id || null;
     const defaultPassword = await bcrypt.hash("1234", 10); // Senha padrão para importação
     let imported = 0;
     let errors = 0;

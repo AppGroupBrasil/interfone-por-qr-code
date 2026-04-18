@@ -11,6 +11,16 @@ import { isNative } from "./config";
 
 let pushInitialized = false;
 let currentToken: string | null = null;
+let nativeListenersRegistered = false;
+let nativePermissionRequested = false;
+
+const ANDROID_CALLS_CHANNEL_ID = "interfone_calls";
+
+type PushPermissionStatus = "prompt" | "blocked" | "enabled";
+
+function emitPushPermissionStatus(status: PushPermissionStatus) {
+  globalThis.dispatchEvent(new CustomEvent("appinterfone:push-permission", { detail: { status } }));
+}
 
 // ─── Helper: convert URL-safe base64 to Uint8Array (for VAPID applicationServerKey) ───
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -32,8 +42,18 @@ export async function initPushNotifications(): Promise<void> {
   if (isNative) {
     await initNativePush();
   } else {
-    await initWebPush();
+    await initWebPush(false);
   }
+}
+
+export async function enablePushNotifications(): Promise<void> {
+  if (isNative) {
+    nativePermissionRequested = true;
+    await initNativePush();
+    return;
+  }
+
+  await initWebPush(true);
 }
 
 // ─── Native (Capacitor) ───
@@ -41,78 +61,104 @@ async function initNativePush(): Promise<void> {
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");
 
-    const permResult = await PushNotifications.requestPermissions();
+    if (!nativeListenersRegistered) {
+      PushNotifications.addListener("registration", async (token) => {
+        console.log("Push token:", token.value);
+        currentToken = token.value;
+        pushInitialized = true;
+        emitPushPermissionStatus("enabled");
+
+        try {
+          await apiFetch("/api/device-tokens", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: token.value,
+              platform: "android",
+              deviceInfo: navigator.userAgent,
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to register push token:", err);
+        }
+      });
+
+      PushNotifications.addListener("registrationError", (error) => {
+        console.error("Push registration error:", error);
+      });
+
+      PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        console.log("Push received (foreground):", notification);
+        if (notification.data?.type === "interfone-call") {
+          try {
+            const audio = new Audio("/sounds/ringtone-call.wav");
+            audio.loop = true;
+            audio.volume = 0.8;
+            audio.play().catch(() => {});
+            (globalThis as any).__pushCallAudio = audio;
+            setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 30000);
+          } catch {}
+        }
+      });
+
+      PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+        console.log("Push action:", action);
+        try {
+          const fgAudio = (globalThis as any).__pushCallAudio;
+          if (fgAudio) { fgAudio.pause(); fgAudio.currentTime = 0; (globalThis as any).__pushCallAudio = null; }
+        } catch {}
+        const data = action.notification.data;
+        if (data?.type === "interfone-call") {
+          globalThis.location.href = "/morador/interfone";
+        } else if (data?.type === "correspondencia") {
+          globalThis.location.href = "/portaria/correspondencias";
+        } else if (data?.type === "visitor") {
+          globalThis.location.href = "/portaria/visitantes";
+        }
+      });
+
+      nativeListenersRegistered = true;
+    }
+
+    try {
+      await PushNotifications.createChannel({
+        id: ANDROID_CALLS_CHANNEL_ID,
+        name: "Chamadas do Interfone",
+        description: "Chamadas e alertas importantes do interfone digital",
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        lights: true,
+      });
+    } catch (channelError) {
+      console.warn("Failed to ensure Android notification channel:", channelError);
+    }
+
+    let permResult = await PushNotifications.checkPermissions();
+
+    if (permResult.receive === "prompt") {
+      // Show pre-permission modal in Portuguese first (if not explicitly requested by user)
+      if (!nativePermissionRequested) {
+        emitPushPermissionStatus("prompt");
+        return;
+      }
+      permResult = await PushNotifications.requestPermissions();
+    }
+
     if (permResult.receive !== "granted") {
       console.warn("Push notification permission denied");
+      emitPushPermissionStatus("blocked");
       return;
     }
 
     await PushNotifications.register();
-
-    PushNotifications.addListener("registration", async (token) => {
-      console.log("Push token:", token.value);
-      currentToken = token.value;
-      pushInitialized = true;
-
-      try {
-        await apiFetch("/api/device-tokens", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: token.value,
-            platform: "android",
-            deviceInfo: navigator.userAgent,
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to register push token:", err);
-      }
-    });
-
-    PushNotifications.addListener("registrationError", (error) => {
-      console.error("Push registration error:", error);
-    });
-
-    PushNotifications.addListener("pushNotificationReceived", (notification) => {
-      console.log("Push received (foreground):", notification);
-      // If it's a call, play the ringtone immediately
-      if (notification.data?.type === "interfone-call") {
-        try {
-          const audio = new Audio("/sounds/ringtone-call.wav");
-          audio.loop = true;
-          audio.volume = 0.8;
-          audio.play().catch(() => {});
-          // Store ref to stop later
-          (globalThis as any).__pushCallAudio = audio;
-          // Auto-stop after 30s
-          setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 30000);
-        } catch {}
-      }
-    });
-
-    PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-      console.log("Push action:", action);
-      // Stop foreground ringtone if playing
-      try {
-        const fgAudio = (globalThis as any).__pushCallAudio;
-        if (fgAudio) { fgAudio.pause(); fgAudio.currentTime = 0; (globalThis as any).__pushCallAudio = null; }
-      } catch {}
-      const data = action.notification.data;
-      if (data?.type === "interfone-call") {
-        window.location.href = "/morador/interfone";
-      } else if (data?.type === "correspondencia") {
-        window.location.href = "/portaria/correspondencias";
-      } else if (data?.type === "visitor") {
-        window.location.href = "/portaria/visitantes";
-      }
-    });
   } catch (err) {
     console.error("Push notification init error:", err);
   }
 }
 
 // ─── Web Push (Service Worker + Push API) ───
-async function initWebPush(): Promise<void> {
+async function initWebPush(requestFromUserGesture: boolean): Promise<void> {
   if (!("serviceWorker" in navigator) || !("PushManager" in globalThis)) {
     console.warn("Web Push not supported in this browser");
     return;
@@ -127,9 +173,26 @@ async function initWebPush(): Promise<void> {
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
+      const currentPermission = Notification.permission;
+
+      if (currentPermission === "denied") {
+        emitPushPermissionStatus("blocked");
+        console.warn("Notification permission denied");
+        return;
+      }
+
+      if (!requestFromUserGesture && currentPermission !== "granted") {
+        emitPushPermissionStatus("prompt");
+        return;
+      }
+
       // Request permission
-      const permission = await Notification.requestPermission();
+      const permission = currentPermission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
+
       if (permission !== "granted") {
+        emitPushPermissionStatus("blocked");
         console.warn("Notification permission denied");
         return;
       }
@@ -153,6 +216,7 @@ async function initWebPush(): Promise<void> {
     const subJson = subscription.toJSON();
     currentToken = subJson.endpoint!;
     pushInitialized = true;
+    emitPushPermissionStatus("enabled");
 
     await apiFetch("/api/device-tokens", {
       method: "POST",
@@ -171,6 +235,7 @@ async function initWebPush(): Promise<void> {
     console.log("Web Push registered:", subJson.endpoint?.slice(0, 60) + "...");
   } catch (err) {
     console.error("Web Push init error:", err);
+    emitPushPermissionStatus(Notification.permission === "denied" ? "blocked" : "prompt");
   }
 }
 

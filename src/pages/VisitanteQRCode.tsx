@@ -1,5 +1,6 @@
 ﻿import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AppLogo } from "@/components/AppLogo";
 import {
   ArrowLeft,
   QrCode,
@@ -515,9 +516,12 @@ export default function VisitanteQRCode() {
       <div style={{ background: "#0f2847", padding: "32px 50px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {/* Seal/emblem */}
-          <div style={{ width: "56px", height: "56px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.05)" }}>
-            <Building2 style={{ width: 28, height: 28, color: "#e2e8f0" }} />
-          </div>
+          <AppLogo
+            size={56}
+            rounded={999}
+            background="rgba(255,255,255,0.05)"
+            border="2px solid rgba(255,255,255,0.25)"
+          />
           <div>
             <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#fff", margin: 0, letterSpacing: "1px" }}>APP INTERFONE</h1>
             <p style={{ fontSize: "11px", letterSpacing: "3px", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", margin: "4px 0 0", fontWeight: "500" }}>Sistema Institucional de Controle de Acesso</p>

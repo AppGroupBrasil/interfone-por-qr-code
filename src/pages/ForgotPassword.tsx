@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { AppLogo } from "@/components/AppLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,7 +14,6 @@ import {
   Eye,
   EyeOff,
   Lock,
-  KeyRound,
   MessageCircle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -23,7 +23,7 @@ type Step = "request" | "verify" | "reset" | "success";
 type ResetType = "email" | "phone";
 
 export default function ForgotPassword() {
-  const { isDark, p } = useTheme();
+  const { p } = useTheme();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>("request");
@@ -241,21 +241,12 @@ export default function ForgotPassword() {
       <div style={cardStyle}>
         {/* Logo */}
         <div className="text-center" style={{ marginBottom: "28px" }}>
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "18px",
-              background: "linear-gradient(135deg, #003580, #0056d2)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "16px",
-              boxShadow: "0 8px 24px rgba(0,53,128,0.25)",
-            }}
-          >
-            <KeyRound style={{ width: "28px", height: "28px", color: p.text }} />
-          </div>
+          <AppLogo
+            size={64}
+            rounded={18}
+            background="linear-gradient(135deg, #003580, #0056d2)"
+            style={{ margin: "0 auto 16px", boxShadow: "0 8px 24px rgba(0,53,128,0.25)" }}
+          />
           <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#111827", marginBottom: "4px" }}>
             {step === "request" && "Recuperar Senha"}
             {step === "verify" && "Verificar Código"}

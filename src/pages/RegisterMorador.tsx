@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,6 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  UserPlus,
   Building2,
   MessageCircle,
   CheckCircle2,
@@ -235,9 +235,12 @@ export default function RegisterMorador() {
       <div className="w-full max-w-sm relative z-10 animate-slide-up">
         {/* Header */}
         <div className="text-center" style={{ marginBottom: "32px" }}>
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl" style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", marginBottom: "19px" }}>
-            <UserPlus className="w-7 h-7 text-white" />
-          </div>
+          <AppLogo
+            size={56}
+            rounded={16}
+            background="linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)"
+            style={{ margin: "0 auto 19px" }}
+          />
           <h1 className="text-2xl font-bold text-foreground tracking-tight" style={{ marginBottom: "19px" }}>
             Cadastro Morador
           </h1>

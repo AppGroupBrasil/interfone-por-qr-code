@@ -45,6 +45,10 @@ router.get("/", authenticate, (req: Request, res: Response) => {
 router.post("/", authenticate, (req: Request, res: Response) => {
   try {
     const user = req.user!;
+    if (!user.condominio_id) {
+      res.status(400).json({ error: "Condomínio não configurado." });
+      return;
+    }
     const {
       servico,
       servico_custom,
@@ -95,6 +99,10 @@ router.post("/", authenticate, (req: Request, res: Response) => {
 router.post("/portaria", authenticate, (req: Request, res: Response) => {
   try {
     const user = req.user!;
+    if (!user.condominio_id) {
+      res.status(400).json({ error: "Condomínio não configurado." });
+      return;
+    }
     if (user.role === "morador") {
       res.status(403).json({ error: "Apenas porteiros podem usar este endpoint." });
       return;

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { AppLogo } from "@/components/AppLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
-  UserCheck,
   X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -445,15 +445,12 @@ export default function CadastroMoradoresManual() {
             </button>
 
             {/* Icon */}
-            <div style={{
-              width: 72, height: 72, borderRadius: "50%",
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 1.25rem",
-              boxShadow: "0 8px 24px rgba(16,185,129,0.35)",
-            }}>
-              <UserCheck className="w-9 h-9 text-white" strokeWidth={2} />
-            </div>
+            <AppLogo
+              size={72}
+              rounded={999}
+              background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+              style={{ margin: "0 auto 1.25rem", boxShadow: "0 8px 24px rgba(16,185,129,0.35)" }}
+            />
 
             {/* Title */}
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", marginBottom: 6 }}>Morador Cadastrado!</h2>

@@ -9,6 +9,7 @@ import {
   Users2,
   Wrench,
   Layers,
+  MessageCircle,
   BookOpen,
   Building2,
   FileText,
@@ -63,6 +64,7 @@ const ALL_FUNCOES: FuncaoGroup[] = [
       { icon: Users2, label: "Moradores", description: "Cadastrar e gerenciar moradores", route: "/cadastros/moradores", minRole: "sindico" },
       { icon: Wrench, label: "Funcionários", description: "Cadastrar e gerenciar funcionários", route: "/cadastros/funcionarios", minRole: "sindico" },
       { icon: Phone, label: "Interfone Config", description: "Configurar sistema de interfone", route: "/sindico/interfone-config", minRole: "sindico" },
+      { icon: MessageCircle, label: "Interfone WhatsApp", description: "Configurar interfone via WhatsApp", route: "/sindico/whatsapp-interfone", minRole: "sindico" },
     ],
   },
   {

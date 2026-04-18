@@ -10,6 +10,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import Cadastros from "@/pages/Cadastros";
 import DemoTrialModal from "@/components/DemoTrialModal";
 import { onDemoBlocked } from "@/lib/api";
+import PushPermissionModal from "@/components/PushPermissionModal";
 import CadastroFuncionarios from "@/pages/CadastroFuncionarios";
 import CadastroBlocos from "@/pages/CadastroBlocos";
 import CadastroMoradores from "@/pages/CadastroMoradores";
@@ -57,7 +58,9 @@ import MoradorInterfoneConfig from "@/pages/MoradorInterfoneConfig";
 import MoradorInterfone from "@/pages/MoradorInterfone";
 import FuncionarioInterfone from "@/pages/FuncionarioInterfone";
 import InterfoneVisitor from "@/pages/InterfoneVisitor";
+import InterfoneWhatsApp from "@/pages/InterfoneWhatsApp";
 import LandingPage from "@/pages/LandingPage";
+import SindicoWhatsAppInterfone from "@/pages/SindicoWhatsAppInterfone";
 import SindicoGateConfig from "@/pages/SindicoGateConfig";
 import SindicoAccessConfig from "@/pages/SindicoAccessConfig";
 import SindicoWhatsAppConfig from "@/pages/SindicoWhatsAppConfig";
@@ -169,6 +172,32 @@ function DemoBlockedListener() {
   return <DemoTrialModal open={show} onClose={() => setShow(false)} />;
 }
 
+function PushPermissionListener() {
+  const { user } = useAuth();
+  const [status, setStatus] = useState<"prompt" | "blocked" | null>(null);
+
+  useEffect(() => {
+    const handlePushPermission = (event: Event) => {
+      const customEvent = event as CustomEvent<{ status: "prompt" | "blocked" | "enabled" }>;
+      const nextStatus = customEvent.detail?.status;
+      if (nextStatus === "enabled") {
+        setStatus(null);
+        return;
+      }
+      if (nextStatus === "prompt" || nextStatus === "blocked") {
+        setStatus(nextStatus);
+      }
+    };
+
+    globalThis.addEventListener("appinterfone:push-permission", handlePushPermission as EventListener);
+    return () => globalThis.removeEventListener("appinterfone:push-permission", handlePushPermission as EventListener);
+  }, []);
+
+  if (!user) return null;
+
+  return <PushPermissionModal open={!!status} status={status || "prompt"} onClose={() => setStatus(null)} />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -234,10 +263,12 @@ function AppRoutes() {
       <Route path="/sindico/portao" element={<ProtectedRoute minRole="sindico"><SindicoGateConfig /></ProtectedRoute>} />
       <Route path="/sindico/acessos" element={<ProtectedRoute minRole="sindico"><SindicoAccessConfig /></ProtectedRoute>} />
       <Route path="/sindico/whatsapp" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppConfig /></ProtectedRoute>} />
+      <Route path="/sindico/whatsapp-interfone" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppInterfone /></ProtectedRoute>} />
       <Route path="/liberacao-cadastros" element={<ProtectedRoute minRole="sindico"><LiberacaoCadastros /></ProtectedRoute>} />
       <Route path="/morador/portaria-virtual" element={<ProtectedRoute><MoradorPortariaVirtual /></ProtectedRoute>} />
       {/* Rotas públicas de visitante (sem autenticação) */}
       <Route path="/interfone/:token" element={<InterfoneVisitor />} />
+      <Route path="/whatsapp/:token" element={<InterfoneWhatsApp />} />
       <Route path="/portaria-virtual-tutorial" element={<PortariaVirtualTutorial />} />
       <Route path="/contrato" element={<ContratoPage />} />
       <Route path="/apresentacao" element={<ApresentacaoPage />} />
@@ -258,6 +289,7 @@ export default function App() {
         <AuthProvider>
           <GlobalIncomingCall />
           <DemoBlockedListener />
+          <PushPermissionListener />
           <AppRoutes />
         </AuthProvider>
       </ErrorBoundary>

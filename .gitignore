@@ -28,5 +28,10 @@ firebase-service-account.json
 data.db
 data.db-shm
 data.db-wal
+database.sqlite
 backups/
 dist-server/
+tsconfig.tsbuildinfo
+
+# Android native build
+android/

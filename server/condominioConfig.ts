@@ -44,6 +44,10 @@ const ALLOWED_KEYS = new Set([
   "whatsapp_notify_vehicle_access",
   "whatsapp_notify_ronda",
   "whatsapp_notify_livro_protocolo",
+  "interfone_whatsapp_enabled",
+  "interfone_whatsapp_security_level",
+  "interfone_whatsapp_has_portaria",
+  "interfone_whatsapp_portaria_phone",
 ]);
 
 // ─── PUBLIC config for auto-cadastro (no auth) ──────────

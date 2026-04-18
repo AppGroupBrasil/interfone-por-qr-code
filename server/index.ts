@@ -124,7 +124,7 @@ const authLimiter = rateLimit({
   keyGenerator: (req) => {
     // Limita por IP + email para evitar lockout coletivo
     const email = req.body?.email?.toLowerCase?.() || "";
-    const ip = ipKeyGenerator(req);
+    const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || "unknown");
     return `${ip}:${email}`;
   },
   validate: { xForwardedForHeader: false, ip: false },

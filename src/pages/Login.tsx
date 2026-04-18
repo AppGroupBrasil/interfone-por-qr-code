@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { AppLogo } from "@/components/AppLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -8,10 +9,10 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
-  Building2,
   UserPlus,
   Info,
   Shield,
+  Building2,
 } from "lucide-react";
 
 export default function Login() {
@@ -88,18 +89,13 @@ export default function Login() {
           }}
         >
           {/* Logo */}
-          <div className="flex flex-col items-center mb-8">
-            <div style={{
-              width: "100px", height: "100px", marginBottom: "28px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <img src="/logo.png" alt="App Interfone" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            </div>
+          <div className="flex flex-col items-center" style={{ marginBottom: "36px" }}>
+            <AppLogo size={100} rounded={24} style={{ marginBottom: "28px" }} />
             <h1 className="text-2xl font-extrabold tracking-tight uppercase" style={{ color: "#fff" }}>
               App Interfone
             </h1>
             <p className="text-sm mt-1" style={{ color: "#fff" }}>
-              Interfone Digital para Condomínios
+              INTERFONE DIGITAL VIA QR CODE
             </p>
           </div>
 
@@ -249,7 +245,7 @@ export default function Login() {
                   boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 }}
               >
-                <Building2 className="w-4.5 h-4.5" />
+                <Building2 size={18} />
                 Cadastrar Condomínio
               </button>
             </Link>

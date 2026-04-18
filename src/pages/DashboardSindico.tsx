@@ -3,13 +3,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { AppLogo } from "@/components/AppLogo";
 import FuncoesIndex from "@/components/FuncoesIndex";
 import ThemePicker from "@/components/ThemePicker";
 import {
   Home,
   LogOut,
   Shield,
-  Building2,
   Layers,
   Users2,
   Wrench,
@@ -17,8 +17,10 @@ import {
   UserPlus,
   UserCircle,
   Phone,
+  MessageCircle,
   Loader2,
 } from "lucide-react";
+import WelcomeWizard from "@/components/WelcomeWizard";
 
 interface BlocoRow { id: number; name: string; condominio_id: number }
 interface MoradorRow { id: number; block: string }
@@ -32,6 +34,7 @@ export default function DashboardSindico() {
   const [stats, setStats] = useState({ blocos: 0, funcionarios: 0, moradores: 0 });
   const [blocosList, setBlocosList] = useState<{ nome: string; moradores: number }[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,9 +72,7 @@ export default function DashboardSindico() {
       <header className="sticky top-0 z-40" style={{ background: p.headerBg, borderBottom: p.headerBorder, boxShadow: p.headerShadow, marginBottom: 0 }}>
         <div className="flex items-center justify-between" style={{ padding: "20px 28px", height: "5rem" }}>
           <div className="flex items-center" style={{ gap: 14 }}>
-            <div className="flex items-center justify-center" style={{ width: 48, height: 48, borderRadius: 16, background: p.iconBoxBg, border: p.iconBoxBorder }}>
-              <Building2 style={{ width: 22, height: 22, color: p.text }} />
-            </div>
+            <AppLogo size={48} rounded={16} background={p.iconBoxBg} border={typeof p.iconBoxBorder === "string" ? p.iconBoxBorder : undefined} />
             <div>
               <span className="block text-white" style={{ fontWeight: 800, fontSize: 20, letterSpacing: "-0.01em" }}>
                 {user?.condominio_nome || "Meu Condomínio"}
@@ -115,10 +116,12 @@ export default function DashboardSindico() {
 
       <main className="flex-1 overflow-x-hidden" style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: "10rem", paddingLeft: 16, paddingRight: 16, paddingTop: 20 }}>
 
-        <FuncoesIndex userRole={user?.role || "sindico"} />
+        <WelcomeWizard userRole={user?.role || "sindico"} condominioName={user?.condominio_nome} onSetupComplete={setSetupComplete} />
+
+        {setupComplete !== false && <FuncoesIndex userRole={user?.role || "sindico"} />}
 
         {/* ═══════════ ROW 1: Stat Cards ═══════════ */}
-        <div className="animate-fade-in grid grid-cols-2 sm:grid-cols-4" style={{ animationDelay: "0.1s", gap: 12 }}>
+        {setupComplete !== false && <div className="animate-fade-in grid grid-cols-2 sm:grid-cols-4" style={{ animationDelay: "0.1s", gap: 12 }}>
           {[
             { label: "Blocos", value: stats.blocos, icon: Layers, route: "/cadastros/blocos" },
             { label: "Funcionários", value: stats.funcionarios, icon: Wrench, route: "/cadastros/funcionarios" },
@@ -147,10 +150,10 @@ export default function DashboardSindico() {
             </button>
           ))}
 
-        </div>
+        </div>}
 
         {/* ═══════════ ROW 2: Distribuição + Blocos ═══════════ */}
-        <div className="animate-fade-in grid grid-cols-1 sm:grid-cols-2" style={{ animationDelay: "0.2s", gap: 16 }}>
+        {setupComplete !== false && <div className="animate-fade-in grid grid-cols-1 sm:grid-cols-2" style={{ animationDelay: "0.2s", gap: 16 }}>
           {/* Distribuição */}
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: p.accentBright, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>Distribuição</p>
@@ -238,15 +241,16 @@ export default function DashboardSindico() {
               ))}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* ═══════════ ROW 3: Feature Cards  ═══════════ */}
-        <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
+        {setupComplete !== false && <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: p.accentBright, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.08em" }}>Funções</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }} className="sindico-features-grid">
             {[
               { icon: UserPlus, label: "Cadastro", description: "Gerenciar moradores e funcionários", route: "/cadastros", delay: "0.15s" },
               { icon: Phone, label: "Interfone", description: "Configurar interfone digital", route: "/sindico/interfone-config", delay: "0.25s" },
+              { icon: MessageCircle, label: "Interfone WhatsApp", description: "Configurar interfone via WhatsApp", route: "/sindico/whatsapp-interfone", delay: "0.35s" },
             ].map((item) => (
               <div key={item.label} className="animate-fade-in" style={{ animationDelay: item.delay }}>
                 <button
@@ -281,7 +285,7 @@ export default function DashboardSindico() {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
       </main>
 

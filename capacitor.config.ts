@@ -39,6 +39,10 @@ const config: CapacitorConfig = {
         },
       ],
     },
+    // Force fetch/XMLHttpRequest through the native bridge on Android/iOS.
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
 };
 

@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
-import { buildWsUrl } from "@/lib/config";
+import { buildWsUrl, isNative } from "@/lib/config";
+import {
+  ensureMediaDevicesAvailable,
+  explainMediaError,
+  stopIncomingCallVibration,
+  vibrateIncomingCall,
+} from "@/lib/mediaDiagnostics";
 import { playRingtone as libPlayRingtone, stopRingtone as libStopRingtone } from "@/lib/ringtones";
 import {
   Phone,
@@ -172,7 +178,7 @@ export default function MoradorInterfone() {
         wsRef.current.close();
       }
 
-      const token = getToken();
+      const token = isNative ? getToken() : null;
       const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -349,9 +355,13 @@ export default function MoradorInterfone() {
     } catch {}
   };
 
-  const playRingtone = () => { libPlayRingtone(); };
+  const playRingtone = () => {
+    libPlayRingtone();
+    vibrateIncomingCall();
+  };
   const stopRingtone = () => {
     libStopRingtone();
+    stopIncomingCallVibration();
     globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   };
 
@@ -379,6 +389,7 @@ export default function MoradorInterfone() {
       if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
 
       // Morador only sends audio (no video) for privacy
+      ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
       console.log("[Morador] handleWebRTCOffer: got audio, tracks:", stream.getAudioTracks().length, "enabled:", stream.getAudioTracks()[0]?.enabled);
@@ -438,6 +449,9 @@ export default function MoradorInterfone() {
       }));
     } catch (err) {
       console.error("WebRTC morador error:", err);
+      const message = explainMediaError(err);
+      setViewState("ended");
+      window.alert(message);
     }
   };
 
@@ -592,6 +606,7 @@ export default function MoradorInterfone() {
       if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
       if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
 
+      ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
       console.log("[Morador] Got local audio stream, tracks:", stream.getAudioTracks().length);
@@ -643,6 +658,9 @@ export default function MoradorInterfone() {
       }));
     } catch (err) {
       console.error("[Morador] outgoing WebRTC error:", err);
+      const message = explainMediaError(err);
+      setViewState("ended");
+      window.alert(message);
     }
   };
 

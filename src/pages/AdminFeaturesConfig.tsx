@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { AppLogo } from "@/components/AppLogo";
 
 // ─── Feature definitions ─────────────────────────────────
 interface FeatureDef {
@@ -259,7 +260,7 @@ export default function AdminFeaturesConfig() {
                 flexShrink: 0,
               }}
             >
-              <Building2 className="w-5 h-5" style={{ color: "#ffffff" }} />
+              <AppLogo size={20} rounded={4} objectFit="cover" />
             </div>
             <div style={{ flex: 1, textAlign: "left" }}>
               <p style={{ fontSize: "11px", color: p.textMuted, marginBottom: "2px" }}>

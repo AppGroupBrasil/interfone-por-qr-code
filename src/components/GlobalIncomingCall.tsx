@@ -9,8 +9,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { buildWsUrl } from "@/lib/config";
+import { buildWsUrl, isNative } from "@/lib/config";
 import { getToken } from "@/lib/api";
+import { stopIncomingCallVibration, vibrateIncomingCall } from "@/lib/mediaDiagnostics";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
 const WS_URL = buildWsUrl("/ws/interfone");
@@ -38,30 +39,25 @@ export default function GlobalIncomingCall() {
   const playRingtone = useCallback(() => {
     try {
       if (!ringtoneRef.current) {
-        const ctx = new AudioContext();
-        // Simple ringtone oscillator
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 440;
-        gain.gain.value = 0.3;
-        osc.start();
-        // Store a ref to stop it
-        (ringtoneRef as any)._ctx = ctx;
-        (ringtoneRef as any)._osc = osc;
-        (ringtoneRef as any)._gain = gain;
+        const audio = new Audio("/sounds/ringtone-call.wav");
+        audio.loop = true;
+        audio.volume = 0.8;
+        audio.play().catch(() => {});
+        ringtoneRef.current = audio;
+        vibrateIncomingCall();
       }
     } catch {}
   }, []);
 
   const stopRingtone = useCallback(() => {
     try {
-      const osc = (ringtoneRef as any)?._osc;
-      const ctx = (ringtoneRef as any)?._ctx;
-      if (osc) { osc.stop(); (ringtoneRef as any)._osc = null; }
-      if (ctx) { ctx.close(); (ringtoneRef as any)._ctx = null; }
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+        ringtoneRef.current = null;
+      }
     } catch {}
+    stopIncomingCallVibration();
     // Also stop push ringtone (from Web Push notification)
     globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   }, []);
@@ -69,7 +65,7 @@ export default function GlobalIncomingCall() {
   const connectWs = useCallback(() => {
     if (!user || !isMorador || isOnInterfonePage) return;
 
-    const token = getToken();
+    const token = isNative ? getToken() : null;
     const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
     
     try {

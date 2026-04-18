@@ -4,6 +4,12 @@
  * and routes notification clicks to the correct page.
  */
 
+// ─── Lifecycle: take control immediately ───
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 // Phone-like vibration: 2s ring, 3s pause, repeated 5x
 const PHONE_VIBRATE = [];
 for (let i = 0; i < 5; i++) {
@@ -31,6 +37,15 @@ self.addEventListener("push", (event) => {
     requireInteraction: isCall,
     vibrate: isCall ? PHONE_VIBRATE : [200, 100, 200],
     data: payload.data || {},
+    // Action buttons for calls — allows answering directly from notification
+    actions: isCall
+      ? [
+          { action: "answer", title: "📞 Atender" },
+          { action: "reject", title: "❌ Recusar" },
+        ]
+      : [],
+    // Keep notification persistent for calls (Android)
+    silent: false,
   };
 
   event.waitUntil(
@@ -56,6 +71,23 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const data = event.notification.data || {};
+  const action = event.action; // "answer", "reject", or "" (body click)
+
+  // If user clicked "Reject" action — just dismiss, don't open the app
+  if (action === "reject") {
+    // Tell open clients to stop ringtone
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          client.postMessage({ type: "stop-ringtone" });
+          client.postMessage({ type: "call-rejected-from-push", callId: data.callId });
+        }
+      })
+    );
+    return;
+  }
+
+  // "answer" action or body click — open/focus the app
   let targetUrl = "/";
 
   if (data.type === "interfone-call") {

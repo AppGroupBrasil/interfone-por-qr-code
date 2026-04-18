@@ -82,7 +82,7 @@ function ensureDemoData() {
   // Create demo porteiro (funcionario)
   db.prepare(
     `INSERT INTO users (name, email, phone, password, role, perfil, unit, block, condominio_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run("Roberto Silva", "demo.porteiro@appinterfone.com", "(11) 99999-0002", hashedPw, "funcionario", null, null, null, condoId);
+  ).run("Roberto Silva", "demo.porteiro@appinterfone.com", "+351913899907", hashedPw, "funcionario", null, null, null, condoId);
 
   // Create demo moradores
   const moradores = [
@@ -166,11 +166,11 @@ try { ensureDemoData(); } catch (e) { console.warn("[DEMO] Demo data may already
 // Fix demo passwords: update from "demo123" to numeric "123456"
 try {
   const demoEmails = [
-    "demo.sindico@appinterfone.com",
-    "demo.porteiro@appinterfone.com",
-    "demo.morador@appinterfone.com",
-    "demo.morador2@appinterfone.com",
-    "demo.morador3@appinterfone.com",
+    "demo.sindico@portariax.com",
+    "demo.porteiro@portariax.com",
+    "demo.morador@portariax.com",
+    "demo.morador2@portariax.com",
+    "demo.morador3@portariax.com",
   ];
   const numericHash = bcrypt.hashSync("123456", 10);
   for (const em of demoEmails) {
@@ -183,9 +183,9 @@ try {
 } catch (e) { console.warn("[DEMO] Password migration error:", e); }
 
 const DEMO_EMAILS: Record<string, string> = {
-  sindico: "demo.sindico@appinterfone.com",
-  portaria: "demo.porteiro@appinterfone.com",
-  morador: "demo.morador@appinterfone.com",
+  sindico: "demo.sindico@portariax.com",
+  portaria: "demo.porteiro@portariax.com",
+  morador: "demo.morador@portariax.com",
 };
 
 router.post("/demo", (req, res) => {
@@ -657,7 +657,7 @@ router.post("/logout", (_req, res) => {
 // ─── UPDATE MY ACCOUNT ──────────────────────────────────
 router.put("/account", authenticate, async (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user!;
     const { name, phone, email, block, unit } = req.body;
 
     if (!name?.trim()) {
@@ -690,7 +690,7 @@ router.put("/account", authenticate, async (req, res) => {
 // ─── CHANGE PASSWORD ─────────────────────────────────────
 router.put("/account/password", authenticate, async (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user!;
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -730,7 +730,7 @@ router.put("/account/password", authenticate, async (req, res) => {
 // ─── DELETE MY ACCOUNT (morador only) ────────────────────
 router.delete("/account", authenticate, (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user!;
 
     if (user.role !== "morador") {
       res.status(403).json({ error: "Apenas moradores podem excluir sua própria conta." });

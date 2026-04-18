@@ -132,6 +132,10 @@ function logGateAction(
   ).run(condominioId, userId, userName, action, details || null);
 }
 
+function getAuthenticatedUser(req: Request) {
+  return req.user!;
+}
+
 // ─── POST /open — Pulsa o portão (ação principal) ────────
 router.post(
   "/open",
@@ -139,14 +143,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos antes de acionar novamente." });
         return;
       }
@@ -178,21 +183,21 @@ router.post(
       if (result.success) {
         logGateAction(
           condominioId,
-          req.user.id,
-          req.user.name,
+          user.id,
+          user.name,
           "open",
           visitorName ? `Visitante: ${visitorName}` : undefined
         );
 
         // WhatsApp: notify portaria about gate opening
         const msgGate = visitorName
-          ? `🚪 Portão aberto por ${req.user.name} — Visitante: ${visitorName}`
-          : `🚪 Portão aberto por ${req.user.name}`;
+          ? `🚪 Portão aberto por ${user.name} — Visitante: ${visitorName}`
+          : `🚪 Portão aberto por ${user.name}`;
         notifyPortariaWhatsApp(condominioId, "whatsapp_notify_gate_opened", msgGate);
 
         res.json({ success: true, message: "Portão aberto!" });
       } else {
-        logGateAction(condominioId, req.user.id, req.user.name, "open_failed", result.error);
+        logGateAction(condominioId, user.id, user.name, "open_failed", result.error);
         res.status(500).json({ error: "Falha ao abrir o portão. Tente novamente." });
       }
     } catch (err: any) {
@@ -209,7 +214,8 @@ router.post(
   authorize("master", "administradora", "sindico"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -229,7 +235,7 @@ router.post(
       const result = await toggleDevice(condominioId, creds, deviceId, state, channel);
 
       if (result.success) {
-        logGateAction(condominioId, req.user.id, req.user.name, `toggle_${state}`);
+        logGateAction(condominioId, user.id, user.name, `toggle_${state}`);
         res.json({ success: true, state });
       } else {
         res.status(500).json({ error: "Falha ao controlar dispositivo." });
@@ -248,7 +254,8 @@ router.get(
   authorize("master", "administradora", "sindico", "funcionario"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -291,7 +298,8 @@ router.get(
   authorize("master", "administradora", "sindico", "funcionario"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -330,7 +338,8 @@ router.get(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -359,14 +368,15 @@ router.put(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       const updates = req.body as Record<string, string>;
-      const isMaster = req.user.role === "master";
+      const isMaster = user.role === "master";
 
       const upsert = db.prepare(`
         INSERT INTO condominio_config (condominio_id, key, value, updated_at)
@@ -387,7 +397,7 @@ router.put(
       });
       tx();
 
-      logGateAction(condominioId, req.user.id, req.user.name, "config_updated");
+      logGateAction(condominioId, user.id, user.name, "config_updated");
 
       res.json({ success: true, message: "Configuração atualizada." });
     } catch (err: any) {
@@ -732,7 +742,8 @@ router.post(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -775,13 +786,14 @@ router.get(
   authorize("master", "administradora", "sindico", "funcionario", "morador"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
-      const userRole = req.user.role;
+      const userRole = user.role;
       const isSindico = ["master", "administradora", "sindico"].includes(userRole);
 
       let rows;
@@ -822,7 +834,8 @@ router.post(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -869,7 +882,8 @@ router.put(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -932,7 +946,8 @@ router.delete(
   authorize("master", "administradora", "sindico"),
   (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
@@ -966,14 +981,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario", "morador"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit — impede acionamentos rápidos demais (5s cooldown)
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos antes de acionar novamente." });
         return;
       }
@@ -989,7 +1005,7 @@ router.post(
       }
 
       // For moradores using manual/biometric open, check allow_manual_open
-      const userRole = req.user.role;
+      const userRole = user.role;
       const openMethod = req.body?.method || "button";
 
       // Botoeira permission check — separate for morador vs portaria
@@ -1048,21 +1064,21 @@ router.post(
       if (result.success) {
         logGateAction(
           condominioId,
-          req.user.id,
-          req.user.name,
+          user.id,
+          user.name,
           actionType,
           `Acesso: ${ap.name} (${openMethod})`
         );
 
         // WhatsApp: notify portaria about access point opening
-        notifyPortariaWhatsApp(condominioId, "whatsapp_notify_gate_opened", `🚪 ${ap.name} aberto por ${req.user.name} (${openMethod})`);
+        notifyPortariaWhatsApp(condominioId, "whatsapp_notify_gate_opened", `🚪 ${ap.name} aberto por ${user.name} (${openMethod})`);
 
         res.json({ success: true, message: `${ap.name} aberto!` });
       } else {
         logGateAction(
           condominioId,
-          req.user.id,
-          req.user.name,
+          user.id,
+          user.name,
           "access_point_open_failed",
           `Acesso: ${ap.name} — ${result.error}`
         );
@@ -1082,14 +1098,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario", "morador"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit — impede acionamentos rápidos demais (5s cooldown)
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos antes de acionar novamente." });
         return;
       }
@@ -1104,7 +1121,7 @@ router.post(
         return;
       }
 
-      const userRole = req.user.role;
+      const userRole = user.role;
       try {
         const roles = JSON.parse(ap.allowed_roles || "[]");
         if (!roles.includes(userRole) && userRole !== "master" && userRole !== "administradora") {
@@ -1135,8 +1152,8 @@ router.post(
       if (result.success) {
         logGateAction(
           condominioId,
-          req.user.id,
-          req.user.name,
+          user.id,
+          user.name,
           `toggle_${state}`,
           `Acesso: ${ap.name}`
         );
@@ -1158,14 +1175,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos entre leituras." });
         return;
       }
@@ -1262,7 +1280,7 @@ router.post(
 
       if (result.success) {
         logGateAction(
-          condominioId, req.user.id, req.user.name,
+          condominioId, user.id, user.name,
           "face_open",
           `Reconhecimento facial: ${matchName} (${matchSource}) → ${ap.name}`
         );
@@ -1275,7 +1293,7 @@ router.post(
           message: `${matchName} reconhecido(a)! ${ap.name} aberto.`
         });
       } else {
-        logGateAction(condominioId, req.user.id, req.user.name, "face_open_failed", `${matchName} → ${ap.name}: ${result.error}`);
+        logGateAction(condominioId, user.id, user.name, "face_open_failed", `${matchName} → ${ap.name}: ${result.error}`);
         res.json({ matched: true, opened: false, person: matchName, error: `Falha ao abrir ${ap.name}.` });
       }
     } catch (err: any) {
@@ -1292,14 +1310,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos entre leituras." });
         return;
       }
@@ -1391,7 +1410,7 @@ router.post(
 
       if (result.success) {
         logGateAction(
-          condominioId, req.user.id, req.user.name,
+          condominioId, user.id, user.name,
           "lpr_open",
           `LPR: ${cleanPlaca} (${vehicle.motorista_nome || vehicle.morador_name}) → ${ap.name}`
         );
@@ -1402,7 +1421,7 @@ router.post(
           message: `Placa ${cleanPlaca} autorizada! ${ap.name} aberto.`
         });
       } else {
-        logGateAction(condominioId, req.user.id, req.user.name, "lpr_open_failed", `${cleanPlaca} → ${ap.name}: ${result.error}`);
+        logGateAction(condominioId, user.id, user.name, "lpr_open_failed", `${cleanPlaca} → ${ap.name}: ${result.error}`);
         res.json({ found: true, authorized: true, opened: false, vehicle, error: `Falha ao abrir ${ap.name}.` });
       }
     } catch (err: any) {
@@ -1419,14 +1438,15 @@ router.post(
   authorize("master", "administradora", "sindico", "funcionario", "morador"),
   async (req: Request, res: Response) => {
     try {
-      const condominioId = req.user.condominio_id;
+      const user = getAuthenticatedUser(req);
+      const condominioId = user.condominio_id;
       if (!condominioId) {
         res.status(400).json({ error: "Condomínio não configurado." });
         return;
       }
 
       // Rate limit
-      if (!checkOpenCooldown(req.user.id)) {
+      if (!checkOpenCooldown(user.id)) {
         res.status(429).json({ error: "Aguarde alguns segundos antes de acionar novamente." });
         return;
       }
@@ -1449,7 +1469,7 @@ router.post(
       }
 
       // Check role permission
-      const userRole = req.user.role;
+      const userRole = user.role;
       try {
         const roles = JSON.parse(ap.allowed_roles || "[]");
         if (!roles.includes(userRole) && userRole !== "master" && userRole !== "administradora") {
@@ -1475,7 +1495,7 @@ router.post(
       }
 
       // Get user's stored face descriptor
-      const userRow = db.prepare("SELECT face_descriptor FROM users WHERE id = ?").get(req.user.id) as any;
+      const userRow = db.prepare("SELECT face_descriptor FROM users WHERE id = ?").get(user.id) as any;
       if (!userRow || !userRow.face_descriptor) {
         res.json({ matched: false, opened: false, error: "Você precisa cadastrar seu rosto primeiro. Acesse 'Cadastrar Rosto' na Portaria Virtual." });
         return;
@@ -1491,11 +1511,11 @@ router.post(
       // Compare
       const storedDescriptor = JSON.parse(userRow.face_descriptor) as number[];
       const result = compareFaces(selfieDescriptor, [
-        { id: req.user.id, nome: req.user.name, face_descriptor: storedDescriptor }
+        { id: user.id, nome: user.name, face_descriptor: storedDescriptor }
       ], 0.55);
 
       if (!result.matched) {
-        logGateAction(condominioId, req.user.id, req.user.name, "selfie_open_denied",
+        logGateAction(condominioId, user.id, user.name, "selfie_open_denied",
           `Selfie não correspondeu → ${ap.name} (similarity: ${result.similarity?.toFixed(2)})`);
         res.json({ matched: false, opened: false, similarity: result.similarity, error: "Rosto não corresponde ao cadastrado." });
         return;
@@ -1512,11 +1532,11 @@ router.post(
       const openResult = await pulseDevice(condominioId, creds, ap.device_id, duration, ap.channel);
 
       if (openResult.success) {
-        logGateAction(condominioId, req.user.id, req.user.name, "selfie_open",
+        logGateAction(condominioId, user.id, user.name, "selfie_open",
           `Selfie verificada → ${ap.name} aberto (similarity: ${result.similarity?.toFixed(2)})`);
         res.json({ matched: true, opened: true, similarity: result.similarity, message: `Identidade confirmada! ${ap.name} aberto.` });
       } else {
-        logGateAction(condominioId, req.user.id, req.user.name, "selfie_open_device_fail",
+        logGateAction(condominioId, user.id, user.name, "selfie_open_device_fail",
           `Selfie OK mas dispositivo falhou → ${ap.name}: ${openResult.error}`);
         res.json({ matched: true, opened: false, error: `Identidade confirmada, mas falha ao abrir ${ap.name}.` });
       }

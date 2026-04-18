@@ -168,7 +168,7 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
         sound: payload.sound || "default",
         priority: "max",
         defaultVibrateTimings: false,
-        vibrateTimingsMillis: ["0", "1000", "200", "1000", "3000", "1000", "200", "1000"],
+        vibrateTimingsMillis: [0, 1000, 200, 1000, 3000, 1000, 200, 1000],
       },
     },
     apns: {

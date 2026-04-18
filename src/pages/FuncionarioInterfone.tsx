@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
-import { buildWsUrl } from "@/lib/config";
+import { buildWsUrl, isNative } from "@/lib/config";
+import {
+  ensureMediaDevicesAvailable,
+  explainMediaError,
+  stopIncomingCallVibration,
+  vibrateIncomingCall,
+} from "@/lib/mediaDiagnostics";
 import { playRingtone as libPlayRingtone, stopRingtone as libStopRingtone } from "@/lib/ringtones";
 import {
   Phone,
@@ -106,6 +112,8 @@ export default function FuncionarioInterfone() {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const callStateRef = useRef<CallState>("idle");
   const connectRef = useRef<(() => void) | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const manualWsCloseRef = useRef(false);
 
   // Keep callStateRef in sync
   useEffect(() => { callStateRef.current = callState; }, [callState]);
@@ -175,18 +183,23 @@ export default function FuncionarioInterfone() {
     if (!user) return;
 
     const connect = () => {
-      // Close any previous orphaned WS
-      if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-        wsRef.current.onclose = null; // prevent reconnect loop
-        wsRef.current.close();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
 
-      const token = getToken();
+      if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+        return;
+      }
+
+      const token = isNative ? getToken() : null;
       const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
+      manualWsCloseRef.current = false;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (wsRef.current !== ws) return;
         setWsConnected(true);
         ws.send(JSON.stringify({
           type: "register-funcionario",
@@ -259,6 +272,11 @@ export default function FuncionarioInterfone() {
               startOutgoingWebRTC(incomingCallRef.current?.callId || "", "morador");
             }
             break;
+          case "resend-offer":
+            // Morador reconnected after handoff — resend WebRTC offer
+            console.log("[Portaria] resend-offer received, callId:", msg.callId);
+            startOutgoingWebRTC(msg.callId, "morador");
+            break;
           case "call-rejected":
             if (isOutgoingCallRef.current) {
               setCallState("ended");
@@ -270,30 +288,43 @@ export default function FuncionarioInterfone() {
             setCallState("idle");
             setIsOutgoingCall(false);
             break;
+          case "call-waiting-push":
+            // Morador offline but push was sent — keep ringing
+            console.log("[Portaria] Push sent to morador, waiting...");
+            break;
         }
       };
 
       ws.onclose = () => {
         // Only reconnect if this is still the active WS
         if (wsRef.current !== ws) return;
+        wsRef.current = null;
         setWsConnected(false);
+        if (manualWsCloseRef.current) return;
         // Auto-reconnect after 3 seconds (even if hidden — keep alive during calls)
-        setTimeout(() => {
-          if (wsRef.current !== ws) return; // another connect already happened
+        reconnectTimerRef.current = setTimeout(() => {
           const cs = callStateRef.current;
-          if (document.visibilityState !== "hidden" || cs === "connected" || cs === "calling" || cs === "ringing") {
+          if (!wsRef.current && (document.visibilityState !== "hidden" || cs === "connected" || cs === "calling" || cs === "ringing")) {
             connect();
           }
         }, 3000);
       };
 
-      ws.onerror = () => setWsConnected(false);
+      ws.onerror = () => {
+        if (wsRef.current !== ws) return;
+        setWsConnected(false);
+      };
     };
 
     connectRef.current = connect;
     connect();
 
     return () => {
+      manualWsCloseRef.current = true;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (wsRef.current) {
         const ws = wsRef.current;
         wsRef.current = null;
@@ -306,8 +337,14 @@ export default function FuncionarioInterfone() {
   }, [user]);
 
   // Ringtone (via biblioteca centralizada)
-  const playRingtone = () => { libPlayRingtone(); };
-  const stopRingtone = () => { libStopRingtone(); };
+  const playRingtone = () => {
+    libPlayRingtone();
+    vibrateIncomingCall();
+  };
+  const stopRingtone = () => {
+    libStopRingtone();
+    stopIncomingCallVibration();
+  };
 
   // Helper: assign remote audio stream to audio element
   const playRemoteAudio = (track: MediaStreamTrack, streams: readonly MediaStream[]) => {
@@ -333,6 +370,7 @@ export default function FuncionarioInterfone() {
       if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
       if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
 
+      ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
@@ -391,6 +429,9 @@ export default function FuncionarioInterfone() {
       }));
     } catch (err) {
       console.error("[Portaria] WebRTC error:", err);
+      const message = explainMediaError(err);
+      setCallState("ended");
+      window.alert(message);
     }
   };
 
@@ -523,6 +564,7 @@ export default function FuncionarioInterfone() {
       if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
       if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
 
+      ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
       console.log("[Portaria] Got local audio stream, tracks:", stream.getAudioTracks().length);
@@ -574,6 +616,9 @@ export default function FuncionarioInterfone() {
       }));
     } catch (err) {
       console.error("[Portaria] outgoing WebRTC error:", err);
+      const message = explainMediaError(err);
+      setCallState("ended");
+      window.alert(message);
     }
   };
 
@@ -586,6 +631,36 @@ export default function FuncionarioInterfone() {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const getCallStatusMeta = (status: string) => {
+    if (status === "atendida") {
+      return {
+        label: "Atendida",
+        iconBg: "rgba(16,185,129,0.12)",
+        iconColor: "#10b981",
+        badgeBg: "rgba(16,185,129,0.14)",
+        badgeColor: "#047857",
+      };
+    }
+
+    if (status === "recusada") {
+      return {
+        label: "Recusada",
+        iconBg: "rgba(239,68,68,0.12)",
+        iconColor: "#ef4444",
+        badgeBg: "rgba(239,68,68,0.14)",
+        badgeColor: "#b91c1c",
+      };
+    }
+
+    return {
+      label: "Não atendida",
+      iconBg: "rgba(100,116,139,0.12)",
+      iconColor: "#64748b",
+      badgeBg: "rgba(100,116,139,0.14)",
+      badgeColor: "#475569",
+    };
   };
 
   return (
@@ -864,120 +939,129 @@ export default function FuncionarioInterfone() {
         {/* MORADOR LIST MODAL — Premium */}
         {showMoradorList && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", padding: "1rem 0.25cm" }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowMoradorList(false); }}
           >
             <div
               className="w-full flex flex-col overflow-hidden"
               style={{
-                maxWidth: "calc(440px + 2cm)",
-                maxHeight: "85vh",
-                borderRadius: 24,
-                background: "linear-gradient(170deg, rgba(0,53,128,0.95) 0%, rgba(0,30,72,0.98) 100%)",
-                boxShadow: "0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1)",
-                animation: "fadeInScale 0.25s ease-out",
+                maxWidth: 420,
+                maxHeight: "80vh",
+                borderRadius: "20px 20px 0 0",
+                background: isDark ? "#1e293b" : "#ffffff",
+                boxShadow: "0 -4px 40px rgba(0,0,0,0.2)",
+                animation: "fadeInSlide 0.3s ease-out",
               }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between pb-3" style={{ paddingTop: "calc(1.25rem + 1cm)", paddingLeft: "calc(1.25rem + 1cm)", paddingRight: "calc(1.25rem + 1cm)" }}>
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <div style={{ padding: "24px 24px 0" }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ background: isDark ? "rgba(255,255,255,0.12)" : "#f0f4f8" }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg, #0062d1, #003d99)" }}
                     >
-                      <Building className="w-4 h-4 text-blue-200" />
+                      <PhoneCall className="w-5 h-5 text-white" />
                     </div>
-                    Ligar para Morador
-                  </h3>
-                  <p className="text-[13px] text-white ml-10" style={{ marginTop: "0.5cm" }}>Selecione para iniciar chamada</p>
+                    <div>
+                      <h3 className="text-base font-bold" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                        Ligar para Morador
+                      </h3>
+                      <p className="text-xs" style={{ color: isDark ? "#94a3b8" : "#64748b" }}>
+                        Selecione para iniciar chamada
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowMoradorList(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
+                    style={{ background: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9" }}
+                  >
+                    <X className="w-4 h-4" style={{ color: isDark ? "#94a3b8" : "#64748b" }} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowMoradorList(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90"
-                  style={{ background: "rgba(255,255,255,0.1)" }}
-                >
-                  <X className="w-4 h-4 text-blue-200" />
-                </button>
-              </div>
 
-              {/* Search */}
-              <div style={{ marginTop: "0.5cm", marginBottom: "0.5cm", paddingLeft: "calc(1.25rem + 1cm)", paddingRight: "calc(1.25rem + 1cm)" }}>
+                {/* Search */}
                 <div
-                  className="flex items-center gap-2.5 px-3.5 rounded-xl"
-                  style={{ background: p.btnBg, border: p.btnBorder, paddingTop: "0.4cm", paddingBottom: "0.4cm" }}
+                  className="flex items-center gap-2.5 rounded-xl"
+                  style={{
+                    padding: "12px 14px",
+                    marginTop: 20,
+                    marginBottom: 20,
+                    background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
+                    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0",
+                  }}
                 >
-                  <Search className="w-4 h-4 text-blue-300/60 shrink-0" />
+                  <Search className="w-4 h-4 shrink-0" style={{ color: isDark ? "#64748b" : "#94a3b8" }} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar por nome, bloco ou apto..."
-                    className="flex-1 bg-transparent text-sm text-white placeholder:text-blue-300/40 outline-none"
+                    className="flex-1 bg-transparent text-sm outline-none"
+                    style={{ color: isDark ? "#f1f5f9" : "#1e293b" }}
                     autoFocus
                   />
                 </div>
+
+                {/* Divider */}
+                <div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0" }} />
               </div>
 
-              {/* Divider */}
-              <div style={{ height: 1, background: p.btnBg, marginLeft: "calc(1.25rem + 1cm)", marginRight: "calc(1.25rem + 1cm)" }} />
-
               {/* List */}
-              <div className="flex-1 overflow-y-auto" style={{ maxHeight: "55vh", paddingTop: "0.5cm", paddingBottom: "0.5cm", paddingLeft: "calc(1rem + 1cm)", paddingRight: "calc(1rem + 1cm)" }}>
+              <div className="flex-1 overflow-y-auto" style={{ padding: "16px 24px" }}>
                 {filteredMoradores.length === 0 ? (
                   <div className="text-center py-10">
                     <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                      style={{ background: p.surfaceBg }}
+                      className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                      style={{ background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9" }}
                     >
-                      <User className="w-6 h-6 text-blue-300/50" />
+                      <User className="w-5 h-5" style={{ color: isDark ? "#475569" : "#94a3b8" }} />
                     </div>
-                    <p className="text-sm text-blue-200/60 font-medium">Nenhum morador encontrado</p>
-                    <p className="text-xs text-blue-300/40 mt-1">Tente outro nome ou apartamento</p>
+                    <p className="text-sm font-medium" style={{ color: isDark ? "#94a3b8" : "#64748b" }}>Nenhum morador encontrado</p>
+                    <p className="text-xs mt-1" style={{ color: isDark ? "#475569" : "#94a3b8" }}>Tente outro nome ou apartamento</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col" style={{ gap: "0.5cm" }}>
+                  <div className="flex flex-col gap-3">
                     {filteredMoradores.map((m, idx) => (
                       <button
                         key={m.id}
                         onClick={() => handleCallMorador(m)}
-                        className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-95"
+                        className="w-full flex items-center gap-3 text-left rounded-xl transition-all hover:scale-[1.01] active:scale-[0.98]"
                         style={{
-                          background: p.surfaceBg,
-                          border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #cbd5e1",
-                          animationDelay: `${idx * 50}ms`,
+                          padding: "12px",
+                          background: isDark ? "rgba(255,255,255,0.04)" : "#f8fafc",
+                          border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0",
+                          animationDelay: `${idx * 40}ms`,
                         }}
                       >
-                        {/* Avatar with gradient ring */}
+                        {/* Avatar */}
                         <div className="relative shrink-0">
                           <div
-                            className="w-11 h-11 rounded-full flex items-center justify-center"
-                            style={{
-                              background: "linear-gradient(135deg, #1e6fd9 0%, #003580 100%)",
-                              boxShadow: "0 2px 8px rgba(0,53,128,0.4)",
-                            }}
+                            className="w-9 h-9 rounded-full flex items-center justify-center"
+                            style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)" }}
                           >
-                            <User className="w-5 h-5 text-white" />
+                            <User className="w-4 h-4 text-white" />
                           </div>
                           <div
-                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-                            style={{ background: "#10b981", border: "2px solid rgba(0,30,72,0.98)" }}
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                            style={{ background: "#10b981", border: isDark ? "2px solid #1e293b" : "2px solid #f8fafc" }}
                           />
                         </div>
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-white truncate">{m.name}</p>
-                          <p className="text-[11px] text-blue-300/60 mt-0.5">
+                          <p className="text-sm font-semibold truncate" style={{ color: isDark ? "#f1f5f9" : "#1e293b" }}>{m.name}</p>
+                          <p className="text-xs mt-0.5" style={{ color: "#64748b" }}>
                             Bloco {m.block} · Apto {m.unit}
                           </p>
                         </div>
-                        {/* Call icon */}
+                        {/* Call button */}
                         <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all"
-                          style={{ background: "rgba(16,185,129,0.15)" }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: isDark ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.1)" }}
                         >
-                          <PhoneCall className="w-4 h-4" style={{ color: "#10b981" }} />
+                          <PhoneCall className="w-3.5 h-3.5" style={{ color: "#10b981" }} />
                         </div>
                       </button>
                     ))}
@@ -986,18 +1070,23 @@ export default function FuncionarioInterfone() {
               </div>
 
               {/* Footer count */}
-              <div className="py-3 text-center" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingLeft: "calc(1.25rem + 1cm)", paddingRight: "calc(1.25rem + 1cm)" }}>
-                <p className="text-[11px] text-blue-300/40">
-                  {filteredMoradores.length} morador{filteredMoradores.length !== 1 ? "es" : ""} disponível{filteredMoradores.length !== 1 ? "eis" : ""}
+              <div className="text-center" style={{ padding: "14px 24px 20px", borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0" }}>
+                <p className="text-xs" style={{ color: isDark ? "#475569" : "#94a3b8" }}>
+                  {filteredMoradores.length} morador{filteredMoradores.length !== 1 ? "es" : ""} disponíve{filteredMoradores.length !== 1 ? "is" : "l"}
                 </p>
               </div>
             </div>
 
-            {/* Keyframe animation */}
             <style>{`
-              @keyframes fadeInScale {
-                from { opacity: 0; transform: scale(0.92) translateY(12px); }
-                to   { opacity: 1; transform: scale(1) translateY(0); }
+              @keyframes fadeInSlide {
+                from { opacity: 0; transform: translateY(40px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+              @media (min-width: 640px) {
+                @keyframes fadeInSlide {
+                  from { opacity: 0; transform: scale(0.95); }
+                  to   { opacity: 1; transform: scale(1); }
+                }
               }
             `}</style>
           </div>
@@ -1007,56 +1096,144 @@ export default function FuncionarioInterfone() {
         {/* CALL HISTORY */}
         {/* ═══════════════════════════════════ */}
         <div style={{ marginTop: "0.5cm" }}>
-          <h3 className="text-sm font-bold flex items-center gap-2" style={{ marginBottom: "0.5cm", color: p.text }}>
-            <History className="w-4 h-4" style={{ color: p.text }} /> Últimas Chamadas
-          </h3>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginBottom: "0.5cm",
+            }}
+          >
+            <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: p.text }}>
+              <History className="w-4 h-4" style={{ color: p.text }} /> Últimas Chamadas
+            </h3>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "6px 10px",
+                borderRadius: "999px",
+                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
+                color: p.textSecondary,
+              }}
+            >
+              {callHistory.length} registro{callHistory.length === 1 ? "" : "s"}
+            </span>
+          </div>
           {callHistory.length === 0 ? (
             <div className="text-center py-8 rounded-xl" style={{ background: "var(--card)" }}>
               <Phone className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Nenhuma chamada registrada</p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5cm" }}>
-              {callHistory.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: "var(--card)" }}
-                >
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {callHistory.map((log) => {
+                const statusMeta = getCallStatusMeta(log.status);
+                const createdAt = new Date(log.created_at);
+
+                return (
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    key={log.id}
                     style={{
-                      background: log.status === "atendida" ? "rgba(16,185,129,0.1)"
-                        : log.status === "recusada" ? "rgba(239,68,68,0.1)"
-                        : "rgba(100,116,139,0.1)",
+                      background: "var(--card)",
+                      borderRadius: "18px",
+                      padding: "16px 18px",
+                      boxShadow: isDark ? "0 10px 24px rgba(0,0,0,0.14)" : "0 10px 24px rgba(15,23,42,0.06)",
+                      border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.06)",
                     }}
                   >
-                    <Phone
-                      className="w-4 h-4"
-                      style={{
-                        color: log.status === "atendida" ? "#10b981"
-                          : log.status === "recusada" ? "#ef4444"
-                          : "#64748b",
-                      }}
-                    />
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+                      <div
+                        className="shrink-0"
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          borderRadius: "14px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: statusMeta.iconBg,
+                        }}
+                      >
+                        <Phone className="w-4 h-4" style={{ color: statusMeta.iconColor }} />
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            justifyContent: "space-between",
+                            gap: "12px",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <p className="text-sm font-bold text-foreground truncate">
+                              {log.visitante_nome || "Visitante"}
+                            </p>
+                            <p style={{ fontSize: "12px", color: p.textSecondary, marginTop: "3px" }}>
+                              Bloco {log.bloco} · Apto {log.apartamento}
+                            </p>
+                          </div>
+
+                          <span
+                            className="shrink-0"
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              padding: "6px 10px",
+                              borderRadius: "999px",
+                              background: statusMeta.badgeBg,
+                              color: statusMeta.badgeColor,
+                            }}
+                          >
+                            {statusMeta.label}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            flexWrap: "wrap",
+                            paddingTop: "10px",
+                            borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(15,23,42,0.08)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            {log.duracao_segundos > 0 && (
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  color: p.textSecondary,
+                                  background: isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)",
+                                  padding: "5px 9px",
+                                  borderRadius: "999px",
+                                }}
+                              >
+                                Duração {formatTime(log.duracao_segundos)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ textAlign: "right" }}>
+                            <p style={{ fontSize: "11px", color: p.textSecondary, fontWeight: 600 }}>
+                              {createdAt.toLocaleDateString("pt-BR")}
+                            </p>
+                            <p style={{ fontSize: "11px", color: p.textMuted }}>
+                              {createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{log.visitante_nome || "Visitante"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Bloco {log.bloco} · {log.apartamento}
-                      {log.duracao_segundos > 0 && ` · ${formatTime(log.duracao_segundos)}`}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(log.created_at).toLocaleDateString("pt-BR")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(log.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

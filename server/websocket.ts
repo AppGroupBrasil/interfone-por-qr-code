@@ -28,8 +28,45 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | n
 }
 
 /** Verify JWT from WebSocket upgrade request and return user or null.
- *  Checks: 1) ?token= query param (Capacitor), 2) Cookie header (web) */
+ *  Checks: 1) ?token= query param (Capacitor), 2) Cookie header (web)
+ *  Handles both regular user tokens ({ userId }) and funcionario tokens ({ funcId }) */
 function authenticateWs(req: IncomingMessage): DbUser | null {
+  const cookieToken = parseCookie(req.headers.cookie, COOKIE_NAME);
+
+  const resolveUserFromToken = (token: string | null): DbUser | null => {
+    if (!token) return null;
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number };
+
+    if (decoded.userId) {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(decoded.userId) as DbUser | undefined;
+      return user || null;
+    }
+
+    if (decoded.funcId) {
+      const func = db.prepare("SELECT * FROM funcionarios WHERE id = ?").get(decoded.funcId) as any;
+      if (!func) return null;
+      return {
+        id: func.id,
+        name: `${func.nome} ${func.sobrenome || ""}`.trim(),
+        email: func.login,
+        password: func.password,
+        role: "funcionario",
+        perfil: func.cargo || null,
+        condominio_id: func.condominio_id,
+        parent_administradora_id: null,
+        avatar_url: null,
+        block: null,
+        unit: null,
+        phone: null,
+        cpf: null,
+        created_at: func.created_at || "",
+        updated_at: func.updated_at || "",
+      } as DbUser;
+    }
+
+    return null;
+  };
+
   try {
     // 1) Try token from query string (Capacitor / mobile app)
     let token: string | null = null;
@@ -37,14 +74,17 @@ function authenticateWs(req: IncomingMessage): DbUser | null {
       const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
       token = url.searchParams.get("token");
     } catch {}
-    // 2) Fall back to cookie (web browser)
-    if (!token) {
-      token = parseCookie(req.headers.cookie, COOKIE_NAME);
+
+    if (token) {
+      try {
+        return resolveUserFromToken(token);
+      } catch {
+        token = null;
+      }
     }
-    if (!token) return null;
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(decoded.userId) as DbUser | undefined;
-    return user || null;
+
+    // 2) Fall back to cookie (web browser)
+    return resolveUserFromToken(cookieToken);
   } catch {
     return null;
   }
@@ -140,6 +180,13 @@ export function initSignalingServer(_server?: Server) {
               console.log(`  [WS] Handoff resumed: moradorId=${authUser.id} callId=${handoff.callId}`);
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
               ws.send(JSON.stringify({ type: "call-resumed", callId: handoff.callId }));
+
+              // Notify the peer (visitor/portaria) to resend WebRTC offer
+              const peer = findPeerByCallId(handoff.callId, clientId);
+              if (peer) {
+                console.log(`  [WS] Asking peer to resend offer for callId=${handoff.callId}`);
+                peer.ws.send(JSON.stringify({ type: "resend-offer", callId: handoff.callId }));
+              }
             } else {
               pendingHandoffs.delete(authUser.id); // clean up expired
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
@@ -147,7 +194,7 @@ export function initSignalingServer(_server?: Server) {
 
             // Check for pending push call (visitor called while morador was offline)
             for (const [pcCallId, pc] of pendingPushCalls) {
-              if (pc.moradorId === authUser.id && (Date.now() - pc.timestamp < 60000)) {
+              if (pc.moradorId === authUser.id && (Date.now() - pc.timestamp < 120000)) {
                 console.log(`  [WS] Push call found: moradorId=${authUser.id} callId=${pcCallId}`);
                 client.callId = pcCallId;
                 pendingPushCalls.delete(pcCallId);
@@ -431,7 +478,33 @@ export function initSignalingServer(_server?: Server) {
                 callerClientId: clientId,
               }));
             } else {
-              ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+              // Morador offline — send push notification
+              console.log(`  [WS] Internal call: morador ${targetUserId} offline, sending push...`);
+              pendingPushCalls.set(iCallId, {
+                callId: iCallId, visitorClientId: clientId, moradorId: targetUserId,
+                visitanteNome: iCallerName || authUser.name || "Portaria",
+                visitanteEmpresa: null, visitanteFoto: null,
+                nivelSeguranca: 0, bloco: "", apartamento: "",
+                timestamp: Date.now(),
+              });
+              sendPushToUser(targetUserId, {
+                title: "📞 Chamada da Portaria",
+                body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
+                data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
+                channelId: "interfone_calls",
+                sound: "ringtone",
+              }).then((sent) => {
+                console.log(`  [WS] Push sent to moradorId=${targetUserId}: ${sent} device(s)`);
+                if (sent === 0) {
+                  pendingPushCalls.delete(iCallId);
+                  ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+                } else {
+                  ws.send(JSON.stringify({ type: "call-waiting-push", callId: iCallId }));
+                }
+              }).catch(() => {
+                pendingPushCalls.delete(iCallId);
+                ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+              });
             }
             break;
           }

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
+import { AppLogo } from "@/components/AppLogo";
 import {
   ArrowLeft,
   Plus,
@@ -501,7 +502,7 @@ export default function SindicoInterfoneConfig() {
         {/* ═══ CONDOMINIUM-WIDE QR CODE ═══ */}
         <div style={{ marginBottom: "1.2rem" }}>
           <h2 className="font-bold flex items-center gap-2" style={{ color: "#10b981", fontSize: "16px", marginBottom: "0.6rem" }}>
-            <Building2 className="w-5 h-5" /> QR Code da Entrada Principal
+            <AppLogo size={20} rounded={4} objectFit="cover" /> QR Code da Entrada Principal
           </h2>
           <p style={{ fontSize: "14px", marginBottom: "0.8rem", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>
             QR Code único para a <strong>entrada do condomínio</strong>. O visitante escolhe o bloco e depois o apartamento.
@@ -647,7 +648,7 @@ export default function SindicoInterfoneConfig() {
             {missingBlocks.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
                 <h2 className="font-bold flex items-center gap-2" style={{ fontSize: "16px", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>
-                  <Building2 className="w-5 h-5" /> Blocos sem QR Code ({missingBlocks.length})
+                  <AppLogo size={20} rounded={4} objectFit="cover" /> Blocos sem QR Code ({missingBlocks.length})
                 </h2>
                 {missingBlocks.map((block) => (
                   <div
@@ -677,7 +678,7 @@ export default function SindicoInterfoneConfig() {
 
             {blocks.length === 0 && (
               <div className="text-center py-12">
-                <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <AppLogo size={48} rounded={12} style={{ margin: "0 auto 12px" }} />
                 <p style={{ fontSize: "14px", marginBottom: "0.6rem", color: isDark ? "rgba(255,255,255,0.7)" : "#475569" }}>Nenhum bloco cadastrado</p>
                 <button
                   onClick={() => navigate("/cadastros/blocos")}

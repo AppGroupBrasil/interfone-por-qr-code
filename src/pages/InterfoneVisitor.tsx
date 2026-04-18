@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { buildWsUrl } from "@/lib/config";
 import { compressCanvas } from "@/lib/imageUtils";
+import { AppLogo } from "@/components/AppLogo";
 import {
   Phone,
   PhoneOff,
@@ -24,6 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { ensureMediaDevicesAvailable, explainMediaError } from "@/lib/mediaDiagnostics";
 import { useTheme } from "@/hooks/useTheme";
 
 const API = "/api";
@@ -99,6 +101,7 @@ export default function InterfoneVisitor() {
 
   // Portaria direct call
   const [isPortariaCall, setIsPortariaCall] = useState(false);
+  const [pushSent, setPushSent] = useState(false);
 
   // Call state
   const [callState, setCallState] = useState<CallState>("idle");
@@ -176,8 +179,20 @@ export default function InterfoneVisitor() {
           cleanup();
           break;
         case "call-waiting-push":
-          // Morador was offline but push was sent — keep ringing, they may open the app
-          console.log("[Visitor] Push sent to morador, waiting...");
+          // Morador was offline but push was sent — extend timeout to 90s for push delivery
+          console.log("[Visitor] Push sent to morador, extending timeout to 90s...");
+          setPushSent(true);
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setCallingCountdown(90);
+          countdownRef.current = setInterval(() => {
+            setCallingCountdown((prev) => Math.max(0, prev - 1));
+          }, 1000);
+          timeoutRef.current = setTimeout(() => {
+            setCallState("timeout");
+            callStateRef.current = "timeout";
+            cleanup();
+          }, 90000);
           break;
         case "auth-accepted":
           setCallState("calling");
@@ -200,6 +215,11 @@ export default function InterfoneVisitor() {
           if (pcRef.current && msg.candidate) {
             pcRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate));
           }
+          break;
+        case "resend-offer":
+          // Morador reconnected after handoff — resend WebRTC offer
+          console.log("[Visitor] resend-offer received, reinitializing WebRTC");
+          initWebRTC();
           break;
         case "call-ended":
           setCallState("ended");
@@ -243,6 +263,7 @@ export default function InterfoneVisitor() {
   // Initialize WebRTC (visitor sends video + audio, receives only audio)
   const initWebRTC = async () => {
     try {
+      ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
       if (videoRef.current) {
@@ -262,9 +283,15 @@ export default function InterfoneVisitor() {
 
       // Receive remote audio from morador
       pc.ontrack = (event) => {
-        if (remoteAudioRef.current && event.streams[0]) {
-          remoteAudioRef.current.srcObject = event.streams[0];
-        }
+        if (!remoteAudioRef.current) return;
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        remoteAudioRef.current.srcObject = stream;
+        remoteAudioRef.current.volume = 1.0;
+        remoteAudioRef.current.play().then(() => {
+          console.log("[Visitor] Remote audio playing");
+        }).catch((e) => {
+          console.warn("[Visitor] Remote audio play blocked:", e);
+        });
       };
 
       // ICE candidates
@@ -291,6 +318,8 @@ export default function InterfoneVisitor() {
       }));
     } catch (err) {
       console.error("WebRTC error:", err);
+      setError(explainMediaError(err));
+      setCallState("ended");
     }
   };
 
@@ -625,6 +654,7 @@ export default function InterfoneVisitor() {
     setAuthForm({ nome: "", empresa: "", foto: "" });
     setError("");
     setIsPortariaCall(false);
+    setPushSent(false);
     setSearchQuery("");
     cleanup();
   };
@@ -719,6 +749,11 @@ export default function InterfoneVisitor() {
               <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Chamando...</h2>
               <p style={{ fontSize: 14, color: isDark ? "#93c5fd" : "#2563eb", marginBottom: 6 }}>{isPortariaCall ? "PORTARIA" : `Apto ${selectedApto?.unit}`} — Bloco {blockInfo?.bloco}</p>
               <p style={{ fontSize: 13, color: "#7dd3fc", marginTop: 8 }}>{isPortariaCall ? "Aguardando a portaria atender" : "Aguardando o morador atender"}</p>
+              {pushSent && (
+                <p style={{ fontSize: 12, color: "#fbbf24", marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  📲 Notificação enviada ao morador
+                </p>
+              )}
               <p className="font-mono" style={{ fontSize: 28, fontWeight: 800, marginTop: 16, color: p.text }}>{formatTime(callingCountdown)}</p>
             </>
           )}
@@ -1102,9 +1137,13 @@ export default function InterfoneVisitor() {
       <div className="min-h-dvh flex flex-col items-center" style={{ background: p.pageBg }}>
         {/* Header */}
         <div className="text-center w-full" style={{ color: p.text, maxWidth: 520, paddingTop: 44, paddingBottom: 18, paddingLeft: 24, paddingRight: 24 }}>
-          <div className="mx-auto flex items-center justify-center" style={{ width: 68, height: 68, borderRadius: 22, background: isDark ? "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)" : "linear-gradient(135deg, #e2e8f0, #f1f5f9)", border: isDark ? "2px solid rgba(255,255,255,0.2)" : "2px solid #cbd5e1", marginBottom: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
-            <Building2 style={{ width: 30, height: 30, color: p.text }} />
-          </div>
+          <AppLogo
+            size={68}
+            rounded={22}
+            background={isDark ? "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)" : "linear-gradient(135deg, #e2e8f0, #f1f5f9)"}
+            border={isDark ? "2px solid rgba(255,255,255,0.2)" : "2px solid #cbd5e1"}
+            style={{ margin: "0 auto 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
+          />
           <p style={{ fontSize: 13, color: isDark ? "#93c5fd" : "#2563eb", marginBottom: 4 }}>Interfone Digital</p>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>{condoData.condominio}</h1>
           <p style={{ fontSize: 13, color: "#7dd3fc", marginTop: 6 }}>{condoData.blocos.length} blocos disponíveis</p>

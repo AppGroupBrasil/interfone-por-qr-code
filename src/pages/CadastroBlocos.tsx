@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { AppLogo } from "@/components/AppLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -393,9 +394,12 @@ export default function CadastroBlocos() {
             <button onClick={() => setModalData(null)} style={{ position: "absolute", top: 14, right: 14, color: "rgba(255,255,255,0.5)", cursor: "pointer", background: "none", border: "none" }}>
               <X className="w-5 h-5" />
             </button>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem", boxShadow: "0 8px 24px rgba(16,185,129,0.35)" }}>
-              <Building2 className="w-9 h-9 text-white" strokeWidth={2} />
-            </div>
+            <AppLogo
+              size={72}
+              rounded={999}
+              background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+              style={{ margin: "0 auto 1.25rem", boxShadow: "0 8px 24px rgba(16,185,129,0.35)" }}
+            />
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", marginBottom: 6 }}>Bloco Cadastrado!</h2>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 24 }}>{modalData.detalhe}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>

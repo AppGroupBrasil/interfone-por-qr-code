@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
+import { AppLogo } from "@/components/AppLogo";
 import {
   Building2,
   ArrowLeft,
@@ -164,7 +165,7 @@ export default function MasterCondominios() {
           <button onClick={() => navigate("/dashboard")} className="p-1">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <Building2 className="w-5 h-5" />
+          <AppLogo size={24} rounded={6} objectFit="cover" />
           <span className="font-semibold text-sm">Gestão de Condomínios</span>
           <TutorialButton title="Gestão de Condomínios">
             <TSection icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">

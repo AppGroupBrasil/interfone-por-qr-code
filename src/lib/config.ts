@@ -2,10 +2,11 @@
    Capacitor / Web environment configuration
    ═══════════════════════════════════════════════════════════ */
 
+import { Capacitor } from "@capacitor/core";
+
 /** True when running inside a Capacitor native shell (Android/iOS) */
 export const isNative: boolean =
-  typeof window !== "undefined" &&
-  !!(window as any).Capacitor?.isNativePlatform?.();
+  typeof window !== "undefined" && Capacitor.isNativePlatform();
 
 const envApiBaseRaw = ((import.meta as any).env?.VITE_API_URL ?? "") as string;
 const envApiBase = envApiBaseRaw.trim();

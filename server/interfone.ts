@@ -439,7 +439,7 @@ router.put("/calls/:id", (req: Request, res: Response) => {
 
     sql += " WHERE id = ?";
     // Support both integer DB id and string call_id (WS signaling id)
-    const idParam = req.params.id;
+    const idParam = String(req.params.id);
     const numId = parseInt(idParam);
     if (!isNaN(numId) && String(numId) === idParam) {
       params.push(numId);
@@ -515,4 +515,205 @@ router.get("/moradores-call", authenticate, (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+// INTERFONE WHATSAPP — Public endpoints for wa.me deep-link flow
+// ═══════════════════════════════════════════════════════════
+
+// Helper: normalize phone to 55XXXXXXXXXXX format for wa.me
+function normalizePhoneForWaMe(phone: string): string {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  if (!digits.startsWith("55")) digits = "55" + digits;
+  return digits;
+}
+
+// GET /api/interfone/whatsapp/public/:token — Resolve QR token for WhatsApp mode
+router.get("/whatsapp/public/:token", (req: Request, res: Response) => {
+  try {
+    const tokenRow = db.prepare(
+      "SELECT * FROM interfone_tokens WHERE token = ? AND ativo = 1"
+    ).get(req.params.token) as any;
+
+    if (!tokenRow) {
+      res.status(404).json({ error: "QR Code inválido ou desativado." });
+      return;
+    }
+
+    const condo = db.prepare("SELECT id, name FROM condominios WHERE id = ?").get(tokenRow.condominio_id) as any;
+
+    // Get WhatsApp interfone config
+    const configRows = db.prepare(
+      "SELECT key, value FROM condominio_config WHERE condominio_id = ? AND key LIKE 'interfone_whatsapp_%'"
+    ).all(tokenRow.condominio_id) as { key: string; value: string }[];
+    const cfg: Record<string, string> = {};
+    for (const r of configRows) cfg[r.key] = r.value;
+
+    if (cfg.interfone_whatsapp_enabled !== "true") {
+      res.status(403).json({ error: "Interfone WhatsApp não está habilitado neste condomínio." });
+      return;
+    }
+
+    const securityLevel = cfg.interfone_whatsapp_security_level || "baixo";
+    const hasPortaria = cfg.interfone_whatsapp_has_portaria === "true";
+    const portariaPhone = cfg.interfone_whatsapp_portaria_phone || null;
+
+    // Build blocks/apartments list (only moradores with phone)
+    if (tokenRow.tipo === "condominio") {
+      const allBlocks = db.prepare(
+        "SELECT id, name FROM blocks WHERE condominio_id = ? ORDER BY CAST(name AS INTEGER), name"
+      ).all(tokenRow.condominio_id) as any[];
+
+      const allMoradores = db.prepare(
+        `SELECT u.id, u.name, u.unit, u.block, u.phone FROM users u
+         WHERE u.condominio_id = ? AND u.role = 'morador' AND u.aprovado = 1 AND u.phone IS NOT NULL AND u.phone != ''
+         ORDER BY u.block, CAST(u.unit AS INTEGER), u.unit`
+      ).all(tokenRow.condominio_id) as any[];
+
+      const blocos: any[] = [];
+      for (const block of allBlocks) {
+        const blockMoradores = allMoradores.filter((m: any) => m.block === block.name);
+        const apartments = new Map<string, { unit: string; moradores: { id: number; name: string }[] }>();
+        for (const m of blockMoradores) {
+          const unit = m.unit || "?";
+          if (!apartments.has(unit)) apartments.set(unit, { unit, moradores: [] });
+          apartments.get(unit)!.moradores.push({ id: m.id, name: m.name });
+        }
+        if (apartments.size > 0) {
+          blocos.push({ id: block.id, nome: block.name, apartamentos: Array.from(apartments.values()) });
+        }
+      }
+
+      res.json({
+        tipo: "condominio",
+        condominio: condo?.name || "Condomínio",
+        condominio_id: tokenRow.condominio_id,
+        security_level: securityLevel,
+        has_portaria: hasPortaria,
+        portaria_phone: hasPortaria && portariaPhone ? normalizePhoneForWaMe(portariaPhone) : null,
+        blocos,
+      });
+    } else {
+      // Block-specific token
+      const moradores = db.prepare(
+        `SELECT u.id, u.name, u.unit, u.block, u.phone FROM users u
+         WHERE u.condominio_id = ? AND u.block = ? AND u.role = 'morador' AND u.aprovado = 1 AND u.phone IS NOT NULL AND u.phone != ''
+         ORDER BY CAST(u.unit AS INTEGER), u.unit`
+      ).all(tokenRow.condominio_id, tokenRow.bloco_nome) as any[];
+
+      const apartments = new Map<string, { unit: string; moradores: { id: number; name: string }[] }>();
+      for (const m of moradores) {
+        const unit = m.unit || "?";
+        if (!apartments.has(unit)) apartments.set(unit, { unit, moradores: [] });
+        apartments.get(unit)!.moradores.push({ id: m.id, name: m.name });
+      }
+
+      res.json({
+        tipo: "bloco",
+        condominio: condo?.name || "Condomínio",
+        condominio_id: tokenRow.condominio_id,
+        bloco: tokenRow.bloco_nome,
+        security_level: securityLevel,
+        has_portaria: hasPortaria,
+        portaria_phone: hasPortaria && portariaPhone ? normalizePhoneForWaMe(portariaPhone) : null,
+        apartamentos: Array.from(apartments.values()),
+      });
+    }
+  } catch (err: any) {
+    console.error("Erro em interfone whatsapp public:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// POST /api/interfone/whatsapp/lookup — Lookup morador phone for wa.me link
+router.post("/whatsapp/lookup", (req: Request, res: Response) => {
+  try {
+    const { condominio_id, bloco, apartamento, nome_morador } = req.body;
+    if (!condominio_id || !apartamento) {
+      res.status(400).json({ error: "Condomínio e apartamento são obrigatórios." });
+      return;
+    }
+
+    // Get config
+    const configRows = db.prepare(
+      "SELECT key, value FROM condominio_config WHERE condominio_id = ? AND key LIKE 'interfone_whatsapp_%'"
+    ).all(condominio_id) as { key: string; value: string }[];
+    const cfg: Record<string, string> = {};
+    for (const r of configRows) cfg[r.key] = r.value;
+
+    if (cfg.interfone_whatsapp_enabled !== "true") {
+      res.status(403).json({ error: "Interfone WhatsApp não habilitado." });
+      return;
+    }
+
+    const securityLevel = cfg.interfone_whatsapp_security_level || "baixo";
+    const hasPortaria = cfg.interfone_whatsapp_has_portaria === "true";
+    const portariaPhone = cfg.interfone_whatsapp_portaria_phone || null;
+
+    // Find moradores in that apartment
+    let query = `SELECT u.id, u.name, u.phone FROM users u
+       WHERE u.condominio_id = ? AND u.unit = ? AND u.role = 'morador' AND u.aprovado = 1 AND u.phone IS NOT NULL AND u.phone != ''`;
+    const params: any[] = [condominio_id, apartamento];
+    if (bloco) {
+      query += " AND u.block = ?";
+      params.push(bloco);
+    }
+
+    const moradores = db.prepare(query).all(...params) as any[];
+
+    if (moradores.length === 0) {
+      res.json({
+        found: false,
+        message: "Nenhum morador com WhatsApp cadastrado neste apartamento.",
+        portaria_phone: hasPortaria && portariaPhone ? normalizePhoneForWaMe(portariaPhone) : null,
+      });
+      return;
+    }
+
+    // Security level: baixo → return phone directly
+    if (securityLevel === "baixo") {
+      // Return first morador's phone (or all if multiple)
+      const results = moradores.map((m: any) => ({
+        name: m.name.split(" ")[0], // First name only for privacy
+        phone: normalizePhoneForWaMe(m.phone),
+      }));
+      res.json({ found: true, moradores: results });
+      return;
+    }
+
+    // Security level: moderado → require name match
+    if (!nome_morador || nome_morador.trim().length < 2) {
+      res.status(400).json({ error: "Informe o nome do morador para este nível de segurança." });
+      return;
+    }
+
+    const searchName = nome_morador.trim().toLowerCase();
+    const matched = moradores.filter((m: any) => {
+      const parts = m.name.toLowerCase().split(/\s+/);
+      return parts.some((part: string) => part === searchName || m.name.toLowerCase().includes(searchName));
+    });
+
+    if (matched.length > 0) {
+      const results = matched.map((m: any) => ({
+        name: m.name.split(" ")[0],
+        phone: normalizePhoneForWaMe(m.phone),
+      }));
+      res.json({ found: true, moradores: results });
+    } else {
+      // Name not matched
+      const msg = hasPortaria && portariaPhone
+        ? "Morador não localizado pelo nome informado. Tente outro nome ou entre em contato com a portaria."
+        : "Morador não localizado pelo nome informado. Tente outro nome ou entre em contato diretamente com o morador.";
+      res.json({
+        found: false,
+        message: msg,
+        portaria_phone: hasPortaria && portariaPhone ? normalizePhoneForWaMe(portariaPhone) : null,
+      });
+    }
+  } catch (err: any) {
+    console.error("Erro em interfone whatsapp lookup:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
 export default router;
+

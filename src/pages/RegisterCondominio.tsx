@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,6 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Building2,
   CheckCircle2,
   UserCheck,
   Copy,
@@ -343,9 +343,12 @@ export default function RegisterCondominio() {
       <div className="w-full max-w-sm relative z-10 animate-slide-up">
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}>
-            <Building2 className="w-7 h-7 text-white" />
-          </div>
+          <AppLogo
+            size={56}
+            rounded={16}
+            background="linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)"
+            style={{ margin: "0 auto 16px" }}
+          />
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             Cadastro Condomínio
           </h1>
@@ -441,7 +444,7 @@ export default function RegisterCondominio() {
                       id="state"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="flex h-11 w-full rounded-lg border border-input bg-white dark:bg-secondary/50 pl-6 pr-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary"
+                      className="flex h-11 w-full rounded-lg border border-input bg-white dark:bg-secondary/50 pl-10 pr-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary"
                     >
                       <option value="">--</option>
                       {estados.map((uf) => (

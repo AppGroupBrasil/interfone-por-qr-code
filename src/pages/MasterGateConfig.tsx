@@ -22,6 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { AppLogo } from "@/components/AppLogo";
 
 interface DeviceInfo {
   deviceId: string;
@@ -656,7 +657,7 @@ export default function MasterGateConfig() {
 
             {assignments.length === 0 ? (
               <div className="text-center py-16">
-                <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <AppLogo size={64} rounded={16} style={{ margin: "0 auto 16px" }} />
                 <p className="text-lg text-muted-foreground">
                   Nenhum dispositivo atribuído ainda.
                 </p>
