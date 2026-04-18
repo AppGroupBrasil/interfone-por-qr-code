@@ -314,8 +314,10 @@ export default function FuncionarioInterfone() {
             }
             break;
           case "call-unavailable":
-            setCallState("idle");
+            setCallState("ended");
             setIsOutgoingCall(false);
+            setOutgoingTargetName("Morador indisponível");
+            setTimeout(() => { setCallState("idle"); setOutgoingTargetName(""); }, 4000);
             break;
           case "call-waiting-push":
             // Morador offline but push was sent — keep ringing

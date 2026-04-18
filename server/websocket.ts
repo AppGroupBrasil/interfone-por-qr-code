@@ -108,7 +108,7 @@ const funcionarioConnections = new Map<number, WsClient[]>();
 // Pending call handoffs — morador switching from GlobalIncomingCall WS to MoradorInterfone WS
 const pendingHandoffs = new Map<number, { callId: string; timestamp: number }>();
 // Pending push calls — visitor waiting for morador to come online after push notification
-const pendingPushCalls = new Map<string, { callId: string; visitorClientId: string; moradorId: number; visitanteNome: string; visitanteEmpresa: string | null; visitanteFoto: string | null; nivelSeguranca: number; bloco: string; apartamento: string; timestamp: number }>();
+const pendingPushCalls = new Map<string, { callId: string; visitorClientId: string; moradorId: number; visitanteNome: string; visitanteEmpresa: string | null; visitanteFoto: string | null; nivelSeguranca: number; bloco: string; apartamento: string; timestamp: number; isInternal?: boolean; callerRole?: string }>();
 
 export function initSignalingServer(_server?: Server) {
   const isProd = process.env.NODE_ENV === "production";
@@ -221,24 +221,35 @@ export function initSignalingServer(_server?: Server) {
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
             }
 
-            // Check for pending push call (visitor called while morador was offline)
+            // Check for pending push call (visitor or portaria called while morador was offline)
             for (const [pcCallId, pc] of pendingPushCalls) {
               if (pc.moradorId === authUser.id && (Date.now() - pc.timestamp < 120000)) {
-                console.log(`  [WS] Push call found: moradorId=${authUser.id} callId=${pcCallId}`);
+                console.log(`  [WS] Push call found: moradorId=${authUser.id} callId=${pcCallId} internal=${!!pc.isInternal}`);
                 client.callId = pcCallId;
                 pendingPushCalls.delete(pcCallId);
-                // Send the incoming call to the morador
-                ws.send(JSON.stringify({
-                  type: "incoming-call",
-                  callId: pcCallId,
-                  visitanteNome: pc.visitanteNome,
-                  visitanteEmpresa: pc.visitanteEmpresa,
-                  visitanteFoto: pc.visitanteFoto,
-                  nivelSeguranca: pc.nivelSeguranca,
-                  bloco: pc.bloco,
-                  apartamento: pc.apartamento,
-                  visitorClientId: pc.visitorClientId,
-                }));
+                if (pc.isInternal) {
+                  // Internal call from portaria — deliver as internal-incoming-call
+                  ws.send(JSON.stringify({
+                    type: "internal-incoming-call",
+                    callId: pcCallId,
+                    callerName: pc.visitanteNome,
+                    callerRole: pc.callerRole || "funcionario",
+                    callerClientId: pc.visitorClientId,
+                  }));
+                } else {
+                  // Visitor call — deliver as incoming-call
+                  ws.send(JSON.stringify({
+                    type: "incoming-call",
+                    callId: pcCallId,
+                    visitanteNome: pc.visitanteNome,
+                    visitanteEmpresa: pc.visitanteEmpresa,
+                    visitanteFoto: pc.visitanteFoto,
+                    nivelSeguranca: pc.nivelSeguranca,
+                    bloco: pc.bloco,
+                    apartamento: pc.apartamento,
+                    visitorClientId: pc.visitorClientId,
+                  }));
+                }
                 break;
               }
             }
@@ -507,7 +518,7 @@ export function initSignalingServer(_server?: Server) {
                 callerClientId: clientId,
               }));
             } else {
-              // Morador offline — send push notification
+              // Morador offline — keep pending call for up to 30s
               console.log(`  [WS] Internal call: morador ${targetUserId} offline, sending push...`);
               pendingPushCalls.set(iCallId, {
                 callId: iCallId, visitorClientId: clientId, moradorId: targetUserId,
@@ -515,24 +526,40 @@ export function initSignalingServer(_server?: Server) {
                 visitanteEmpresa: null, visitanteFoto: null,
                 nivelSeguranca: 0, bloco: "", apartamento: "",
                 timestamp: Date.now(),
+                isInternal: true, callerRole: client.type,
               });
               sendPushToUser(targetUserId, {
-                title: "📞 Chamada da Portaria",
+                title: "\uD83D\uDCDE Chamada da Portaria",
                 body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
                 channelId: "interfone_calls",
                 sound: "ringtone",
               }).then((sent) => {
                 console.log(`  [WS] Push sent to moradorId=${targetUserId}: ${sent} device(s)`);
-                if (sent === 0) {
-                  pendingPushCalls.delete(iCallId);
-                  ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
-                } else {
+                if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ type: "call-waiting-push", callId: iCallId }));
                 }
+                setTimeout(() => {
+                  if (pendingPushCalls.has(iCallId)) {
+                    pendingPushCalls.delete(iCallId);
+                    console.log(`  [WS] Pending call ${iCallId} expired (30s timeout)`);
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+                    }
+                  }
+                }, 30_000);
               }).catch(() => {
-                pendingPushCalls.delete(iCallId);
-                ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ type: "call-waiting-push", callId: iCallId }));
+                }
+                setTimeout(() => {
+                  if (pendingPushCalls.has(iCallId)) {
+                    pendingPushCalls.delete(iCallId);
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: "call-unavailable", callId: iCallId, reason: "offline" }));
+                    }
+                  }
+                }, 30_000);
               });
             }
             break;
