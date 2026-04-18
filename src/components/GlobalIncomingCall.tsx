@@ -62,6 +62,8 @@ export default function GlobalIncomingCall() {
     globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   }, []);
 
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+
   const connectWs = useCallback(() => {
     if (!user || !isMorador || isOnInterfonePage) return;
 
@@ -79,6 +81,13 @@ export default function GlobalIncomingCall() {
           moradorId: user.id,
           condominioId: user.condominioId,
         }));
+        // Start application-level heartbeat to keep connection alive through proxies
+        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        heartbeatRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 20_000); // every 20 seconds
       };
 
       ws.onmessage = (event) => {
@@ -87,6 +96,10 @@ export default function GlobalIncomingCall() {
           switch (msg.type) {
             case "registered":
               console.log("[Global Interfone] Registered, listening for calls...");
+              break;
+
+            case "pong":
+              // Heartbeat response — connection is alive
               break;
 
             case "incoming-call":
@@ -118,8 +131,9 @@ export default function GlobalIncomingCall() {
       };
 
       ws.onclose = () => {
-        console.log("[Global Interfone] Disconnected, reconnecting in 5s...");
-        reconnectRef.current = setTimeout(connectWs, 5000);
+        if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+        console.log("[Global Interfone] Disconnected, reconnecting in 2s...");
+        reconnectRef.current = setTimeout(connectWs, 2000);
       };
 
       ws.onerror = () => {
@@ -127,13 +141,14 @@ export default function GlobalIncomingCall() {
       };
     } catch (err) {
       console.error("[Global Interfone] WS error:", err);
-      reconnectRef.current = setTimeout(connectWs, 5000);
+      reconnectRef.current = setTimeout(connectWs, 2000);
     }
   }, [user, isMorador, isOnInterfonePage, playRingtone, stopRingtone]);
 
   useEffect(() => {
     if (!isMorador || isOnInterfonePage) {
       // Close WS if user navigated to interfone page (it has its own WS)
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -143,8 +158,20 @@ export default function GlobalIncomingCall() {
 
     connectWs();
 
+    // Reconnect immediately when tab becomes visible (browser may have killed WS in background)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
+        console.log("[Global Interfone] Tab visible, reconnecting...");
+        if (reconnectRef.current) clearTimeout(reconnectRef.current);
+        connectWs();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

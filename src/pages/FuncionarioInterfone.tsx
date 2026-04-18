@@ -114,6 +114,7 @@ export default function FuncionarioInterfone() {
   const connectRef = useRef<(() => void) | null>(null);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const manualWsCloseRef = useRef(false);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep callStateRef in sync
   useEffect(() => { callStateRef.current = callState; }, [callState]);
@@ -206,6 +207,13 @@ export default function FuncionarioInterfone() {
           funcionarioId: user.id,
           condominioId: user.condominioId,
         }));
+        // Start heartbeat to keep connection alive through proxies
+        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        heartbeatRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 20_000);
       };
 
       ws.onmessage = (event) => {
@@ -213,6 +221,8 @@ export default function FuncionarioInterfone() {
         switch (msg.type) {
           case "registered-funcionario":
             console.log("[Portaria] Registrado como funcionário para interfone");
+            break;
+          case "pong":
             break;
           case "incoming-call":
             setIncomingCall({
@@ -300,14 +310,15 @@ export default function FuncionarioInterfone() {
         if (wsRef.current !== ws) return;
         wsRef.current = null;
         setWsConnected(false);
+        if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
         if (manualWsCloseRef.current) return;
-        // Auto-reconnect after 3 seconds (even if hidden — keep alive during calls)
+        // Auto-reconnect after 2 seconds (even if hidden — keep alive during calls)
         reconnectTimerRef.current = setTimeout(() => {
           const cs = callStateRef.current;
           if (!wsRef.current && (document.visibilityState !== "hidden" || cs === "connected" || cs === "calling" || cs === "ringing")) {
             connect();
           }
-        }, 3000);
+        }, 2000);
       };
 
       ws.onerror = () => {
@@ -325,6 +336,7 @@ export default function FuncionarioInterfone() {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
         const ws = wsRef.current;
         wsRef.current = null;

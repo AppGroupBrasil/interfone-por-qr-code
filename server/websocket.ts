@@ -144,9 +144,32 @@ export function initSignalingServer(_server?: Server) {
     });
   }
 
+  // ─── Ping/Pong keepalive — prevents idle timeout from Traefik/proxies ───
+  const PING_INTERVAL = 25_000; // 25 seconds
+  const PONG_TIMEOUT = 10_000;  // 10 seconds grace to respond
+  const aliveClients = new Set<WebSocket>();
+
+  const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (!aliveClients.has(ws)) {
+        // Didn't respond to previous ping — terminate
+        ws.terminate();
+        return;
+      }
+      aliveClients.delete(ws);
+      try { ws.ping(); } catch {}
+    });
+  }, PING_INTERVAL);
+
+  wss.on("close", () => clearInterval(pingInterval));
+
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     let clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     console.log(`  [WS] New connection: ${clientId} from ${req.headers.origin || "no-origin"} url=${req.url?.substring(0,80)}`);
+
+    // Mark as alive on connect
+    aliveClients.add(ws);
+    ws.on("pong", () => { aliveClients.add(ws); });
 
     // Try to authenticate — visitors won't have credentials
     const authUser = authenticateWs(req);
@@ -159,6 +182,12 @@ export function initSignalingServer(_server?: Server) {
         const msg = JSON.parse(raw.toString());
 
         switch (msg.type) {
+          // ─── Application-level heartbeat (keeps Traefik/proxy alive) ───
+          case "ping": {
+            ws.send(JSON.stringify({ type: "pong" }));
+            break;
+          }
+
           // ─── Morador registers for incoming calls ───
           case "register-morador": {
             // Require authentication — moradorId must match the authenticated user

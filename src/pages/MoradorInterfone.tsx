@@ -113,6 +113,7 @@ export default function MoradorInterfone() {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const viewStateRef = useRef<ViewState>("listening");
   const connectRef = useRef<(() => void) | null>(null);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep viewStateRef in sync
   useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
@@ -189,6 +190,13 @@ export default function MoradorInterfone() {
           moradorId: user.id,
           condominioId: user.condominioId,
         }));
+        // Start heartbeat to keep connection alive through proxies
+        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        heartbeatRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 20_000);
       };
 
       ws.onmessage = (event) => {
@@ -196,6 +204,8 @@ export default function MoradorInterfone() {
         switch (msg.type) {
           case "registered":
             console.log("📞 Interfone: ouvindo chamadas...");
+            break;
+          case "pong":
             break;
 
           // Server confirms call handoff from GlobalIncomingCall — resume the active call
@@ -290,14 +300,15 @@ export default function MoradorInterfone() {
       ws.onclose = () => {
         // Only reconnect if this is still the active WS
         if (wsRef.current !== ws) return;
-        // Auto-reconnect after 3s (even if hidden — keep alive during calls)
+        if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+        // Auto-reconnect after 2s (even if hidden — keep alive during calls)
         setTimeout(() => {
           if (wsRef.current !== ws) return; // another connect already happened
           const vs = viewStateRef.current;
           if (document.visibilityState !== "hidden" || vs === "connected" || vs === "calling" || vs === "incoming") {
             connect();
           }
-        }, 3000);
+        }, 2000);
       };
 
       ws.onerror = () => {};
@@ -310,6 +321,7 @@ export default function MoradorInterfone() {
     fetchHistory();
 
     return () => {
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       const ws = wsRef.current;
       wsRef.current = null; // prevents onclose from reconnecting
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
