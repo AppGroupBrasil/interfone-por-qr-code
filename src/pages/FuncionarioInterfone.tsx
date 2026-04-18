@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
@@ -168,7 +169,25 @@ export default function FuncionarioInterfone() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+    const appStateListener = isNative
+      ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
+          if (!isActive) return;
+          const cs = callStateRef.current;
+          if (cs === "ringing" || cs === "connected" || cs === "calling") {
+            requestWakeLock();
+          }
+          if (wsRef.current?.readyState !== WebSocket.OPEN && connectRef.current) {
+            console.log("[Portaria] App resumed, reconnecting WS...");
+            connectRef.current();
+          }
+        })
+      : null;
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
+    };
   }, []);
 
   // Load call history

@@ -12,7 +12,6 @@ import { isNative } from "./config";
 let pushInitialized = false;
 let currentToken: string | null = null;
 let nativeListenersRegistered = false;
-let nativePermissionRequested = false;
 
 const ANDROID_CALLS_CHANNEL_ID = "interfone_calls";
 
@@ -48,7 +47,6 @@ export async function initPushNotifications(): Promise<void> {
 
 export async function enablePushNotifications(): Promise<void> {
   if (isNative) {
-    nativePermissionRequested = true;
     await initNativePush();
     return;
   }
@@ -137,11 +135,6 @@ async function initNativePush(): Promise<void> {
     let permResult = await PushNotifications.checkPermissions();
 
     if (permResult.receive === "prompt") {
-      // Show pre-permission modal in Portuguese first (if not explicitly requested by user)
-      if (!nativePermissionRequested) {
-        emitPushPermissionStatus("prompt");
-        return;
-      }
       permResult = await PushNotifications.requestPermissions();
     }
 

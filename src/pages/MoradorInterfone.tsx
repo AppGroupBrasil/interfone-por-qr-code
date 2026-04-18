@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
@@ -165,7 +166,25 @@ export default function MoradorInterfone() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+    const appStateListener = isNative
+      ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
+          if (!isActive) return;
+          const vs = viewStateRef.current;
+          if (vs === "incoming" || vs === "connected" || vs === "calling") {
+            requestWakeLock();
+          }
+          if (wsRef.current?.readyState !== WebSocket.OPEN && connectRef.current) {
+            console.log("[Morador] App resumed, reconnecting WS...");
+            connectRef.current();
+          }
+        })
+      : null;
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
+    };
   }, []);
 
   // Connect WebSocket and listen for calls

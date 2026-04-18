@@ -8,6 +8,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getToken } from "@/lib/api";
@@ -168,8 +169,19 @@ export default function GlobalIncomingCall() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
+    const appStateListener = isNative
+      ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
+          if (isActive && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
+            console.log("[Global Interfone] App resumed, reconnecting...");
+            if (reconnectRef.current) clearTimeout(reconnectRef.current);
+            connectWs();
+          }
+        })
+      : null;
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
+      appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {

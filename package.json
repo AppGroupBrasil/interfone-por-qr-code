@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-ses": "^3.999.0",
     "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/push-notifications": "^8.0.1",

@@ -20,7 +20,7 @@ const envApiBase = envApiBaseRaw.trim();
 export const API_BASE: string =
   // Web always uses same-origin to avoid CORS/env drift between www and apex.
   // Native needs an absolute host; fallback guarantees API reachability.
-  isNative ? (envApiBase || "https://www.appinterfone.com.br") : "";
+  isNative ? (envApiBase || "https://appinterfone.com.br") : "";
 
 /**
  * Public-facing origin used to build shareable links (QR codes, WhatsApp, etc.).
@@ -28,7 +28,7 @@ export const API_BASE: string =
  */
 export const APP_ORIGIN: string =
   (import.meta as any).env?.VITE_APP_ORIGIN ??
-  (isNative ? "https://www.appinterfone.com.br" : window.location.origin);
+  (isNative ? "https://appinterfone.com.br" : window.location.origin);
 
 /**
  * Build a WebSocket URL from the current API base.
