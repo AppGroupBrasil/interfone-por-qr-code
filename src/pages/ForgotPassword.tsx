@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { AppLogo } from "@/components/AppLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { checkPin } from "@/lib/passwordPolicy";
 import {
   Mail,
   Phone,
@@ -128,7 +129,7 @@ export default function ForgotPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!/^\d{6}$/.test(newPassword)) return setError("A senha deve ter 6 dígitos numéricos.");
+    { const r = checkPin(newPassword); if (!r.ok) return setError(r.error!); }
     if (newPassword !== confirmPassword) return setError("As senhas não coincidem.");
 
     setIsLoading(true);

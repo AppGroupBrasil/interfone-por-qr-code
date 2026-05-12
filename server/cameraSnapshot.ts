@@ -4,6 +4,7 @@
  * Used for automatic snapshots on visitor/delivery/vehicle access events.
  */
 import db from "./db.js";
+import { log } from "./logger.js";
 
 interface CameraRow {
   id: number;
@@ -68,7 +69,7 @@ function isUrlSafe(urlString: string): boolean {
 export async function captureSnapshot(camera: CameraRow): Promise<string | null> {
   try {
     if (!isUrlSafe(camera.url_stream)) {
-      console.warn(`[CameraSnapshot] URL bloqueada por segurança: ${camera.url_stream}`);
+      log.warn(`[CameraSnapshot] URL bloqueada por segurança: ${camera.url_stream}`);
       return null;
     }
 
@@ -142,7 +143,7 @@ export async function captureSnapshot(camera: CameraRow): Promise<string | null>
     // For other stream types (HLS, RTSP proxy) we can't easily capture server-side
     return null;
   } catch (err) {
-    console.error(`[Snapshot] Error capturing from camera ${camera.id} (${camera.nome}):`, err);
+    log.error(`[Snapshot] Error capturing from camera ${camera.id} (${camera.nome}):`, err);
     return null;
   }
 }

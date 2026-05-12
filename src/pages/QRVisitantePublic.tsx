@@ -44,7 +44,7 @@ export default function QRVisitantePublic() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+      <div role="status" aria-live="polite" style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
         <p style={{ color: "#6b7280", fontSize: "16px" }}>Carregando...</p>
       </div>
     );
@@ -52,7 +52,7 @@ export default function QRVisitantePublic() {
 
   if (error || !data) {
     return (
-      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "20px" }}>
+      <div role="alert" style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "20px" }}>
         <p style={{ color: "#991b1b", fontWeight: 700, fontSize: "16px" }}>{error || "QR Code não encontrado ou expirado."}</p>
       </div>
     );
@@ -69,7 +69,7 @@ export default function QRVisitantePublic() {
       }}>
         {/* Header */}
         <div style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", borderRadius: "14px", padding: "16px", marginBottom: "20px" }}>
-          <QrCode style={{ width: "32px", height: "32px", color: "#fff", margin: "0 auto" }} />
+          <QrCode aria-hidden="true" style={{ width: "32px", height: "32px", color: "#fff", margin: "0 auto" }} />
           <p style={{ color: "#fff", fontWeight: 800, fontSize: "16px", marginTop: "6px" }}>AUTORIZAÇÃO DE ENTRADA</p>
           {data.condominio_nome && <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "12px" }}>{data.condominio_nome}</p>}
         </div>
@@ -91,7 +91,7 @@ export default function QRVisitantePublic() {
         <div style={{ margin: "16px 0" }}>
           <img
             src={qrImageUrl}
-            alt="QR Code"
+            alt={`QR Code de autorização para ${data.visitor_name}`}
             style={{ width: "220px", height: "220px", margin: "0 auto", borderRadius: "12px" }}
             crossOrigin="anonymous"
           />

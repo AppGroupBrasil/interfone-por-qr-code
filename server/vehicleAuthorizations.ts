@@ -6,6 +6,7 @@ import { captureSnapshotForCondominio } from "./cameraSnapshot.js";
 import { emailVeiculoPendenteAprovacao, emailVeiculoRespondido, emailVeiculoEncerrado } from "./emailService.js";
 import { notifyPortariaWhatsApp, notifyUserWhatsApp } from "./whatsappService.js";
 import { sendPushToUser } from "./pushService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -41,7 +42,7 @@ router.get("/", authenticate, (req: Request, res: Response) => {
     const results = db.prepare(query).all(...params);
     res.json(results);
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -144,7 +145,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
       message: "Autorização de veículo criada com sucesso.",
     });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -262,7 +263,7 @@ router.post("/portaria-cadastro", authenticate, (req: Request, res: Response) =>
         cor: cor || undefined,
         motoristaNome: motorista_nome || undefined,
         token,
-      }).catch((err) => console.error("[EMAIL] Erro veículo pendente:", err));
+      }).catch((err) => log.error("[EMAIL] Erro veículo pendente:", err));
 
       // WhatsApp: notify morador about pending vehicle approval
       if (morador?.id) {
@@ -283,7 +284,7 @@ router.post("/portaria-cadastro", authenticate, (req: Request, res: Response) =>
       message: "Cadastro de veículo criado. Aguardando aprovação do morador.",
     });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -313,7 +314,7 @@ router.get("/aprovar/:token", (req: Request, res: Response) => {
       created_at: vehicle.created_at,
     });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -322,6 +323,15 @@ router.get("/aprovar/:token", (req: Request, res: Response) => {
 router.post("/aprovar/:token", (req: Request, res: Response) => {
   try {
     const { acao, morador_observacao } = req.body; // acao: 'aprovar' | 'negar'
+
+    if (acao !== "aprovar" && acao !== "negar") {
+      res.status(400).json({ error: "Ação inválida." });
+      return;
+    }
+    if (morador_observacao != null && (typeof morador_observacao !== "string" || morador_observacao.length > 500)) {
+      res.status(400).json({ error: "Observação inválida (máx 500 caracteres)." });
+      return;
+    }
 
     const vehicle = db.prepare(
       "SELECT * FROM vehicle_authorizations WHERE token = ?"
@@ -356,7 +366,7 @@ router.post("/aprovar/:token", (req: Request, res: Response) => {
         apartamento: vehicle.apartamento,
         placa: vehicle.placa,
         status: "ativa",
-      }).catch((err) => console.error("[EMAIL] Erro veículo aprovado:", err));
+      }).catch((err) => log.error("[EMAIL] Erro veículo aprovado:", err));
 
       res.json({ message: "Acesso aprovado com sucesso!" });
     } else {
@@ -375,12 +385,12 @@ router.post("/aprovar/:token", (req: Request, res: Response) => {
         apartamento: vehicle.apartamento,
         placa: vehicle.placa,
         status: "negada",
-      }).catch((err) => console.error("[EMAIL] Erro veículo negado:", err));
+      }).catch((err) => log.error("[EMAIL] Erro veículo negado:", err));
 
       res.json({ message: "Acesso negado." });
     }
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -430,7 +440,7 @@ router.post("/:id/confirmar-entrada", authenticate, (req: Request, res: Response
 
     res.json({ message: "Entrada confirmada.", vehicle: updated });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -457,7 +467,7 @@ router.post("/:id/solicitar-saida", authenticate, (req: Request, res: Response) 
     const updated = db.prepare("SELECT * FROM vehicle_authorizations WHERE id = ?").get(req.params.id);
     res.json({ message: "Solicitação de saída registrada.", vehicle: updated });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -486,7 +496,7 @@ router.post("/:id/autorizar-saida", authenticate, (req: Request, res: Response) 
 
     res.json({ message: "Saída autorizada." });
   } catch (err: any) {
-    console.error("Erro ao autorizar saída:", err);
+    log.error("Erro ao autorizar saída:", err);
     res.status(500).json({ error: "Erro ao autorizar saída" });
   }
 });
@@ -514,7 +524,7 @@ router.post("/:id/registrar-saida", authenticate, (req: Request, res: Response) 
 
     res.json({ message: "Saída registrada com sucesso." });
   } catch (err: any) {
-    console.error("Erro ao registrar saída:", err);
+    log.error("Erro ao registrar saída:", err);
     res.status(500).json({ error: "Erro ao registrar saída" });
   }
 });
@@ -572,7 +582,7 @@ router.put("/:id", authenticate, (req: Request, res: Response) => {
     const updated = db.prepare("SELECT * FROM vehicle_authorizations WHERE id = ?").get(req.params.id);
     res.json(updated);
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -619,7 +629,7 @@ router.post("/:id/responder-morador", authenticate, (req: Request, res: Response
     const updated = db.prepare("SELECT * FROM vehicle_authorizations WHERE id = ?").get(req.params.id);
     res.json(updated);
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -662,12 +672,12 @@ router.post("/cancelar-dia", authenticate, (req: Request, res: Response) => {
         apartamento: v.apartamento,
         placa: v.placa,
         motivo: "encerrada pela portaria",
-      }).catch((err) => console.error("[EMAIL] Erro ve\u00EDculo encerrado:", err));
+      }).catch((err) => log.error("[EMAIL] Erro ve\u00EDculo encerrado:", err));
     }
 
     res.json({ message: `${result.changes} liberação(ões) do dia encerrada(s).`, count: result.changes });
   } catch (err: any) {
-    console.error("Erro em cancelar-dia:", err);
+    log.error("Erro em cancelar-dia:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -696,7 +706,7 @@ router.delete("/:id", authenticate, (req: Request, res: Response) => {
     db.prepare("DELETE FROM vehicle_authorizations WHERE id = ?").run(req.params.id);
     res.json({ message: "Autorização de veículo cancelada." });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -741,7 +751,7 @@ router.get("/buscar-placa/:placa", authenticate, (req: Request, res: Response) =
       data_fim: vehicle.data_fim,
     });
   } catch (err: any) {
-    console.error("Erro em vehicleAuthorizations :", err);
+    log.error("Erro em vehicleAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

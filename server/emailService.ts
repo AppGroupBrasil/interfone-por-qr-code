@@ -8,6 +8,7 @@
 import { SESClient, SendEmailCommand, SendRawEmailCommand } from "@aws-sdk/client-ses";
 import db from "./db.js";
 import crypto from "crypto";
+import { log } from "./logger.js";
 
 // ─── Configuration ───
 const AWS_REGION = process.env.AWS_SES_REGION || "sa-east-1";
@@ -25,8 +26,8 @@ function initSES() {
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
   if (!accessKeyId || !secretAccessKey) {
-    console.warn("⚠️  AWS SES credentials not found. Email sending disabled.");
-    console.warn("   Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env");
+    log.warn("⚠️  AWS SES credentials not found. Email sending disabled.");
+    log.warn("   Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env");
     sesInitialized = true;
     return;
   }
@@ -42,7 +43,7 @@ function initSES() {
     sesInitialized = true;
     console.log(`  📧 Amazon SES initialized (region: ${AWS_REGION}, from: ${FROM_EMAIL})`);
   } catch (err) {
-    console.error("SES init error:", err);
+    log.error("SES init error:", err);
     sesInitialized = true;
   }
 }
@@ -187,7 +188,7 @@ async function sendEmail(to: string | string[], subject: string, htmlBody: strin
     );
     return true;
   } catch (err: any) {
-    console.error(`[EMAIL] Erro ao enviar para ${validEmails.join(", ")}:`, err.message || err);
+    log.error(`[EMAIL] Erro ao enviar para ${validEmails.join(", ")}:`, err.message || err);
     return false;
   }
 }

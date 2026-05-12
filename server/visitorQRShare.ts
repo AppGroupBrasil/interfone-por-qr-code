@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import db from "./db.js";
 import crypto from "crypto";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -24,6 +25,18 @@ router.post("/share", (req: Request, res: Response) => {
 
     if (!qr_data || !visitor_name || !data_inicio || !data_fim) {
       return res.status(400).json({ error: "Dados obrigatórios ausentes." });
+    }
+    // Limites de tamanho — endpoint público, evita abuso de storage.
+    const tooLong = (s: unknown, n: number) => typeof s === "string" && s.length > n;
+    if (tooLong(qr_data, 4096) || tooLong(visitor_name, 120) || tooLong(visitor_doc, 30) ||
+        tooLong(visitor_parentesco, 60) || tooLong(morador_nome, 120) || tooLong(bloco, 60) ||
+        tooLong(unidade, 30) || tooLong(condominio_nome, 200)) {
+      return res.status(400).json({ error: "Campo excede o tamanho permitido." });
+    }
+    // data_inicio/data_fim devem ser YYYY-MM-DD
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRe.test(data_inicio) || !dateRe.test(data_fim)) {
+      return res.status(400).json({ error: "Datas inválidas." });
     }
 
     // Generate a short unique token (8 chars)
@@ -50,7 +63,7 @@ router.post("/share", (req: Request, res: Response) => {
 
     res.json({ token });
   } catch (err) {
-    console.error("Erro ao criar share token:", err);
+    log.error("Erro ao criar share token:", err);
     res.status(500).json({ error: "Erro interno." });
   }
 });
@@ -83,7 +96,7 @@ router.get("/:token", (req: Request, res: Response) => {
       qr_data: row.qr_data,
     });
   } catch (err) {
-    console.error("Erro ao buscar share:", err);
+    log.error("Erro ao buscar share:", err);
     res.status(500).json({ error: "Erro interno." });
   }
 });

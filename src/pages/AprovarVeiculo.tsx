@@ -72,11 +72,12 @@ export default function AprovarVeiculo() {
 
   if (loading) {
     return (
-      <div style={{
+      <div role="status" aria-live="polite" style={{
         minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
         background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
       }}>
         <div style={{ width: "32px", height: "32px", border: "3px solid #0ea5e9", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+        <span className="sr-only">Carregando…</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -84,11 +85,11 @@ export default function AprovarVeiculo() {
 
   if (error && !vehicle) {
     return (
-      <div style={{
+      <div role="alert" style={{
         minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         background: "linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)", padding: "24px",
       }}>
-        <XCircle style={{ width: "64px", height: "64px", color: "#ef4444", marginBottom: "16px" }} />
+        <XCircle aria-hidden="true" style={{ width: "64px", height: "64px", color: "#ef4444", marginBottom: "16px" }} />
         <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#b91c1c", textAlign: "center" }}>{error}</h1>
       </div>
     );
@@ -191,7 +192,7 @@ export default function AprovarVeiculo() {
         padding: "20px", maxWidth: "500px", margin: "0 auto", width: "100%",
       }}>
         {error && (
-          <div style={{
+          <div role="alert" aria-live="assertive" style={{
             padding: "10px 14px", borderRadius: "10px", background: "#fef2f2",
             border: "1px solid #fecaca", color: "#b91c1c", fontSize: "13px", fontWeight: 500,
           }}>
@@ -259,13 +260,16 @@ export default function AprovarVeiculo() {
           background: "#fff", borderRadius: "16px", padding: "20px",
           border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "10px",
         }}>
-          <label style={{ fontWeight: 700, fontSize: "14px", color: "#0c4a6e" }}>
+          <label htmlFor="morador-obs" style={{ fontWeight: 700, fontSize: "14px", color: "#0c4a6e" }}>
             Observação (opcional)
           </label>
-          <p style={{ fontSize: "12px", color: "#64748b", marginTop: "-4px" }}>
+          <p id="morador-obs-help" style={{ fontSize: "12px", color: "#64748b", marginTop: "-4px" }}>
             Informe à portaria onde o veículo deve estacionar ou outra instrução.
           </p>
           <textarea
+            id="morador-obs"
+            aria-describedby="morador-obs-help"
+            maxLength={500}
             value={morador_observacao}
             onChange={(e) => setMoradorObservacao(e.target.value)}
             placeholder="Ex: Encaminhar para vaga de visitantes, Autorizado a estacionar em minha vaga (G-12)..."
@@ -293,7 +297,7 @@ export default function AprovarVeiculo() {
               boxShadow: "0 4px 12px rgba(34,197,94,0.3)",
             }}
           >
-            <CheckCircle2 style={{ width: "20px", height: "20px" }} />
+            <CheckCircle2 aria-hidden="true" style={{ width: "20px", height: "20px" }} />
             {submitting ? "Processando..." : "Permitir Acesso"}
           </button>
 
@@ -310,7 +314,7 @@ export default function AprovarVeiculo() {
               boxShadow: "0 4px 12px rgba(239,68,68,0.3)",
             }}
           >
-            <XCircle style={{ width: "20px", height: "20px" }} />
+            <XCircle aria-hidden="true" style={{ width: "20px", height: "20px" }} />
             {submitting ? "Processando..." : "Negar Acesso"}
           </button>
         </div>

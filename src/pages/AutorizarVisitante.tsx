@@ -107,9 +107,9 @@ export default function AutorizarVisitante() {
 
   if (loading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gray-50">
+      <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#0ea5e9" }} />
+          <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin" style={{ color: "#0ea5e9" }} />
           <p className="text-sm text-gray-500">Carregando...</p>
         </div>
       </div>
@@ -118,9 +118,9 @@ export default function AutorizarVisitante() {
 
   if (error && !visitor) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gray-50">
+      <div role="alert" className="min-h-dvh flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3 text-center" style={{ padding: "24px" }}>
-          <AlertTriangle className="w-12 h-12 text-amber-500" />
+          <AlertTriangle aria-hidden="true" className="w-12 h-12 text-amber-500" />
           <p className="font-semibold text-gray-800">Link Inválido</p>
           <p className="text-sm text-gray-500">{error}</p>
         </div>
@@ -134,16 +134,16 @@ export default function AutorizarVisitante() {
         <div className="flex flex-col items-center gap-4 text-center" style={{ padding: "24px" }}>
           {responseStatus === "liberado" ? (
             <>
-              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "#dcfce7" }}>
-                <CheckCircle2 className="w-10 h-10" style={{ color: "#16a34a" }} />
+              <div role="status" aria-live="polite" className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "#dcfce7" }}>
+                <CheckCircle2 aria-hidden="true" className="w-10 h-10" style={{ color: "#16a34a" }} />
               </div>
               <h2 className="text-xl font-bold" style={{ color: "#16a34a" }}>Entrada Autorizada</h2>
               <p className="text-sm text-gray-500">A portaria foi notificada. O visitante pode entrar.</p>
             </>
           ) : (
             <>
-              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "#fef2f2" }}>
-                <XCircle className="w-10 h-10" style={{ color: "#dc2626" }} />
+              <div role="status" aria-live="polite" className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "#fef2f2" }}>
+                <XCircle aria-hidden="true" className="w-10 h-10" style={{ color: "#dc2626" }} />
               </div>
               <h2 className="text-xl font-bold" style={{ color: "#dc2626" }}>Entrada Recusada</h2>
               <p className="text-sm text-gray-500">A portaria foi notificada. O visitante não será autorizado.</p>
@@ -306,7 +306,7 @@ export default function AutorizarVisitante() {
       {/* Error */}
       {error && (
         <div style={{ padding: "12px 24px" }}>
-          <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
+          <div role="alert" aria-live="assertive" className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
         </div>
       )}
 
@@ -320,10 +320,10 @@ export default function AutorizarVisitante() {
             style={{ backgroundColor: "#16a34a" }}
           >
             {responding ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                <CheckCircle2 className="w-6 h-6" />
+                <CheckCircle2 aria-hidden="true" className="w-6 h-6" />
                 Autorizar Entrada
               </>
             )}
@@ -335,10 +335,10 @@ export default function AutorizarVisitante() {
             style={{ backgroundColor: "#dc2626" }}
           >
             {responding ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                <XCircle className="w-6 h-6" />
+                <XCircle aria-hidden="true" className="w-6 h-6" />
                 Não Autorizar
               </>
             )}

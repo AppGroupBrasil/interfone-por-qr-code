@@ -45,19 +45,26 @@ export default function AutoCadastroVisitante() {
   });
 
   useEffect(() => {
-    apiFetch(`${API}/blocos/public`)
+    // condominio_id vem da URL (QR Code aponta para /visitante/auto-cadastro?cid=NN)
+    const params = new URLSearchParams(globalThis.location.search);
+    const cidParam = params.get("cid") || params.get("condominio_id");
+    const cid = cidParam ? Number(cidParam) : NaN;
+    if (!Number.isInteger(cid) || cid <= 0) {
+      setError("Link inválido: condomínio não identificado. Escaneie o QR Code novamente.");
+      setLoadingBlocos(false);
+      return;
+    }
+    setCondominioId(cid);
+
+    apiFetch(`${API}/blocos/public?condominio_id=${cid}`)
       .then((r) => r.json())
       .then((data) => {
-        setBlocos(data || []);
-        // Extrair condominio_id do primeiro bloco
-        if (data && data.length > 0 && data[0].condominio_id) {
-          setCondominioId(data[0].condominio_id);
-        }
+        if (Array.isArray(data)) setBlocos(data);
       })
       .catch(() => {})
       .finally(() => setLoadingBlocos(false));
 
-    apiFetch(`${API}/condominio-config/public`)
+    apiFetch(`${API}/condominio-config/public?condominio_id=${cid}`)
       .then((r) => r.json())
       .then((data) => {
         setRequiredFields({
@@ -199,10 +206,10 @@ export default function AutoCadastroVisitante() {
 
   if (done) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gray-50">
+      <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4 text-center" style={{ padding: "24px" }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "#dcfce7" }}>
-            <CheckCircle2 className="w-10 h-10" style={{ color: "#16a34a" }} />
+            <CheckCircle2 aria-hidden="true" className="w-10 h-10" style={{ color: "#16a34a" }} />
           </div>
           <h2 className="text-xl font-bold text-gray-900">Cadastro Enviado!</h2>
           <p className="text-sm text-gray-500">
@@ -222,8 +229,8 @@ export default function AutoCadastroVisitante() {
             <span className="text-white font-medium">
               {cameraMode === "foto" ? "Sua Foto" : "Foto do Documento"}
             </span>
-            <button onClick={stopCamera} style={{ color: "#fff" }}>
-              <X className="w-6 h-6" />
+            <button onClick={stopCamera} aria-label="Fechar câmera" style={{ color: "#fff" }}>
+              <X aria-hidden="true" className="w-6 h-6" />
             </button>
           </div>
           <div style={{ flex: 1, minHeight: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -235,8 +242,9 @@ export default function AutoCadastroVisitante() {
               muted
             />
             {!cameraReady && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-white animate-spin" />
+              <div role="status" aria-live="polite" className="absolute inset-0 flex items-center justify-center">
+                <Loader2 aria-hidden="true" className="w-10 h-10 text-white animate-spin" />
+                <span className="sr-only">Iniciando câmera…</span>
               </div>
             )}
           </div>
@@ -268,7 +276,7 @@ export default function AutoCadastroVisitante() {
       {/* Form */}
       <div style={{ padding: "20px 24px", flex: 1 }}>
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
+          <div role="alert" aria-live="assertive" className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
         )}
 
         <div className="space-y-4">

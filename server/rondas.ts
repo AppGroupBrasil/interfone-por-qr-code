@@ -3,6 +3,7 @@ import db from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import crypto from "crypto";
 import { notifyPortariaWhatsApp } from "./whatsappService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.get("/checkpoints", authenticate, (req: Request, res: Response) => {
     ).all(req.user!.condominio_id);
     res.json(checkpoints);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -32,7 +33,7 @@ router.get("/checkpoints/:id", authenticate, (req: Request, res: Response) => {
     if (!cp) { res.status(404).json({ error: "Checkpoint não encontrado." }); return; }
     res.json(cp);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -62,7 +63,7 @@ router.post("/checkpoints", authenticate, authorize("master", "administradora", 
     const cp = db.prepare("SELECT * FROM ronda_checkpoints WHERE id = ?").get(result.lastInsertRowid);
     res.status(201).json(cp);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -92,7 +93,7 @@ router.put("/checkpoints/:id", authenticate, authorize("master", "administradora
     ).get(req.params.id, req.user!.condominio_id);
     res.json(cp);
   } catch (err: any) {
-    console.error("Erro ao atualizar checkpoint:", err);
+    log.error("Erro ao atualizar checkpoint:", err);
     res.status(500).json({ error: "Erro ao atualizar checkpoint" });
   }
 });
@@ -105,7 +106,7 @@ router.delete("/checkpoints/:id", authenticate, authorize("master", "administrad
     ).run(req.params.id, req.user!.condominio_id);
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -122,7 +123,7 @@ router.get("/schedules", authenticate, (req: Request, res: Response) => {
     ).all(req.user!.condominio_id);
     res.json(schedules);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -148,7 +149,7 @@ router.post("/schedules", authenticate, authorize("master", "administradora", "s
     const sched = db.prepare("SELECT * FROM ronda_schedules WHERE id = ?").get(result.lastInsertRowid);
     res.status(201).json(sched);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -168,7 +169,7 @@ router.put("/schedules/:id", authenticate, authorize("master", "administradora",
     const sched = db.prepare("SELECT * FROM ronda_schedules WHERE id = ?").get(req.params.id);
     res.json(sched);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -181,7 +182,7 @@ router.delete("/schedules/:id", authenticate, authorize("master", "administrador
     ).run(req.params.id, req.user!.condominio_id);
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -219,7 +220,7 @@ router.get("/registros", authenticate, (req: Request, res: Response) => {
     const registros = db.prepare(sql).all(...params);
     res.json(registros);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -274,7 +275,7 @@ router.post("/registros", authenticate, authorize("master", "administradora", "s
 
     res.status(201).json(registro);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -354,7 +355,7 @@ router.get("/stats", authenticate, (req: Request, res: Response) => {
       byDay,
     });
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -369,7 +370,7 @@ router.get("/funcionarios", authenticate, (req: Request, res: Response) => {
     ).all(req.user!.condominio_id);
     res.json(funcs);
   } catch (err: any) {
-    console.error("Erro em rondas :", err);
+    log.error("Erro em rondas :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

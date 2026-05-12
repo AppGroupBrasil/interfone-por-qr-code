@@ -3,6 +3,7 @@ import db, { type DbUser, type DbCondominio } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import bcrypt from "bcryptjs";
 import { emailCondominioBloqueado, emailCondominioDesbloqueado } from "./emailService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -66,7 +67,7 @@ router.get("/stats", (req, res) => {
       recentUsers,
     });
   } catch (err) {
-    console.error("Erro ao buscar estatísticas:", err);
+    log.error("Erro ao buscar estatísticas:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -154,7 +155,7 @@ router.get("/condominios-dashboard", (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Erro ao buscar dashboard de condomínios:", err);
+    log.error("Erro ao buscar dashboard de condomínios:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -184,7 +185,7 @@ router.put("/condominios/:id/status-pagamento", (req, res) => {
 
     res.json({ success: true, message: `Status alterado para ${status_pagamento}.` });
   } catch (err) {
-    console.error("Erro ao atualizar status de pagamento:", err);
+    log.error("Erro ao atualizar status de pagamento:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -216,7 +217,7 @@ router.put("/condominios/:id/bloquear", (req, res) => {
         condominioId: parseInt(id),
         condominioNome: condo.name,
         motivo: motivo || "Inadimplência",
-      }).catch((err) => console.error("[EMAIL] Erro condomínio bloqueado:", err));
+      }).catch((err) => log.error("[EMAIL] Erro condomínio bloqueado:", err));
     } else {
       db.prepare(`
         UPDATE condominios 
@@ -231,7 +232,7 @@ router.put("/condominios/:id/bloquear", (req, res) => {
       emailCondominioDesbloqueado({
         condominioId: parseInt(id),
         condominioNome: condo.name,
-      }).catch((err) => console.error("[EMAIL] Erro condomínio desbloqueado:", err));
+      }).catch((err) => log.error("[EMAIL] Erro condomínio desbloqueado:", err));
     }
 
     res.json({
@@ -239,7 +240,7 @@ router.put("/condominios/:id/bloquear", (req, res) => {
       message: bloqueado ? `Condomínio "${condo.name}" bloqueado.` : `Condomínio "${condo.name}" desbloqueado.`,
     });
   } catch (err) {
-    console.error("Erro ao bloquear/desbloquear condomínio:", err);
+    log.error("Erro ao bloquear/desbloquear condomínio:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -313,7 +314,7 @@ router.get("/users", (req, res) => {
 
     res.json({ users, total: total.count, page: parseInt(page as string), limit: parseInt(limit as string) });
   } catch (err) {
-    console.error("Erro ao listar usuários:", err);
+    log.error("Erro ao listar usuários:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -385,7 +386,7 @@ router.put("/users/:id", async (req, res) => {
       res.status(409).json({ error: "Email já cadastrado." });
       return;
     }
-    console.error("Erro ao editar usuário:", err);
+    log.error("Erro ao editar usuário:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -425,7 +426,7 @@ router.delete("/users/:id", (req, res) => {
 
     res.json({ success: true, message: `Usuário "${user.name}" excluído.` });
   } catch (err) {
-    console.error("Erro ao excluir usuário:", err);
+    log.error("Erro ao excluir usuário:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -439,7 +440,7 @@ router.get("/config", (req, res) => {
     const configs = db.prepare("SELECT * FROM system_config ORDER BY key ASC").all();
     res.json(configs);
   } catch (err) {
-    console.error("Erro ao buscar configurações:", err);
+    log.error("Erro ao buscar configurações:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -472,7 +473,7 @@ router.put("/config", (req, res) => {
 
     res.json({ success: true, message: "Configurações salvas." });
   } catch (err) {
-    console.error("Erro ao salvar configurações:", err);
+    log.error("Erro ao salvar configurações:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -513,7 +514,7 @@ router.get("/logs", (req, res) => {
 
     res.json({ logs, total: total.count, page: parseInt(page as string), limit: parseInt(limit as string) });
   } catch (err) {
-    console.error("Erro ao buscar logs:", err);
+    log.error("Erro ao buscar logs:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

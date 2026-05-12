@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db, { type DbCondominio } from "./db.js";
 import { authenticate, authorize, condominioScope } from "./middleware.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get("/", (req, res) => {
     ).all(...scope.params);
     res.json(condominios);
   } catch (err) {
-    console.error("Erro ao listar condomínios:", err);
+    log.error("Erro ao listar condomínios:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -59,7 +60,7 @@ router.get("/:id", (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Erro ao buscar condomínio:", err);
+    log.error("Erro ao buscar condomínio:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -101,7 +102,7 @@ router.delete("/:id", authorize("master"), (req, res) => {
 
     res.json({ success: true, message: `Condomínio "${condo.name}" excluído com todos os dados.` });
   } catch (err) {
-    console.error("Erro ao excluir condomínio:", err);
+    log.error("Erro ao excluir condomínio:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -144,7 +145,7 @@ router.put("/:id", authorize("master", "administradora", "sindico"), (req, res) 
 
     res.json({ success: true, message: "Condomínio atualizado." });
   } catch (err) {
-    console.error("Erro ao atualizar condomínio:", err);
+    log.error("Erro ao atualizar condomínio:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

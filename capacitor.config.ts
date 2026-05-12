@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     // In production, all API calls go to appinterfone.com.br via apiFetch
     // The allowNavigation permits WebView to open these origins
-    allowNavigation: ['appinterfone.com.br', '*.appinterfone.com.br'],
+    allowNavigation: ['appinterfone.com.br', 'www.appinterfone.com.br', 'api.appinterfone.com.br'],
   },
   android: {
     allowMixedContent: false,

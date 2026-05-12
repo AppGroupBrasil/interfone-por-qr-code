@@ -38,7 +38,6 @@
     "ewelink-api-next": "^1.0.4",
     "express": "^4.21.0",
     "express-rate-limit": "^8.2.1",
-    "face-api.js": "^0.22.2",
     "firebase-admin": "^13.7.0",
     "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",

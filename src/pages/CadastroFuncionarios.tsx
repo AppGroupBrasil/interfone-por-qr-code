@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
+import { checkPin } from "@/lib/passwordPolicy";
 import {
   ChevronLeft,
   Eye,
@@ -115,10 +116,10 @@ export default function CadastroFuncionarios() {
     if (!login) return "Login é obrigatório.";
     if (login.length < 3) return "Login deve ter pelo menos 3 caracteres.";
     if (!editingId) {
-      if (!/^\d{6}$/.test(password)) return "Senha deve ter exatamente 6 dígitos numéricos.";
+      { const r = checkPin(password); if (!r.ok) return r.error!; }
       if (password !== confirmPassword) return "As senhas não coincidem.";
     } else if (password) {
-      if (!/^\d{6}$/.test(password)) return "Senha deve ter exatamente 6 dígitos numéricos.";
+      { const r = checkPin(password); if (!r.ok) return r.error!; }
       if (password !== confirmPassword) return "As senhas não coincidem.";
     }
     return null;

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import db, { type DbUser } from "./db.js";
+import { JWT_SECRET } from "./config.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production-32chars!!";
 const COOKIE_NAME = "session_token";
 
 // ─── ROLES HIERARCHY ─────────────────────────────────────

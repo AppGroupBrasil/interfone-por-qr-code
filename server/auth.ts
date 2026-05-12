@@ -5,9 +5,11 @@ import crypto from "crypto";
 import db, { type DbUser, type DbCondominio } from "./db.js";
 import { authenticate } from "./middleware.js";
 import { emailBoasVindasMorador, emailBoasVindasSindico, emailSenhaAlterada, emailCodigoRecuperacao } from "./emailService.js";
+import { JWT_SECRET, DEMO_MODE, SAMPLE_ACCOUNTS_ON_REGISTER } from "./config.js";
+import { validatePin } from "./passwordPolicy.js";
+import { log } from "./logger.js";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production-32chars!!";
 const COOKIE_NAME = "session_token";
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -37,7 +39,7 @@ function sanitizeUser(user: DbUser) {
     condominio_nome: condominioNome,
     parent_administradora_id: user.parent_administradora_id || null,
     avatarUrl: user.avatar_url,
-    aprovado: (user as any).aprovado ?? 1,
+    aprovado: user.aprovado ?? 1,
   };
 }
 
@@ -160,27 +162,28 @@ function ensureDemoData() {
   return condoId;
 }
 
-// Ensure demo data exists on server start
-try { ensureDemoData(); } catch (e) { console.warn("[DEMO] Demo data may already exist:", e); }
+// Ensure demo data exists on server start — somente quando DEMO_MODE ativo
+if (DEMO_MODE) {
+  try { ensureDemoData(); } catch (e) { log.warn("[DEMO] Demo data may already exist:", e); }
 
-// Fix demo passwords: update from "demo123" to numeric "123456"
-try {
-  const demoEmails = [
-    "demo.sindico@portariax.com",
-    "demo.porteiro@portariax.com",
-    "demo.morador@portariax.com",
-    "demo.morador2@portariax.com",
-    "demo.morador3@portariax.com",
-  ];
-  const numericHash = bcrypt.hashSync("123456", 10);
-  for (const em of demoEmails) {
-    const u = db.prepare("SELECT id, password FROM users WHERE email = ?").get(em) as { id: number; password: string } | undefined;
-    if (u && !bcrypt.compareSync("123456", u.password)) {
-      db.prepare("UPDATE users SET password = ? WHERE id = ?").run(numericHash, u.id);
-      console.log(`[DEMO] Password updated for ${em}`);
+  // Fix demo passwords: update from "demo123" to numeric "123456"
+  try {
+    const demoEmails = [
+      "demo.sindico@portariax.com",
+      "demo.porteiro@portariax.com",
+      "demo.morador@portariax.com",
+      "demo.morador2@portariax.com",
+      "demo.morador3@portariax.com",
+    ];
+    const numericHash = bcrypt.hashSync("123456", 10);
+    for (const em of demoEmails) {
+      const u = db.prepare("SELECT id, password FROM users WHERE email = ?").get(em) as { id: number; password: string } | undefined;
+      if (u && !bcrypt.compareSync("123456", u.password)) {
+        db.prepare("UPDATE users SET password = ? WHERE id = ?").run(numericHash, u.id);
+      }
     }
-  }
-} catch (e) { console.warn("[DEMO] Password migration error:", e); }
+  } catch (e) { log.warn("[DEMO] Password migration error:", e); }
+}
 
 const DEMO_EMAILS: Record<string, string> = {
   sindico: "demo.sindico@portariax.com",
@@ -190,6 +193,10 @@ const DEMO_EMAILS: Record<string, string> = {
 
 router.post("/demo", (req, res) => {
   try {
+    if (!DEMO_MODE) {
+      res.status(404).json({ error: "Modo de demonstração desativado." });
+      return;
+    }
     const { role } = req.body;
     if (!role || !DEMO_EMAILS[role]) {
       res.status(400).json({ error: "Perfil inválido. Use: sindico, portaria ou morador." });
@@ -209,7 +216,7 @@ router.post("/demo", (req, res) => {
     setCookie(res, token);
     res.json({ user: sanitizeUser(user), token, demo: true });
   } catch (err) {
-    console.error("[DEMO] Erro ao iniciar demonstração:", err);
+    log.error("[DEMO] Erro ao iniciar demonstração:", err);
     res.status(500).json({ error: "Erro interno ao iniciar demonstração." });
   }
 });
@@ -248,7 +255,7 @@ router.get("/condominio/search", (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Condominio search error:", err);
+    log.error("Condominio search error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -262,10 +269,7 @@ router.post("/register/morador", async (req, res) => {
       res.status(400).json({ error: "Nome, e-mail e senha são obrigatórios." });
       return;
     }
-    if (!/^\d{6}$/.test(password)) {
-      res.status(400).json({ error: "Senha deve ter exatamente 6 dígitos numéricos." });
-      return;
-    }
+    if (!validatePin(password, res)) return;
 
     const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email.toLowerCase().trim());
     if (existing) {
@@ -312,7 +316,7 @@ router.post("/register/morador", async (req, res) => {
       condominioNome: condoName,
       bloco: block?.trim() || undefined,
       apartamento: unit?.trim() || undefined,
-    }).catch((err) => console.error("[EMAIL] Erro boas-vindas morador:", err));
+    }).catch((err) => log.error("[EMAIL] Erro boas-vindas morador:", err));
 
     if (needsApproval) {
       // Don't auto-login — return a pending message
@@ -327,7 +331,7 @@ router.post("/register/morador", async (req, res) => {
     setCookie(res, token);
     res.json({ user: sanitizeUser(user), token });
   } catch (err) {
-    console.error("Register morador error:", err);
+    log.error("Register morador error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -341,10 +345,7 @@ router.post("/register/condominio", async (req, res) => {
       res.status(400).json({ error: "Nome do condomínio, responsável, e-mail e senha são obrigatórios." });
       return;
     }
-    if (!/^\d{6}$/.test(password)) {
-      res.status(400).json({ error: "Senha deve ter exatamente 6 dígitos numéricos." });
-      return;
-    }
+    if (!validatePin(password, res)) return;
 
     const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email.toLowerCase().trim());
     if (existingUser) {
@@ -393,10 +394,8 @@ router.post("/register/condominio", async (req, res) => {
     );
 
     // ─── CREATE SAMPLE MORADOR ───────────────────────────
-    // Auto-create a demo resident account so the person who registered
-    // can see the morador experience. Uses a derived email and the same
-    // phone/WhatsApp + password so they can easily log in and test.
-    try {
+    // Gate atrás de SAMPLE_ACCOUNTS_ON_REGISTER (off em prod por padrão).
+    if (SAMPLE_ACCOUNTS_ON_REGISTER) try {
       const sampleEmail = `morador.exemplo.${condoResult.lastInsertRowid}@demo.app`;
       const sampleName = "Morador Exemplo";
       const sampleBlock = "A";
@@ -416,14 +415,12 @@ router.post("/register/condominio", async (req, res) => {
       );
     } catch (sampleErr) {
       // Non-critical — don't fail the whole registration if sample creation fails
-      console.warn("[REGISTER] Falha ao criar morador exemplo:", sampleErr);
+      log.warn("[REGISTER] Falha ao criar morador exemplo:", sampleErr);
     }
 
     // ─── CREATE SAMPLE PORTEIRO ───────────────────────────
-    // Auto-create a demo porteiro/funcionario account so the person
-    // can also test the portaria experience (visitor control, deliveries, etc.)
     let samplePorteiroData: { email: string; name: string; cargo: string } | null = null;
-    try {
+    if (SAMPLE_ACCOUNTS_ON_REGISTER) try {
       const porteiroEmail = `porteiro.exemplo.${condoResult.lastInsertRowid}@demo.app`;
       const porteiroName = "Porteiro Exemplo";
 
@@ -440,7 +437,7 @@ router.post("/register/condominio", async (req, res) => {
 
       samplePorteiroData = { email: porteiroEmail, name: porteiroName, cargo: "Porteiro" };
     } catch (porteiroErr) {
-      console.warn("[REGISTER] Falha ao criar porteiro exemplo:", porteiroErr);
+      log.warn("[REGISTER] Falha ao criar porteiro exemplo:", porteiroErr);
     }
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userResult.lastInsertRowid) as DbUser;
@@ -452,20 +449,20 @@ router.post("/register/condominio", async (req, res) => {
       email: email.toLowerCase().trim(),
       nome: adminName.trim(),
       condominioNome: condominioName.trim(),
-    }).catch((err) => console.error("[EMAIL] Erro boas-vindas síndico:", err));
+    }).catch((err) => log.error("[EMAIL] Erro boas-vindas síndico:", err));
 
     // Include sample credentials in the response so the admin knows
     res.json({
       user: sanitizeUser(user),
       token,
-      sampleMorador: {
+      sampleMorador: SAMPLE_ACCOUNTS_ON_REGISTER ? {
         email: `morador.exemplo.${condoResult.lastInsertRowid}@demo.app`,
         name: "Morador Exemplo",
         block: "A",
         unit: "101",
         phone: phone?.replaceAll(/\D/g, "") || null,
         message: "Acesso de morador de exemplo criado automaticamente. Use o mesmo WhatsApp e senha para testar a experiência do morador."
-      },
+      } : null,
       samplePorteiro: samplePorteiroData ? {
         email: samplePorteiroData.email,
         name: samplePorteiroData.name,
@@ -475,7 +472,7 @@ router.post("/register/condominio", async (req, res) => {
       } : null
     });
   } catch (err) {
-    console.error("Register condominio error:", err);
+    log.error("Register condominio error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -576,7 +573,7 @@ async function handleUserLogin(credential: string, password: string, res: any) {
 
   if (user.condominio_id && user.role !== "master" && checkCondominioBlocked(user.condominio_id, res)) return;
 
-  if (user.role === "morador" && (user as any).aprovado === 0) {
+  if (user.role === "morador" && user.aprovado === 0) {
     res.status(403).json({
       error: "Seu cadastro ainda está aguardando aprovação do síndico ou administradora. Você será notificado quando for liberado.",
       pendingApproval: true,
@@ -609,7 +606,7 @@ router.post("/login", async (req, res) => {
       await handleFuncionarioLogin(credential, password, res);
     }
   } catch (err) {
-    console.error("Login error:", err);
+    log.error("Login error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -682,7 +679,7 @@ router.put("/account", authenticate, async (req, res) => {
     const updated = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as DbUser;
     res.json({ user: sanitizeUser(updated), message: "Dados atualizados com sucesso." });
   } catch (err: any) {
-    console.error("Erro em auth :", err);
+    log.error("Erro em auth :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -717,12 +714,12 @@ router.put("/account/password", authenticate, async (req, res) => {
       emailSenhaAlterada({
         email: user.email,
         nome: user.name,
-      }).catch((err) => console.error("[EMAIL] Erro senha alterada:", err));
+      }).catch((err) => log.error("[EMAIL] Erro senha alterada:", err));
     }
 
     res.json({ message: "Senha alterada com sucesso." });
   } catch (err: any) {
-    console.error("Erro em auth :", err);
+    log.error("Erro em auth :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -744,7 +741,7 @@ router.delete("/account", authenticate, (req, res) => {
     res.clearCookie(COOKIE_NAME, { path: "/" });
     res.json({ message: "Conta excluída com sucesso." });
   } catch (err: any) {
-    console.error("Erro em auth :", err);
+    log.error("Erro em auth :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -776,11 +773,11 @@ router.post("/password-reset/request", async (req, res) => {
 
     // Send email
     emailCodigoRecuperacao({ email: user.email, nome: user.name, codigo: code })
-      .catch((err) => console.error("[EMAIL] Erro código recuperação:", err));
+      .catch((err) => log.error("[EMAIL] Erro código recuperação:", err));
 
     res.json({ message: "Se o e-mail estiver cadastrado, você receberá um código de recuperação." });
   } catch (err: any) {
-    console.error("Erro password-reset/request:", err);
+    log.error("Erro password-reset/request:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -810,7 +807,7 @@ router.post("/password-reset/verify", (req, res) => {
 
     res.json({ valid: true });
   } catch (err: any) {
-    console.error("Erro password-reset/verify:", err);
+    log.error("Erro password-reset/verify:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -824,10 +821,7 @@ router.post("/password-reset/reset", async (req, res) => {
       return;
     }
 
-    if (!/^\d{6}$/.test(newPassword)) {
-      res.status(400).json({ error: "A senha deve ter exatamente 6 dígitos numéricos." });
-      return;
-    }
+    if (!validatePin(newPassword, res)) return;
 
     const record = db.prepare(
       "SELECT id, expires_at FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 ORDER BY id DESC LIMIT 1"
@@ -852,11 +846,11 @@ router.post("/password-reset/reset", async (req, res) => {
 
     // Notify user
     emailSenhaAlterada({ email, nome: user.name })
-      .catch((err) => console.error("[EMAIL] Erro senha alterada:", err));
+      .catch((err) => log.error("[EMAIL] Erro senha alterada:", err));
 
     res.json({ message: "Senha redefinida com sucesso." });
   } catch (err: any) {
-    console.error("Erro password-reset/reset:", err);
+    log.error("Erro password-reset/reset:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

@@ -2,6 +2,7 @@
 import db from "./db.js";
 import { authenticate } from "./middleware.js";
 import { notifyPortariaWhatsApp } from "./whatsappService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get("/", authenticate, (req: Request, res: Response) => {
     const results = db.prepare(query).all(...params);
     res.json(results);
   } catch (err: any) {
-    console.error("Erro em livroProtocolo :", err);
+    log.error("Erro em livroProtocolo :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -112,7 +113,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
       message: "Registro criado com sucesso.",
     });
   } catch (err: any) {
-    console.error("Erro em livroProtocolo :", err);
+    log.error("Erro em livroProtocolo :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -133,7 +134,7 @@ router.get("/:id", authenticate, (req: Request, res: Response) => {
     }
     res.json(entry);
   } catch (err: any) {
-    console.error("Erro ao buscar registro:", err);
+    log.error("Erro ao buscar registro:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -163,7 +164,7 @@ router.delete("/:id", authenticate, (req: Request, res: Response) => {
     db.prepare("DELETE FROM livro_protocolo WHERE id = ? AND condominio_id = ?").run(id, user.condominio_id);
     res.json({ message: "Registro removido." });
   } catch (err: any) {
-    console.error("Erro ao excluir registro:", err);
+    log.error("Erro ao excluir registro:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -191,7 +192,7 @@ router.get("/foto/:protocolo", (req: Request, res: Response) => {
     res.setHeader("Content-Length", buffer.length);
     res.send(buffer);
   } catch (err: any) {
-    console.error("Erro em livroProtocolo :", err);
+    log.error("Erro em livroProtocolo :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

@@ -16,8 +16,9 @@ import type { IncomingMessage } from "http";
 import jwt from "jsonwebtoken";
 import db, { type DbUser } from "./db.js";
 import { sendPushToUser } from "./pushService.js";
+import { JWT_SECRET } from "./config.js";
+import { log } from "./logger.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production-32chars!!";
 const COOKIE_NAME = "session_token";
 
 /** Parse a specific cookie from the raw Cookie header */
@@ -590,7 +591,7 @@ export function initSignalingServer(_server?: Server) {
           }
         }
       } catch (err) {
-        console.error("[WS Interfone] Error:", err);
+        log.error("[WS Interfone] Error:", err);
       }
     });
 

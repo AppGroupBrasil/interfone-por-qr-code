@@ -7,6 +7,7 @@
  */
 
 import db from "./db.js";
+import { log } from "./logger.js";
 
 // ─── Types ───
 interface WhatsAppTemplate {
@@ -269,7 +270,7 @@ export async function sendWhatsApp(
   logMessage(condominioId, dest, templateName, result.success ? "sent" : "failed", result.messageId, result.error);
 
   if (!result.success) {
-    console.warn(`⚠️ WhatsApp send failed [${templateName}] → ${dest}:`, result.error);
+    log.warn(`⚠️ WhatsApp send failed [${templateName}] → ${dest}:`, result.error);
   }
 
   return result;

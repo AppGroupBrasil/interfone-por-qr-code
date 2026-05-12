@@ -3,6 +3,7 @@ import db from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import crypto from "crypto";
 import { emailChamadaPerdida } from "./emailService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get("/tokens", authenticate, (req: Request, res: Response) => {
     ).all(req.user!.condominio_id);
     res.json(tokens);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -53,7 +54,7 @@ router.post("/tokens", authenticate, authorize("master", "administradora", "sind
     const row = db.prepare("SELECT * FROM interfone_tokens WHERE id = ?").get(result.lastInsertRowid);
     res.status(201).json(row);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -79,7 +80,7 @@ router.put("/tokens/:id/regenerate", authenticate, authorize("master", "administ
     const row = db.prepare("SELECT * FROM interfone_tokens WHERE id = ?").get(existing.id);
     res.json(row);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -92,7 +93,7 @@ router.delete("/tokens/:id", authenticate, authorize("master", "administradora",
     ).run(parseInt(req.params.id as string), req.user!.condominio_id);
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -131,7 +132,7 @@ router.post("/tokens/condominio", authenticate, authorize("master", "administrad
     const row = db.prepare("SELECT * FROM interfone_tokens WHERE id = ?").get(result.lastInsertRowid);
     res.status(201).json(row);
   } catch (err: any) {
-    console.error("Erro ao criar token de condomínio:", err);
+    log.error("Erro ao criar token de condomínio:", err);
     res.status(500).json({ error: "Erro ao criar QR Code" });
   }
 });
@@ -156,7 +157,7 @@ router.put("/tokens/condominio/regenerate", authenticate, authorize("master", "a
     const row = db.prepare("SELECT * FROM interfone_tokens WHERE id = ?").get(existing.id);
     res.json(row);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -260,7 +261,7 @@ router.get("/public/:token", (req: Request, res: Response) => {
       apartamentos: Array.from(apartments.values()),
     });
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -276,7 +277,7 @@ router.get("/public/portaria/:condominioId", (req: Request, res: Response) => {
 
     res.json(funcionarios);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -309,7 +310,7 @@ router.get("/public/security/:moradorId", (req: Request, res: Response) => {
       silencioso: false,
     });
   } catch (err: any) {
-    console.error("Erro ao buscar config de segurança:", err);
+    log.error("Erro ao buscar config de segurança:", err);
     res.status(500).json({ error: "Erro ao buscar configuração" });
   }
 });
@@ -333,7 +334,7 @@ router.get("/config", authenticate, (req: Request, res: Response) => {
       whatsapp_interfone: null,
     });
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -380,7 +381,7 @@ router.put("/config", authenticate, (req: Request, res: Response) => {
     const config = db.prepare("SELECT * FROM interfone_config WHERE user_id = ?").get(req.user!.id);
     res.json(config);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -401,6 +402,24 @@ router.post("/calls", (req: Request, res: Response) => {
     if (!morador_id && !morador_nome) {
       return res.status(400).json({ error: "Morador destino é obrigatório" });
     }
+    // Limites de tamanho — endpoint público, evita abuso de storage.
+    const tooLong = (s: unknown, n: number) => typeof s === "string" && s.length > n;
+    if (tooLong(bloco, 60) || tooLong(apartamento, 30) || tooLong(morador_nome, 120) ||
+        tooLong(visitante_nome, 120) || tooLong(visitante_empresa, 120) || tooLong(call_id, 64)) {
+      return res.status(400).json({ error: "Campo excede o tamanho permitido." });
+    }
+    if (tooLong(visitante_foto, 2_000_000)) {
+      return res.status(413).json({ error: "Foto muito grande." });
+    }
+    // Valida condomínio (sem isso, atacante registra chamadas para condo arbitrário).
+    const cid = condominio_id != null ? Number(condominio_id) : NaN;
+    if (!Number.isInteger(cid) || cid <= 0) {
+      return res.status(400).json({ error: "condominio_id inválido." });
+    }
+    const condoOk = db.prepare("SELECT id FROM condominios WHERE id = ? AND id != 0").get(cid);
+    if (!condoOk) {
+      return res.status(404).json({ error: "Condomínio não encontrado." });
+    }
 
     const result = db.prepare(
       `INSERT INTO interfone_calls (condominio_id, bloco, apartamento, morador_id, morador_nome, visitante_nome, visitante_empresa, visitante_foto, nivel_seguranca, call_id, status)
@@ -409,7 +428,7 @@ router.post("/calls", (req: Request, res: Response) => {
 
     res.status(201).json({ id: result.lastInsertRowid });
   } catch (err: any) {
-    console.error("Erro ao registrar chamada:", err);
+    log.error("Erro ao registrar chamada:", err);
     res.status(500).json({ error: "Erro ao registrar chamada" });
   }
 });
@@ -465,13 +484,13 @@ router.put("/calls/:id", (req: Request, res: Response) => {
           bloco: call.bloco,
           apartamento: call.apartamento,
           horario: new Date(call.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-        }).catch((err) => console.error("[EMAIL] Erro chamada perdida:", err));
+        }).catch((err) => log.error("[EMAIL] Erro chamada perdida:", err));
       }
     }
 
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Erro ao atualizar chamada:", err);
+    log.error("Erro ao atualizar chamada:", err);
     res.status(500).json({ error: "Erro ao atualizar chamada" });
   }
 });
@@ -492,7 +511,7 @@ router.get("/calls", authenticate, (req: Request, res: Response) => {
     }
     res.json(rows);
   } catch (err: any) {
-    console.error("Erro em interfone :", err);
+    log.error("Erro em interfone :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -510,7 +529,7 @@ router.get("/moradores-call", authenticate, (req: Request, res: Response) => {
     ).all(req.user!.condominio_id);
     res.json(moradores);
   } catch (err: any) {
-    console.error("Erro em interfone moradores-call:", err);
+    log.error("Erro em interfone moradores-call:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -619,7 +638,7 @@ router.get("/whatsapp/public/:token", (req: Request, res: Response) => {
       });
     }
   } catch (err: any) {
-    console.error("Erro em interfone whatsapp public:", err);
+    log.error("Erro em interfone whatsapp public:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -710,7 +729,7 @@ router.post("/whatsapp/lookup", (req: Request, res: Response) => {
       });
     }
   } catch (err: any) {
-    console.error("Erro em interfone whatsapp lookup:", err);
+    log.error("Erro em interfone whatsapp lookup:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

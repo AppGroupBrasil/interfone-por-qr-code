@@ -1,30 +1,34 @@
 import { Router } from "express";
 import db from "./db.js";
 import { authenticate, authorize, condominioScope } from "./middleware.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
-// ─── PUBLIC ENDPOINT (no auth) ─── list blocks + units for auto-cadastro
+// ─── PUBLIC ENDPOINT (no auth) — lista blocos + unidades de UM condomínio.
+// Exige `condominio_id` na query string. Sem o filtro, qualquer um
+// poderia enumerar todos os condomínios + unidades do sistema.
 router.get("/public", (req, res) => {
   try {
-    // Get all blocks (optionally filtered by condominio_id)
-    const condoFilter = req.query.condominio_id
-      ? "WHERE condominio_id = ?"
-      : "";
-    const condoParams = req.query.condominio_id
-      ? [req.query.condominio_id]
-      : [];
+    const cid = Number(req.query.condominio_id);
+    if (!Number.isInteger(cid) || cid <= 0) {
+      res.status(400).json({ error: "Informe o condomínio (condominio_id)." });
+      return;
+    }
+    // Garante existência (e bloqueia id=0, registro de sistema).
+    const condo = db.prepare("SELECT id FROM condominios WHERE id = ? AND id != 0").get(cid);
+    if (!condo) {
+      res.status(404).json({ error: "Condomínio não encontrado." });
+      return;
+    }
 
     const blocks = db.prepare(
-      `SELECT id, name, condominio_id FROM blocks ${condoFilter} ORDER BY CAST(name AS INTEGER), name ASC`
-    ).all(...condoParams) as any[];
+      "SELECT id, name, condominio_id FROM blocks WHERE condominio_id = ? ORDER BY CAST(name AS INTEGER), name ASC"
+    ).all(cid) as any[];
 
-    // Get distinct units from users (moradores) grouped by block
     const users = db.prepare(
-      `SELECT DISTINCT block, unit FROM users WHERE role = 'morador' AND block IS NOT NULL AND unit IS NOT NULL ${
-        req.query.condominio_id ? "AND condominio_id = ?" : ""
-      } ORDER BY block, CAST(unit AS INTEGER), unit`
-    ).all(...condoParams) as any[];
+      "SELECT DISTINCT block, unit FROM users WHERE role = 'morador' AND block IS NOT NULL AND unit IS NOT NULL AND condominio_id = ? ORDER BY block, CAST(unit AS INTEGER), unit"
+    ).all(cid) as any[];
 
     const unitsByBlock = new Map<string, string[]>();
     for (const u of users) {
@@ -43,7 +47,7 @@ router.get("/public", (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("Erro ao listar blocos (public):", err);
+    log.error("Erro ao listar blocos (public):", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -100,7 +104,7 @@ router.post("/automatico", authorize("master", "administradora", "sindico"), asy
       message: `${created.length} bloco(s) criado(s)${duplicates.length > 0 ? `, ${duplicates.length} já existiam` : ""}.`,
     });
   } catch (err: any) {
-    console.error("Erro ao cadastrar blocos:", err);
+    log.error("Erro ao cadastrar blocos:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -151,7 +155,7 @@ router.post("/personalizado", authorize("master", "administradora", "sindico"), 
       message: `${created.length} bloco(s) criado(s)${duplicates.length > 0 ? `, ${duplicates.length} já existiam` : ""}.`,
     });
   } catch (err: any) {
-    console.error("Erro ao cadastrar blocos:", err);
+    log.error("Erro ao cadastrar blocos:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -176,7 +180,7 @@ router.put("/:id", authorize("master", "administradora", "sindico"), (req, res) 
     db.prepare("UPDATE blocks SET name = ? WHERE id = ?").run(name.trim(), parseInt(id));
     res.json({ success: true, message: "Bloco renomeado." });
   } catch (err) {
-    console.error("Erro ao renomear bloco:", err);
+    log.error("Erro ao renomear bloco:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -195,7 +199,7 @@ router.delete("/:id", authorize("master", "administradora", "sindico"), (req, re
     db.prepare("DELETE FROM blocks WHERE id = ?").run(parseInt(id));
     res.json({ success: true, message: "Bloco excluído." });
   } catch (err) {
-    console.error("Erro ao excluir bloco:", err);
+    log.error("Erro ao excluir bloco:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -209,7 +213,7 @@ router.get("/", (req, res) => {
     ).all(...scope.params);
     res.json(blocos);
   } catch (err) {
-    console.error("Erro ao listar blocos:", err);
+    log.error("Erro ao listar blocos:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

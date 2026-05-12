@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import db from "./db.js";
 import { authenticate, authorize, condominioScope, moradorSelfScope } from "./middleware.js";
 import { emailContaCriada } from "./emailService.js";
+import { validatePin } from "./passwordPolicy.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -25,10 +27,7 @@ router.post("/", authorize("master", "administradora", "sindico"), async (req, r
       return;
     }
 
-    if (!/^\d{6}$/.test(password)) {
-      res.status(400).json({ error: "Senha deve ter exatamente 6 dígitos numéricos." });
-      return;
-    }
+    if (!validatePin(password, res)) return;
 
     // Verificar e-mail duplicado
     const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email.toLowerCase().trim());
@@ -76,7 +75,7 @@ router.post("/", authorize("master", "administradora", "sindico"), async (req, r
       bloco,
       apartamento: unidade.trim(),
       senhaProvisoria: password,
-    }).catch((err) => console.error("[EMAIL] Erro conta criada:", err));
+    }).catch((err) => log.error("[EMAIL] Erro conta criada:", err));
 
     res.status(201).json({
       id: result.lastInsertRowid,
@@ -88,7 +87,7 @@ router.post("/", authorize("master", "administradora", "sindico"), async (req, r
       message: "Morador cadastrado com sucesso!",
     });
   } catch (err: any) {
-    console.error("Erro ao cadastrar morador:", err);
+    log.error("Erro ao cadastrar morador:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -111,7 +110,7 @@ router.get("/", (req, res) => {
     ).all(...scope.params, ...selfScope.params);
     res.json(moradores);
   } catch (err) {
-    console.error("Erro ao listar moradores:", err);
+    log.error("Erro ao listar moradores:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -148,7 +147,7 @@ router.put("/:id", authorize("master", "administradora", "sindico"), async (req,
     if (dup) { res.status(409).json({ error: "Este e-mail já está cadastrado." }); return; }
 
     if (password) {
-      if (!/^\d{6}$/.test(password)) { res.status(400).json({ error: "Senha deve ter exatamente 6 dígitos." }); return; }
+      if (!validatePin(password, res)) return;
       const hashed = await bcrypt.hash(password, 10);
       db.prepare("UPDATE users SET name = ?, email = ?, phone = ?, perfil = ?, unit = ?, block = ?, password = ? WHERE id = ?").run(nome.trim(), email.toLowerCase().trim(), whatsapp || null, perfil, unidade.trim(), bloco, hashed, Number.parseInt(id));
     } else {
@@ -157,7 +156,7 @@ router.put("/:id", authorize("master", "administradora", "sindico"), async (req,
 
     res.json({ success: true, message: "Morador atualizado." });
   } catch (err) {
-    console.error("Erro ao atualizar morador:", err);
+    log.error("Erro ao atualizar morador:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -180,7 +179,7 @@ router.delete("/:id", authorize("master", "administradora", "sindico"), (req, re
     db.prepare("DELETE FROM users WHERE id = ?").run(Number.parseInt(id));
     res.json({ success: true, message: "Morador excluído." });
   } catch (err) {
-    console.error("Erro ao excluir morador:", err);
+    log.error("Erro ao excluir morador:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -201,7 +200,7 @@ router.post("/gerar-link", authorize("master", "administradora", "sindico"), (re
     const link = `${origin}/register/morador?ref=${token}${condoSuffix}`;
     res.json({ link, token });
   } catch (err) {
-    console.error("Erro ao gerar link:", err);
+    log.error("Erro ao gerar link:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -218,7 +217,7 @@ router.get("/pendentes", authorize("master", "administradora", "sindico"), (req,
     ).all(...scope.params);
     res.json(pendentes);
   } catch (err) {
-    console.error("Erro ao listar pendentes:", err);
+    log.error("Erro ao listar pendentes:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -232,7 +231,7 @@ router.get("/pendentes/count", authorize("master", "administradora", "sindico"),
     ).get(...scope.params) as { count: number };
     res.json({ count: result.count });
   } catch (err) {
-    console.error("Erro ao contar pendentes:", err);
+    log.error("Erro ao contar pendentes:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -252,7 +251,7 @@ router.put("/:id/aprovar", authorize("master", "administradora", "sindico"), (re
     db.prepare("UPDATE users SET aprovado = 1, updated_at = datetime('now') WHERE id = ?").run(id);
     res.json({ success: true, message: `Cadastro de ${morador.name} aprovado com sucesso!` });
   } catch (err) {
-    console.error("Erro ao aprovar morador:", err);
+    log.error("Erro ao aprovar morador:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -272,7 +271,7 @@ router.delete("/:id/rejeitar", authorize("master", "administradora", "sindico"),
     db.prepare("DELETE FROM users WHERE id = ?").run(id);
     res.json({ success: true, message: `Cadastro de ${morador.name} rejeitado e removido.` });
   } catch (err) {
-    console.error("Erro ao rejeitar morador:", err);
+    log.error("Erro ao rejeitar morador:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -331,7 +330,7 @@ router.post("/importar", authorize("master", "administradora", "sindico"), async
       message: `${imported} morador(es) importado(s)${errorSuffix}.`,
     });
   } catch (err) {
-    console.error("Erro ao importar moradores:", err);
+    log.error("Erro ao importar moradores:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

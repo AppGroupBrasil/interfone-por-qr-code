@@ -5,6 +5,7 @@ import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { checkPin } from "@/lib/passwordPolicy";
 import {
   Eye,
   EyeOff,
@@ -115,7 +116,7 @@ export default function RegisterCondominio() {
     if (!adminName.trim()) return "Informe o nome do responsável.";
     if (!email) return "Informe o e-mail.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "E-mail inválido.";
-    if (!/^\d{6}$/.test(password)) return "Senha deve ter exatamente 6 dígitos numéricos.";
+    { const r = checkPin(password); if (!r.ok) return r.error!; }
     if (password !== confirmPassword) return "As senhas não coincidem.";
     return null;
   };

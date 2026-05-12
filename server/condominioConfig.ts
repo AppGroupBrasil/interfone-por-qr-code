@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import db from "./db.js";
 import { authenticate, authorize, getAccessibleCondominioIds } from "./middleware.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -51,9 +52,13 @@ const ALLOWED_KEYS = new Set([
 ]);
 
 // ─── PUBLIC config for auto-cadastro (no auth) ──────────
+// Exige condominio_id — sem o filtro, agregava configs de todos os condomínios.
 router.get("/public", (req: Request, res: Response) => {
   try {
-    const condominioId = req.query.condominio_id ? Number(req.query.condominio_id) : null;
+    const cid = Number(req.query.condominio_id);
+    if (!Number.isInteger(cid) || cid <= 0) {
+      return res.status(400).json({ error: "Informe o condomínio (condominio_id)." });
+    }
     const publicKeys = [
       'require_visit_photo','require_visit_document','require_visit_phone',
       'require_visit_reason','require_visit_doc_photo',
@@ -61,20 +66,16 @@ router.get("/public", (req: Request, res: Response) => {
       'feature_auto_cadastro',
     ];
     const placeholders = publicKeys.map(() => '?').join(',');
-    let query = `SELECT key, value FROM condominio_config WHERE key IN (${placeholders})`;
-    let params: any[] = [...publicKeys];
-    if (condominioId) {
-      query += ` AND condominio_id = ?`;
-      params.push(condominioId);
-    }
-    const rows = db.prepare(query).all(...params) as { key: string; value: string }[];
+    const rows = db.prepare(
+      `SELECT key, value FROM condominio_config WHERE key IN (${placeholders}) AND condominio_id = ?`
+    ).all(...publicKeys, cid) as { key: string; value: string }[];
     const config: Record<string, string> = {};
     for (const row of rows) {
       config[row.key] = row.value;
     }
     res.json(config);
   } catch (err: any) {
-    console.error("Erro ao buscar config pública:", err);
+    log.error("Erro ao buscar config pública:", err);
     res.status(500).json({ error: "Erro interno" });
   }
 });
@@ -116,7 +117,7 @@ router.get("/", authenticate, (req: Request, res: Response) => {
 
     res.json(config);
   } catch (err: any) {
-    console.error("Erro ao buscar config:", err);
+    log.error("Erro ao buscar config:", err);
     res.status(500).json({ error: "Erro ao buscar configuração" });
   }
 });
@@ -172,7 +173,7 @@ router.put(
 
       res.json(config);
     } catch (err: any) {
-      console.error("Erro ao atualizar config:", err);
+      log.error("Erro ao atualizar config:", err);
       res.status(500).json({ error: "Erro ao atualizar configuração" });
     }
   }

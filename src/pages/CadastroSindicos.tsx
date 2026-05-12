@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
+import { checkPin } from "@/lib/passwordPolicy";
 import {
   ChevronLeft,
   Eye,
@@ -101,10 +102,10 @@ export default function CadastroSindicos() {
     if (!email.trim()) return "Informe o e-mail.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "E-mail inválido.";
     if (!editingId) {
-      if (!/^\d{6}$/.test(password)) return "Senha deve ter exatamente 6 dígitos numéricos.";
+      { const r = checkPin(password); if (!r.ok) return r.error!; }
       if (password !== confirmPassword) return "As senhas não coincidem.";
     } else if (password) {
-      if (!/^\d{6}$/.test(password)) return "Senha deve ter exatamente 6 dígitos numéricos.";
+      { const r = checkPin(password); if (!r.ok) return r.error!; }
       if (password !== confirmPassword) return "As senhas não coincidem.";
     }
     return null;

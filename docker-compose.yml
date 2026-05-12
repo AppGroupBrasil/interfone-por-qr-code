@@ -11,6 +11,9 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://appinterfone.com.br,https://www.appinterfone.com.br,capacitor://localhost}
+      - DEMO_MODE=${DEMO_MODE:-false}
+      - SAMPLE_ACCOUNTS_ON_REGISTER=${SAMPLE_ACCOUNTS_ON_REGISTER:-false}
       # AWS SES (Email)
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -18,9 +21,18 @@ services:
       - SES_FROM_EMAIL=${SES_FROM_EMAIL:-naoresponda@appinterfone.com.br}
       - SES_FROM_NAME=${SES_FROM_NAME:-App Interfone}
       - APP_URL=${APP_URL:-https://appinterfone.com.br}
+      # Firebase Cloud Messaging
+      - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH:-/app/secrets/firebase-service-account.json}
+      # Web Push (VAPID)
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:contato@appinterfone.com.br}
     volumes:
       # Persist SQLite database
       - appinterfone_data:/app/data
+      # Firebase service account — descomentar e garantir que o arquivo exista
+      # para habilitar push notifications.
+      # - ./server/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
     networks:
       - coolify
     labels:

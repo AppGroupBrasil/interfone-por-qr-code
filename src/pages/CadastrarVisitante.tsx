@@ -704,7 +704,10 @@ export default function CadastrarVisitante() {
 
   // Generate self-register WhatsApp link
   const handleSelfRegisterLink = () => {
-    const selfRegisterUrl = `${APP_ORIGIN}/visitante/auto-cadastro`;
+    const cid = user?.condominioId;
+    const selfRegisterUrl = cid
+      ? `${APP_ORIGIN}/visitante/auto-cadastro?cid=${cid}`
+      : `${APP_ORIGIN}/visitante/auto-cadastro`;
     const msgLines = [
       `*Portaria - Auto Cadastro de Visitante*`,
       ``,

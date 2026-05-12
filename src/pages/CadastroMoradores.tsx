@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
+import { checkPin } from "@/lib/passwordPolicy";
 import {
   UserPlus,
   Link2,
@@ -158,7 +159,7 @@ export default function CadastroMoradores() {
       return setError("Preencha todos os campos obrigatórios.");
     }
     if (editPassword) {
-      if (!/^\d{6}$/.test(editPassword)) return setError("Senha deve ter 6 dígitos.");
+      { const r = checkPin(editPassword); if (!r.ok) return setError(r.error!); }
       if (editPassword !== editConfirmPassword) return setError("As senhas não coincidem.");
     }
 

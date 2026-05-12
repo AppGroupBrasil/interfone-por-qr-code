@@ -251,16 +251,17 @@ export default function AutoCadastroPreAuth() {
   // ─── Render States ─────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center" style={{ background: "#f8fafc" }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#6366f1" }} />
+      <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center" style={{ background: "#f8fafc" }}>
+        <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin" style={{ color: "#6366f1" }} />
+        <span className="sr-only">Carregando…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6" style={{ background: "#f8fafc" }}>
-        <XCircle className="w-16 h-16 mb-4" style={{ color: "#ef4444" }} />
+      <div role="alert" className="min-h-dvh flex flex-col items-center justify-center px-6" style={{ background: "#f8fafc" }}>
+        <XCircle aria-hidden="true" className="w-16 h-16 mb-4" style={{ color: "#ef4444" }} />
         <h1 className="text-xl font-bold text-foreground mb-2">Link Inválido</h1>
         <p className="text-sm text-muted-foreground text-center">{error}</p>
       </div>

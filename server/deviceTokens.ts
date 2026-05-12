@@ -8,6 +8,7 @@
 import { Router, Request, Response } from "express";
 import db from "./db.js";
 import { authenticate } from "./middleware.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("device-tokens register error:", err);
+    log.error("device-tokens register error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -85,7 +86,7 @@ router.delete("/", authenticate, async (req: Request, res: Response) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("device-tokens delete error:", err);
+    log.error("device-tokens delete error:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLogo } from "@/components/AppLogo";
@@ -25,21 +25,20 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isBlocked, setIsBlocked] = useState(false);
 
-  // Show blocked message if user was redirected here after being blocked
-  useState(() => {
+  useEffect(() => {
     const blockedMsg = localStorage.getItem("blocked_message");
     if (blockedMsg) {
       setError(blockedMsg);
       setIsBlocked(true);
       localStorage.removeItem("blocked_message");
     }
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!email) return setError("Informe seu e-mail ou login.");
+    if (!email.trim()) return setError("Informe seu e-mail ou login.");
     if (!password) return setError("Informe sua senha.");
     if (!/^\d{6}$/.test(password))
       return setError("Senha deve ter 6 dígitos numéricos.");
@@ -160,13 +159,15 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  aria-pressed={showPassword}
                   className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                   style={{ color: "#003580" }}
                 >
                   {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
+                    <EyeOff className="w-5 h-5" aria-hidden="true" />
                   ) : (
-                    <Eye className="w-5 h-5" />
+                    <Eye className="w-5 h-5" aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -175,6 +176,8 @@ export default function Login() {
             {/* Error */}
             {error && (
               <div
+                role="alert"
+                aria-live="assertive"
                 className="flex items-start gap-3 p-4 rounded-xl text-sm"
                 style={{
                   background: isBlocked ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.1)",

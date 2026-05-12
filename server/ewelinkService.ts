@@ -9,6 +9,7 @@
  */
 import eWeLink from "ewelink-api-next";
 import db from "./db.js";
+import { log } from "./logger.js";
 
 export interface EwelinkCredentials {
   appId: string;
@@ -82,7 +83,7 @@ function loadTokenFromDB(): TokenData | null {
       };
     }
   } catch (err) {
-    console.error("Error loading eWeLink token from DB:", err);
+    log.error("Error loading eWeLink token from DB:", err);
   }
   return null;
 }
@@ -152,7 +153,7 @@ export async function exchangeCodeForToken(
     
     return { success: true };
   } catch (err: any) {
-    console.error("exchangeCodeForToken error:", err);
+    log.error("exchangeCodeForToken error:", err);
     return { success: false, error: err.message || String(err) };
   }
 }
@@ -195,7 +196,7 @@ async function getAccessToken(creds: EwelinkCredentials): Promise<string> {
         return newToken.accessToken;
       }
     } catch (err) {
-      console.error("Token refresh error:", err);
+      log.error("Token refresh error:", err);
     }
   }
   
@@ -300,7 +301,7 @@ export async function pulseDevice(
             });
             console.log("pulseDevice manual OFF:", JSON.stringify(offRes));
           } catch (err) {
-            console.error("pulseDevice manual OFF error:", err);
+            log.error("pulseDevice manual OFF error:", err);
           }
         }, width);
       }
@@ -344,7 +345,7 @@ export async function pulseDevice(
           });
           console.log("pulseDevice manual OFF:", JSON.stringify(offRes));
         } catch (err) {
-          console.error("pulseDevice manual OFF error:", err);
+          log.error("pulseDevice manual OFF error:", err);
         }
       }, width);
     }
@@ -428,7 +429,7 @@ export async function listDevices(
 
     return { devices };
   } catch (err: any) {
-    console.error("listDevices error:", err);
+    log.error("listDevices error:", err);
     return { devices: [], error: err.message };
   }
 }

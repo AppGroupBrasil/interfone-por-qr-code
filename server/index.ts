@@ -31,19 +31,15 @@ import faceRouter from "./faceRoutes.js";
 import gateRouter from "./gateRoutes.js";
 import whatsappRouter from "./whatsappRoutes.js";
 import { loadModels as loadFaceModels } from "./faceService.js";
-import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs } from "./db.js";
+import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs, cleanupVisitorQRShares, cleanupOldVisitors } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
+import { ALLOWED_ORIGINS, IS_PROD } from "./config.js";
+import { log } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Validate critical env vars in production ───
-if (process.env.NODE_ENV === "production") {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev-secret-change-in-production-32chars!!") {
-    console.error("FATAL: JWT_SECRET must be set to a strong secret in production. Exiting.");
-    process.exit(1);
-  }
-}
+// JWT_SECRET validado em ./config.ts — falha-fast no import.
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -70,18 +66,8 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Permite carregar recursos de câmeras/CDNs
 }));
 
-// CORS — restrito a origens conhecidas
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "https://localhost:5173",
-  "http://localhost:3001",
-  "https://appinterfone.com.br",
-  "https://www.appinterfone.com.br",
-  "capacitor://localhost",
-  "http://localhost",
-];
-
-// Aceitar qualquer origem da rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+// CORS — restrito a origens conhecidas (ALLOWED_ORIGINS via env).
+// Em dev/staging, rede local também aceita (LAN do condomínio).
 const isLocalNetworkOrigin = (origin: string): boolean => {
   try {
     const url = new URL(origin);
@@ -91,12 +77,10 @@ const isLocalNetworkOrigin = (origin: string): boolean => {
 };
 app.use(cors({
   origin: (origin, callback) => {
-    // Permitir requests sem origin (mobile apps, curl, etc)
-    if (!origin || ALLOWED_ORIGINS.includes(origin) || isLocalNetworkOrigin(origin || "")) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
+    if (!origin) return callback(null, true); // mobile/curl
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (!IS_PROD && isLocalNetworkOrigin(origin)) return callback(null, true);
+    callback(null, false);
   },
   credentials: true,
 }));
@@ -132,6 +116,44 @@ const authLimiter = rateLimit({
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/password-reset", authLimiter);
+
+// Rate limit para criação de visitantes / QR público (anti-abuso)
+const visitorWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Aguarde 1 minuto." },
+});
+// Aplica apenas em métodos de escrita
+const writeOnly = (limiter: any) => (req: any, res: any, next: any) =>
+  ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) ? limiter(req, res, next) : next();
+app.use("/api/visitors", writeOnly(visitorWriteLimiter));
+app.use("/api/visitor-qr", writeOnly(visitorWriteLimiter));
+app.use("/api/pre-authorizations", writeOnly(visitorWriteLimiter));
+app.use("/api/delivery-authorizations", writeOnly(visitorWriteLimiter));
+app.use("/api/vehicle-authorizations", writeOnly(visitorWriteLimiter));
+
+// Interfone digital: POST /calls é público (visitante inicia chamada).
+// Limite mais agressivo para evitar abuso/DoS de chamadas falsas.
+const interfoneCallLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas chamadas. Aguarde 1 minuto." },
+});
+app.use("/api/interfone/calls", writeOnly(interfoneCallLimiter));
+
+// Câmeras: upload de snapshot pode ser pesado (10MB body); limite mais agressivo
+const cameraUploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitos uploads de câmera. Aguarde 1 minuto." },
+});
+app.use("/api/cameras", writeOnly(cameraUploadLimiter));
 
 // Ensure UTF-8 charset on all JSON responses
 app.use((_req, res, next) => {
@@ -214,7 +236,7 @@ if (process.env.NODE_ENV === "production") {
 
 // Global error handler — prevents internal error details from leaking to clients
 app.use((err: any, _req: any, res: any, _next: any) => {
-  console.error("Unhandled error:", err);
+  log.error("Unhandled error", { message: err?.message, stack: IS_PROD ? undefined : err?.stack });
   res.status(500).json({ error: "Erro interno do servidor." });
 });
 
@@ -222,15 +244,33 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 const server = http.createServer(app);
 initSignalingServer(server);
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n  🚀 App Interfone running at http://0.0.0.0:${PORT}`);
-  console.log(`  📦 API: http://localhost:${PORT}/api\n`);
+// Graceful shutdown
+function shutdown(signal: string) {
+  console.log(`\n[${signal}] Encerrando servidor...`);
+  server.close(() => {
+    console.log("[shutdown] HTTP fechado.");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    log.error("[shutdown] Timeout — forçando saída.");
+    process.exit(1);
+  }, 10000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
-  // Carregar modelos de reconhecimento facial em background
+// Readiness
+app.get("/api/ready", (_req, res) => {
+  res.json({ status: "ready", uptime: process.uptime() });
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  log.info(`HTTP escutando em 0.0.0.0:${PORT}`, { env: process.env.NODE_ENV });
+
   loadFaceModels().then(() => {
-    console.log("  🧠 Face recognition models loaded\n");
+    log.info("Modelos de reconhecimento facial carregados");
   }).catch((err) => {
-    console.error("  ⚠️  Face models failed to load:", err.message);
+    log.warn("Falha ao carregar modelos de face", { message: err.message });
   });
 
   // ─── Scheduled Tasks ───
@@ -245,6 +285,8 @@ server.listen(PORT, "0.0.0.0", () => {
     cleanupExpiredAuthorizations();
     cleanupDemoAccounts();
     cleanupOldAuditLogs();
+    cleanupVisitorQRShares();
+    cleanupOldVisitors();
   }, 6 * 60 * 60 * 1000);
 
   // Every hour: expire authorizations

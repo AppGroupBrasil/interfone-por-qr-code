@@ -1,9 +1,28 @@
 ﻿import { Router, Request, Response } from "express";
+import crypto from "crypto";
 import db from "./db.js";
 import { authenticate } from "./middleware.js";
 import { emailCorrespondenciaChegou } from "./emailService.js";
+import { JWT_SECRET } from "./config.js";
+import { log } from "./logger.js";
 
 const router = Router();
+
+// HMAC do protocolo para impedir enumeração da rota pública /foto.
+function signProtocolo(protocolo: string): string {
+  return crypto.createHmac("sha256", JWT_SECRET).update(protocolo).digest("base64url").slice(0, 16);
+}
+function verifyProtocolo(protocolo: string, sig: string | undefined): boolean {
+  if (!sig || typeof sig !== "string") return false;
+  const expected = signProtocolo(protocolo);
+  if (expected.length !== sig.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+}
+
+// Helper exportado para o front-end (via JSON response) e para outros routers.
+export function buildFotoToken(protocolo: string): string {
+  return signProtocolo(protocolo);
+}
 
 // ─── Helper: generate protocol number ────────────────────
 function generateProtocolo(): string {
@@ -43,10 +62,11 @@ router.get("/", authenticate, (req: Request, res: Response) => {
 
     query += " ORDER BY created_at DESC";
 
-    const results = db.prepare(query).all(...params);
-    res.json(results);
+    const results = db.prepare(query).all(...params) as Array<{ protocolo: string; [k: string]: unknown }>;
+    // Anexa foto_token para que o front possa montar o link público.
+    res.json(results.map(r => ({ ...r, foto_token: signProtocolo(r.protocolo) })));
   } catch (err: any) {
-    console.error("Erro em correspondencias :", err);
+    log.error("Erro em correspondencias :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -110,16 +130,17 @@ router.post("/", authenticate, (req: Request, res: Response) => {
         tipo: tipo || "encomenda",
         remetente: remetente || undefined,
         descricao: descricao || undefined,
-      }).catch((err) => console.error("[EMAIL] Erro correspondência:", err));
+      }).catch((err) => log.error("[EMAIL] Erro correspondência:", err));
     }
 
     res.status(201).json({
       id: result.lastInsertRowid,
       protocolo,
+      foto_token: signProtocolo(protocolo),
       message: "Correspondência registrada com sucesso.",
     });
   } catch (err: any) {
-    console.error("Erro em correspondencias :", err);
+    log.error("Erro em correspondencias :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -152,7 +173,7 @@ router.put("/:id/retirar", authenticate, (req: Request, res: Response) => {
 
     res.json({ message: "Correspondência marcada como retirada." });
   } catch (err: any) {
-    console.error("Erro ao atualizar correspondência:", err);
+    log.error("Erro ao atualizar correspondência:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
@@ -182,15 +203,20 @@ router.delete("/:id", authenticate, (req: Request, res: Response) => {
     db.prepare("DELETE FROM correspondencias WHERE id = ? AND condominio_id = ?").run(id, user.condominio_id);
     res.json({ message: "Correspondência removida." });
   } catch (err: any) {
-    console.error("Erro ao excluir correspondência:", err);
+    log.error("Erro ao excluir correspondência:", err);
     res.status(500).json({ error: "Erro interno do servidor." });
   }
 });
 
-// ─── PUBLIC: Get photo by protocol (no auth needed for WhatsApp link) ─────
+// ─── PUBLIC: Get photo by protocol (sem auth — usado em link de WhatsApp).
+// Exige assinatura HMAC na query string (`?t=...`) para impedir enumeração.
 router.get("/foto/:protocolo", (req: Request, res: Response) => {
   try {
     const protocolo = String(req.params.protocolo);
+    if (!verifyProtocolo(protocolo, req.query.t as string | undefined)) {
+      res.status(403).json({ error: "Link inválido ou expirado." });
+      return;
+    }
     const corr = db.prepare("SELECT foto FROM correspondencias WHERE protocolo = ?").get(protocolo) as { foto: string | null } | undefined;
 
     if (!corr || !corr.foto) {
@@ -212,7 +238,7 @@ router.get("/foto/:protocolo", (req: Request, res: Response) => {
     res.setHeader("Content-Length", buffer.length);
     res.send(buffer);
   } catch (err: any) {
-    console.error("Erro em correspondencias :", err);
+    log.error("Erro em correspondencias :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

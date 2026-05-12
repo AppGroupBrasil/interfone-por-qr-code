@@ -1,83 +1,111 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth, hasMinRole, type UserRole } from "@/hooks/useAuth";
-import React, { useState, useEffect } from "react";
-import Login from "@/pages/Login";
-import SearchCondominio from "@/pages/SearchCondominio";
-import RegisterMorador from "@/pages/RegisterMorador";
-import RegisterCondominio from "@/pages/RegisterCondominio";
-import DashboardRouter from "@/pages/DashboardRouter";
-import ForgotPassword from "@/pages/ForgotPassword";
-import Cadastros from "@/pages/Cadastros";
-import DemoTrialModal from "@/components/DemoTrialModal";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { onDemoBlocked } from "@/lib/api";
-import PushPermissionModal from "@/components/PushPermissionModal";
-import CadastroFuncionarios from "@/pages/CadastroFuncionarios";
-import CadastroBlocos from "@/pages/CadastroBlocos";
-import CadastroMoradores from "@/pages/CadastroMoradores";
-import CadastroMoradoresManual from "@/pages/CadastroMoradoresManual";
-import CadastroMoradoresLink from "@/pages/CadastroMoradoresLink";
-import CadastroMoradoresQRCode from "@/pages/CadastroMoradoresQRCode";
-import CadastroMoradoresPlanilha from "@/pages/CadastroMoradoresPlanilha";
-import CadastroAdministradoras from "@/pages/CadastroAdministradoras";
-import CadastroSindicos from "@/pages/CadastroSindicos";
-import MasterCondominios from "@/pages/MasterCondominios";
-import MasterUsuarios from "@/pages/MasterUsuarios";
-import MasterConfig from "@/pages/MasterConfig";
-import MasterLogs from "@/pages/MasterLogs";
-import EspelhoPortaria from "@/pages/EspelhoPortaria";
-import CadastrarVisitante from "@/pages/CadastrarVisitante";
-import AutorizarVisitante from "@/pages/AutorizarVisitante";
-import AutoCadastroVisitante from "@/pages/AutoCadastroVisitante";
-import VisitanteQRCode from "@/pages/VisitanteQRCode";
-import MoradorAutorizacoes from "@/pages/MoradorAutorizacoes";
-import AutoCadastroPreAuth from "@/pages/AutoCadastroPreAuth";
-import QRVisitantePublic from "@/pages/QRVisitantePublic";
-import MoradorDelivery from "@/pages/MoradorDelivery";
-import DeliveryPorteiro from "@/pages/DeliveryPorteiro";
-import MoradorVeiculos from "@/pages/MoradorVeiculos";
-import VeiculosPorteiro from "@/pages/VeiculosPorteiro";
-import PortariaConfig from "@/pages/PortariaConfig";
-import PersonalizarDashboard from "@/pages/PersonalizarDashboard";
-import AprovarVeiculo from "@/pages/AprovarVeiculo";
-import MinhaConta from "@/pages/MinhaConta";
-import CorrespondenciasPorteiro from "@/pages/CorrespondenciasPorteiro";
-import MoradorCorrespondencias from "@/pages/MoradorCorrespondencias";
-import LivroProtocolo from "@/pages/LivroProtocolo";
-import PortariaVirtualTutorial from "@/pages/PortariaVirtualTutorial";
-import MoradorQRVisitante from "@/pages/MoradorQRVisitante";
-import PorteiroQRScanner from "@/pages/PorteiroQRScanner";
-import SindicoQRConfig from "@/pages/SindicoQRConfig";
-import SindicoFeaturesConfig from "@/pages/SindicoFeaturesConfig";
-import AdminFeaturesConfig from "@/pages/AdminFeaturesConfig";
-import CadastroCameras from "@/pages/CadastroCameras";
-import MonitoramentoCameras from "@/pages/MonitoramentoCameras";
-import ControleRondasSindico from "@/pages/ControleRondasSindico";
-import RegistroRonda from "@/pages/RegistroRonda";
-import SindicoInterfoneConfig from "@/pages/SindicoInterfoneConfig";
-import MoradorInterfoneConfig from "@/pages/MoradorInterfoneConfig";
-import MoradorInterfone from "@/pages/MoradorInterfone";
-import FuncionarioInterfone from "@/pages/FuncionarioInterfone";
-import InterfoneVisitor from "@/pages/InterfoneVisitor";
-import InterfoneWhatsApp from "@/pages/InterfoneWhatsApp";
+
+// Carregados ansiosamente (boot crítico)
+import Login from "@/pages/Login";
 import LandingPage from "@/pages/LandingPage";
-import SindicoWhatsAppInterfone from "@/pages/SindicoWhatsAppInterfone";
-import SindicoGateConfig from "@/pages/SindicoGateConfig";
-import SindicoAccessConfig from "@/pages/SindicoAccessConfig";
-import SindicoWhatsAppConfig from "@/pages/SindicoWhatsAppConfig";
-import MasterWhatsAppDashboard from "@/pages/MasterWhatsAppDashboard";
-import MasterGateConfig from "@/pages/MasterGateConfig";
-import MoradorPortariaVirtual from "@/pages/MoradorPortariaVirtual";
-import MasterPainelCondominios from "@/pages/MasterPainelCondominios";
-import LiberacaoCadastros from "@/pages/LiberacaoCadastros";
-import CentroComando from "@/pages/CentroComando";
-import ConfiguracaoToque from "@/pages/ConfiguracaoToque";
-import BibliotecaDispositivos from "@/pages/BibliotecaDispositivos";
-import EwelinkCallback from "@/pages/EwelinkCallback";
-import MasterGuiaInstalacao from "@/pages/MasterGuiaInstalacao";
-import PortariaAcessoAuto from "@/pages/PortariaAcessoAuto";
-import ContratoPage from "@/pages/ContratoPage";
-import ApresentacaoPage from "@/pages/ApresentacaoPage";
+import DashboardRouter from "@/pages/DashboardRouter";
+import DemoTrialModal from "@/components/DemoTrialModal";
+import PushPermissionModal from "@/components/PushPermissionModal";
 import GlobalIncomingCall from "@/components/GlobalIncomingCall";
+
+// Lazy: telas de auth e onboarding
+const SearchCondominio = lazy(() => import("@/pages/SearchCondominio"));
+const RegisterMorador = lazy(() => import("@/pages/RegisterMorador"));
+const RegisterCondominio = lazy(() => import("@/pages/RegisterCondominio"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+
+// Lazy: cadastros
+const Cadastros = lazy(() => import("@/pages/Cadastros"));
+const CadastroFuncionarios = lazy(() => import("@/pages/CadastroFuncionarios"));
+const CadastroBlocos = lazy(() => import("@/pages/CadastroBlocos"));
+const CadastroMoradores = lazy(() => import("@/pages/CadastroMoradores"));
+const CadastroMoradoresManual = lazy(() => import("@/pages/CadastroMoradoresManual"));
+const CadastroMoradoresLink = lazy(() => import("@/pages/CadastroMoradoresLink"));
+const CadastroMoradoresQRCode = lazy(() => import("@/pages/CadastroMoradoresQRCode"));
+const CadastroMoradoresPlanilha = lazy(() => import("@/pages/CadastroMoradoresPlanilha"));
+const CadastroAdministradoras = lazy(() => import("@/pages/CadastroAdministradoras"));
+const CadastroSindicos = lazy(() => import("@/pages/CadastroSindicos"));
+
+// Lazy: master
+const MasterCondominios = lazy(() => import("@/pages/MasterCondominios"));
+const MasterUsuarios = lazy(() => import("@/pages/MasterUsuarios"));
+const MasterConfig = lazy(() => import("@/pages/MasterConfig"));
+const MasterLogs = lazy(() => import("@/pages/MasterLogs"));
+const MasterPainelCondominios = lazy(() => import("@/pages/MasterPainelCondominios"));
+const MasterGateConfig = lazy(() => import("@/pages/MasterGateConfig"));
+const MasterWhatsAppDashboard = lazy(() => import("@/pages/MasterWhatsAppDashboard"));
+const MasterGuiaInstalacao = lazy(() => import("@/pages/MasterGuiaInstalacao"));
+
+// Lazy: portaria
+const EspelhoPortaria = lazy(() => import("@/pages/EspelhoPortaria"));
+const CadastrarVisitante = lazy(() => import("@/pages/CadastrarVisitante"));
+const VisitanteQRCode = lazy(() => import("@/pages/VisitanteQRCode"));
+const DeliveryPorteiro = lazy(() => import("@/pages/DeliveryPorteiro"));
+const VeiculosPorteiro = lazy(() => import("@/pages/VeiculosPorteiro"));
+const PortariaConfig = lazy(() => import("@/pages/PortariaConfig"));
+const PersonalizarDashboard = lazy(() => import("@/pages/PersonalizarDashboard"));
+const CorrespondenciasPorteiro = lazy(() => import("@/pages/CorrespondenciasPorteiro"));
+const LivroProtocolo = lazy(() => import("@/pages/LivroProtocolo"));
+const PortariaAcessoAuto = lazy(() => import("@/pages/PortariaAcessoAuto"));
+const PorteiroQRScanner = lazy(() => import("@/pages/PorteiroQRScanner"));
+const MonitoramentoCameras = lazy(() => import("@/pages/MonitoramentoCameras"));
+const RegistroRonda = lazy(() => import("@/pages/RegistroRonda"));
+const FuncionarioInterfone = lazy(() => import("@/pages/FuncionarioInterfone"));
+const CentroComando = lazy(() => import("@/pages/CentroComando"));
+
+// Lazy: morador
+const MoradorAutorizacoes = lazy(() => import("@/pages/MoradorAutorizacoes"));
+const MoradorDelivery = lazy(() => import("@/pages/MoradorDelivery"));
+const MoradorVeiculos = lazy(() => import("@/pages/MoradorVeiculos"));
+const MoradorCorrespondencias = lazy(() => import("@/pages/MoradorCorrespondencias"));
+const MoradorQRVisitante = lazy(() => import("@/pages/MoradorQRVisitante"));
+const MoradorInterfoneConfig = lazy(() => import("@/pages/MoradorInterfoneConfig"));
+const MoradorInterfone = lazy(() => import("@/pages/MoradorInterfone"));
+const MoradorPortariaVirtual = lazy(() => import("@/pages/MoradorPortariaVirtual"));
+const MinhaConta = lazy(() => import("@/pages/MinhaConta"));
+
+// Lazy: síndico
+const SindicoQRConfig = lazy(() => import("@/pages/SindicoQRConfig"));
+const SindicoFeaturesConfig = lazy(() => import("@/pages/SindicoFeaturesConfig"));
+const SindicoInterfoneConfig = lazy(() => import("@/pages/SindicoInterfoneConfig"));
+const SindicoWhatsAppInterfone = lazy(() => import("@/pages/SindicoWhatsAppInterfone"));
+const SindicoGateConfig = lazy(() => import("@/pages/SindicoGateConfig"));
+const SindicoAccessConfig = lazy(() => import("@/pages/SindicoAccessConfig"));
+const SindicoWhatsAppConfig = lazy(() => import("@/pages/SindicoWhatsAppConfig"));
+const AdminFeaturesConfig = lazy(() => import("@/pages/AdminFeaturesConfig"));
+const CadastroCameras = lazy(() => import("@/pages/CadastroCameras"));
+const ControleRondasSindico = lazy(() => import("@/pages/ControleRondasSindico"));
+const LiberacaoCadastros = lazy(() => import("@/pages/LiberacaoCadastros"));
+
+// Lazy: utilitários
+const ConfiguracaoToque = lazy(() => import("@/pages/ConfiguracaoToque"));
+const BibliotecaDispositivos = lazy(() => import("@/pages/BibliotecaDispositivos"));
+const EwelinkCallback = lazy(() => import("@/pages/EwelinkCallback"));
+const PortariaVirtualTutorial = lazy(() => import("@/pages/PortariaVirtualTutorial"));
+
+// Lazy: páginas públicas (visitante via QR)
+const AutorizarVisitante = lazy(() => import("@/pages/AutorizarVisitante"));
+const AutoCadastroVisitante = lazy(() => import("@/pages/AutoCadastroVisitante"));
+const AutoCadastroPreAuth = lazy(() => import("@/pages/AutoCadastroPreAuth"));
+const QRVisitantePublic = lazy(() => import("@/pages/QRVisitantePublic"));
+const AprovarVeiculo = lazy(() => import("@/pages/AprovarVeiculo"));
+const InterfoneVisitor = lazy(() => import("@/pages/InterfoneVisitor"));
+const InterfoneWhatsApp = lazy(() => import("@/pages/InterfoneWhatsApp"));
+const ContratoPage = lazy(() => import("@/pages/ContratoPage"));
+const ApresentacaoPage = lazy(() => import("@/pages/ApresentacaoPage"));
+
+// ─── Loaders ─────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="min-h-dvh bg-background flex items-center justify-center" role="status" aria-live="polite">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="sr-only">Carregando…</span>
+    </div>
+  );
+}
 
 // ─── Error Boundary ──────────────────────────────────────
 class ErrorBoundary extends React.Component<
@@ -125,14 +153,7 @@ class ErrorBoundary extends React.Component<
 function ProtectedRoute({ children, minRole }: Readonly<{ children: React.ReactNode; minRole?: UserRole }>) {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  if (isLoading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (minRole && !hasMinRole(user.role, minRole)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
@@ -141,27 +162,14 @@ function ProtectedRoute({ children, minRole }: Readonly<{ children: React.ReactN
 function PublicRoute({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  if (isLoading) return <PageLoader />;
   if (user) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
 function LandingOrDashboard() {
   const { user, isLoading } = useAuth();
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (isLoading) return <PageLoader />;
   if (user) return <Navigate to="/dashboard" replace />;
   return <LandingPage />;
 }
@@ -200,85 +208,87 @@ function PushPermissionListener() {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingOrDashboard />} />
-      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-      <Route path="/register/morador/search" element={<PublicRoute><SearchCondominio /></PublicRoute>} />
-      <Route path="/register/morador" element={<PublicRoute><RegisterMorador /></PublicRoute>} />
-      <Route path="/register/condominio" element={<PublicRoute><RegisterCondominio /></PublicRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
-      <Route path="/cadastros" element={<ProtectedRoute><Cadastros /></ProtectedRoute>} />
-      <Route path="/cadastros/administradoras" element={<ProtectedRoute minRole="master"><CadastroAdministradoras /></ProtectedRoute>} />
-      <Route path="/cadastros/sindicos" element={<ProtectedRoute minRole="administradora"><CadastroSindicos /></ProtectedRoute>} />
-      <Route path="/cadastros/funcionarios" element={<ProtectedRoute minRole="sindico"><CadastroFuncionarios /></ProtectedRoute>} />
-      <Route path="/cadastros/blocos" element={<ProtectedRoute minRole="sindico"><CadastroBlocos /></ProtectedRoute>} />
-      <Route path="/cadastros/moradores" element={<ProtectedRoute minRole="sindico"><CadastroMoradores /></ProtectedRoute>} />
-      <Route path="/cadastros/moradores/manual" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresManual /></ProtectedRoute>} />
-      <Route path="/cadastros/moradores/link" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresLink /></ProtectedRoute>} />
-      <Route path="/cadastros/moradores/qrcode" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresQRCode /></ProtectedRoute>} />
-      <Route path="/cadastros/moradores/planilha" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresPlanilha /></ProtectedRoute>} />
-      <Route path="/master/condominios" element={<ProtectedRoute minRole="administradora"><MasterCondominios /></ProtectedRoute>} />
-      <Route path="/master/painel" element={<ProtectedRoute minRole="administradora"><MasterPainelCondominios /></ProtectedRoute>} />
-      <Route path="/master/usuarios" element={<ProtectedRoute minRole="administradora"><MasterUsuarios /></ProtectedRoute>} />
-      <Route path="/master/config" element={<ProtectedRoute minRole="master"><MasterConfig /></ProtectedRoute>} />
-      <Route path="/master/logs" element={<ProtectedRoute minRole="administradora"><MasterLogs /></ProtectedRoute>} />
-      <Route path="/master/portao" element={<ProtectedRoute minRole="administradora"><MasterGateConfig /></ProtectedRoute>} />
-      <Route path="/master/guia-instalacao" element={<ProtectedRoute minRole="master"><MasterGuiaInstalacao /></ProtectedRoute>} />
-      <Route path="/master/whatsapp" element={<ProtectedRoute minRole="administradora"><MasterWhatsAppDashboard /></ProtectedRoute>} />
-      <Route path="/callback" element={<EwelinkCallback />} />
-      <Route path="/espelho-portaria" element={<ProtectedRoute><EspelhoPortaria /></ProtectedRoute>} />
-      <Route path="/portaria/acesso-pedestres" element={<ProtectedRoute><CadastrarVisitante /></ProtectedRoute>} />
-      <Route path="/portaria/visitante-qrcode" element={<ProtectedRoute><VisitanteQRCode /></ProtectedRoute>} />
-      <Route path="/portaria/autorizacoes-previas" element={<Navigate to="/portaria/acesso-pedestres" replace />} />
-      <Route path="/morador/autorizacoes" element={<ProtectedRoute><MoradorAutorizacoes /></ProtectedRoute>} />
-      <Route path="/morador/delivery" element={<ProtectedRoute><MoradorDelivery /></ProtectedRoute>} />
-      <Route path="/portaria/delivery" element={<ProtectedRoute><DeliveryPorteiro /></ProtectedRoute>} />
-      <Route path="/morador/veiculos" element={<ProtectedRoute><MoradorVeiculos /></ProtectedRoute>} />
-      <Route path="/portaria/acesso-veiculos" element={<ProtectedRoute><VeiculosPorteiro /></ProtectedRoute>} />
-      <Route path="/portaria/configuracoes" element={<ProtectedRoute><PortariaConfig /></ProtectedRoute>} />
-      <Route path="/portaria/personalizar-dashboard" element={<ProtectedRoute><PersonalizarDashboard /></ProtectedRoute>} />
-      <Route path="/minha-conta" element={<ProtectedRoute><MinhaConta /></ProtectedRoute>} />
-      <Route path="/configuracao-toque" element={<ProtectedRoute><ConfiguracaoToque /></ProtectedRoute>} />
-      <Route path="/biblioteca-dispositivos" element={<ProtectedRoute><BibliotecaDispositivos /></ProtectedRoute>} />
-      <Route path="/portaria/correspondencias" element={<ProtectedRoute><CorrespondenciasPorteiro /></ProtectedRoute>} />
-      <Route path="/morador/correspondencias" element={<ProtectedRoute><MoradorCorrespondencias /></ProtectedRoute>} />
-      <Route path="/portaria/livro-protocolo" element={<ProtectedRoute><LivroProtocolo /></ProtectedRoute>} />
-      <Route path="/portaria/portaria-virtual" element={<ProtectedRoute><MoradorPortariaVirtual /></ProtectedRoute>} />
-      <Route path="/portaria/acesso-auto" element={<ProtectedRoute minRole="funcionario"><PortariaAcessoAuto /></ProtectedRoute>} />
-      <Route path="/morador/qr-visitante" element={<ProtectedRoute><MoradorQRVisitante /></ProtectedRoute>} />
-      <Route path="/portaria/qr-scanner" element={<ProtectedRoute><PorteiroQRScanner /></ProtectedRoute>} />
-      <Route path="/sindico/qr-config" element={<ProtectedRoute><SindicoQRConfig /></ProtectedRoute>} />
-      <Route path="/sindico/features-config" element={<ProtectedRoute><SindicoFeaturesConfig /></ProtectedRoute>} />
-      <Route path="/admin/features-config" element={<ProtectedRoute minRole="administradora"><AdminFeaturesConfig /></ProtectedRoute>} />
-      <Route path="/sindico/cameras" element={<ProtectedRoute minRole="sindico"><CadastroCameras /></ProtectedRoute>} />
-      <Route path="/portaria/monitoramento" element={<ProtectedRoute minRole="funcionario"><MonitoramentoCameras /></ProtectedRoute>} />
-      <Route path="/sindico/rondas" element={<ProtectedRoute minRole="sindico"><ControleRondasSindico /></ProtectedRoute>} />
-      <Route path="/portaria/rondas" element={<ProtectedRoute minRole="funcionario"><RegistroRonda /></ProtectedRoute>} />
-      <Route path="/sindico/interfone-config" element={<ProtectedRoute minRole="sindico"><SindicoInterfoneConfig /></ProtectedRoute>} />
-      <Route path="/morador/interfone-config" element={<ProtectedRoute><MoradorInterfoneConfig /></ProtectedRoute>} />
-      <Route path="/morador/interfone" element={<ProtectedRoute><MoradorInterfone /></ProtectedRoute>} />
-      <Route path="/portaria/interfone" element={<ProtectedRoute><FuncionarioInterfone /></ProtectedRoute>} />
-      <Route path="/portaria/centro-comando" element={<ProtectedRoute><CentroComando /></ProtectedRoute>} />
-      <Route path="/sindico/portao" element={<ProtectedRoute minRole="sindico"><SindicoGateConfig /></ProtectedRoute>} />
-      <Route path="/sindico/acessos" element={<ProtectedRoute minRole="sindico"><SindicoAccessConfig /></ProtectedRoute>} />
-      <Route path="/sindico/whatsapp" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppConfig /></ProtectedRoute>} />
-      <Route path="/sindico/whatsapp-interfone" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppInterfone /></ProtectedRoute>} />
-      <Route path="/liberacao-cadastros" element={<ProtectedRoute minRole="sindico"><LiberacaoCadastros /></ProtectedRoute>} />
-      <Route path="/morador/portaria-virtual" element={<ProtectedRoute><MoradorPortariaVirtual /></ProtectedRoute>} />
-      {/* Rotas públicas de visitante (sem autenticação) */}
-      <Route path="/interfone/:token" element={<InterfoneVisitor />} />
-      <Route path="/whatsapp/:token" element={<InterfoneWhatsApp />} />
-      <Route path="/portaria-virtual-tutorial" element={<PortariaVirtualTutorial />} />
-      <Route path="/contrato" element={<ContratoPage />} />
-      <Route path="/apresentacao" element={<ApresentacaoPage />} />
-      <Route path="/visitante/autorizar/:token" element={<AutorizarVisitante />} />
-      <Route path="/visitante/auto-cadastro" element={<AutoCadastroVisitante />} />
-      <Route path="/autorizacao/auto-cadastro/:token" element={<AutoCadastroPreAuth />} />
-      <Route path="/visitante/qr/:token" element={<QRVisitantePublic />} />
-      <Route path="/veiculo/aprovar/:token" element={<AprovarVeiculo />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<LandingOrDashboard />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/register/morador/search" element={<PublicRoute><SearchCondominio /></PublicRoute>} />
+        <Route path="/register/morador" element={<PublicRoute><RegisterMorador /></PublicRoute>} />
+        <Route path="/register/condominio" element={<PublicRoute><RegisterCondominio /></PublicRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+        <Route path="/cadastros" element={<ProtectedRoute><Cadastros /></ProtectedRoute>} />
+        <Route path="/cadastros/administradoras" element={<ProtectedRoute minRole="master"><CadastroAdministradoras /></ProtectedRoute>} />
+        <Route path="/cadastros/sindicos" element={<ProtectedRoute minRole="administradora"><CadastroSindicos /></ProtectedRoute>} />
+        <Route path="/cadastros/funcionarios" element={<ProtectedRoute minRole="sindico"><CadastroFuncionarios /></ProtectedRoute>} />
+        <Route path="/cadastros/blocos" element={<ProtectedRoute minRole="sindico"><CadastroBlocos /></ProtectedRoute>} />
+        <Route path="/cadastros/moradores" element={<ProtectedRoute minRole="sindico"><CadastroMoradores /></ProtectedRoute>} />
+        <Route path="/cadastros/moradores/manual" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresManual /></ProtectedRoute>} />
+        <Route path="/cadastros/moradores/link" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresLink /></ProtectedRoute>} />
+        <Route path="/cadastros/moradores/qrcode" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresQRCode /></ProtectedRoute>} />
+        <Route path="/cadastros/moradores/planilha" element={<ProtectedRoute minRole="sindico"><CadastroMoradoresPlanilha /></ProtectedRoute>} />
+        <Route path="/master/condominios" element={<ProtectedRoute minRole="administradora"><MasterCondominios /></ProtectedRoute>} />
+        <Route path="/master/painel" element={<ProtectedRoute minRole="administradora"><MasterPainelCondominios /></ProtectedRoute>} />
+        <Route path="/master/usuarios" element={<ProtectedRoute minRole="administradora"><MasterUsuarios /></ProtectedRoute>} />
+        <Route path="/master/config" element={<ProtectedRoute minRole="master"><MasterConfig /></ProtectedRoute>} />
+        <Route path="/master/logs" element={<ProtectedRoute minRole="administradora"><MasterLogs /></ProtectedRoute>} />
+        <Route path="/master/portao" element={<ProtectedRoute minRole="administradora"><MasterGateConfig /></ProtectedRoute>} />
+        <Route path="/master/guia-instalacao" element={<ProtectedRoute minRole="master"><MasterGuiaInstalacao /></ProtectedRoute>} />
+        <Route path="/master/whatsapp" element={<ProtectedRoute minRole="administradora"><MasterWhatsAppDashboard /></ProtectedRoute>} />
+        <Route path="/callback" element={<EwelinkCallback />} />
+        <Route path="/espelho-portaria" element={<ProtectedRoute><EspelhoPortaria /></ProtectedRoute>} />
+        <Route path="/portaria/acesso-pedestres" element={<ProtectedRoute><CadastrarVisitante /></ProtectedRoute>} />
+        <Route path="/portaria/visitante-qrcode" element={<ProtectedRoute><VisitanteQRCode /></ProtectedRoute>} />
+        <Route path="/portaria/autorizacoes-previas" element={<Navigate to="/portaria/acesso-pedestres" replace />} />
+        <Route path="/morador/autorizacoes" element={<ProtectedRoute><MoradorAutorizacoes /></ProtectedRoute>} />
+        <Route path="/morador/delivery" element={<ProtectedRoute><MoradorDelivery /></ProtectedRoute>} />
+        <Route path="/portaria/delivery" element={<ProtectedRoute><DeliveryPorteiro /></ProtectedRoute>} />
+        <Route path="/morador/veiculos" element={<ProtectedRoute><MoradorVeiculos /></ProtectedRoute>} />
+        <Route path="/portaria/acesso-veiculos" element={<ProtectedRoute><VeiculosPorteiro /></ProtectedRoute>} />
+        <Route path="/portaria/configuracoes" element={<ProtectedRoute><PortariaConfig /></ProtectedRoute>} />
+        <Route path="/portaria/personalizar-dashboard" element={<ProtectedRoute><PersonalizarDashboard /></ProtectedRoute>} />
+        <Route path="/minha-conta" element={<ProtectedRoute><MinhaConta /></ProtectedRoute>} />
+        <Route path="/configuracao-toque" element={<ProtectedRoute><ConfiguracaoToque /></ProtectedRoute>} />
+        <Route path="/biblioteca-dispositivos" element={<ProtectedRoute><BibliotecaDispositivos /></ProtectedRoute>} />
+        <Route path="/portaria/correspondencias" element={<ProtectedRoute><CorrespondenciasPorteiro /></ProtectedRoute>} />
+        <Route path="/morador/correspondencias" element={<ProtectedRoute><MoradorCorrespondencias /></ProtectedRoute>} />
+        <Route path="/portaria/livro-protocolo" element={<ProtectedRoute><LivroProtocolo /></ProtectedRoute>} />
+        <Route path="/portaria/portaria-virtual" element={<ProtectedRoute><MoradorPortariaVirtual /></ProtectedRoute>} />
+        <Route path="/portaria/acesso-auto" element={<ProtectedRoute minRole="funcionario"><PortariaAcessoAuto /></ProtectedRoute>} />
+        <Route path="/morador/qr-visitante" element={<ProtectedRoute><MoradorQRVisitante /></ProtectedRoute>} />
+        <Route path="/portaria/qr-scanner" element={<ProtectedRoute><PorteiroQRScanner /></ProtectedRoute>} />
+        <Route path="/sindico/qr-config" element={<ProtectedRoute><SindicoQRConfig /></ProtectedRoute>} />
+        <Route path="/sindico/features-config" element={<ProtectedRoute><SindicoFeaturesConfig /></ProtectedRoute>} />
+        <Route path="/admin/features-config" element={<ProtectedRoute minRole="administradora"><AdminFeaturesConfig /></ProtectedRoute>} />
+        <Route path="/sindico/cameras" element={<ProtectedRoute minRole="sindico"><CadastroCameras /></ProtectedRoute>} />
+        <Route path="/portaria/monitoramento" element={<ProtectedRoute minRole="funcionario"><MonitoramentoCameras /></ProtectedRoute>} />
+        <Route path="/sindico/rondas" element={<ProtectedRoute minRole="sindico"><ControleRondasSindico /></ProtectedRoute>} />
+        <Route path="/portaria/rondas" element={<ProtectedRoute minRole="funcionario"><RegistroRonda /></ProtectedRoute>} />
+        <Route path="/sindico/interfone-config" element={<ProtectedRoute minRole="sindico"><SindicoInterfoneConfig /></ProtectedRoute>} />
+        <Route path="/morador/interfone-config" element={<ProtectedRoute><MoradorInterfoneConfig /></ProtectedRoute>} />
+        <Route path="/morador/interfone" element={<ProtectedRoute><MoradorInterfone /></ProtectedRoute>} />
+        <Route path="/portaria/interfone" element={<ProtectedRoute><FuncionarioInterfone /></ProtectedRoute>} />
+        <Route path="/portaria/centro-comando" element={<ProtectedRoute><CentroComando /></ProtectedRoute>} />
+        <Route path="/sindico/portao" element={<ProtectedRoute minRole="sindico"><SindicoGateConfig /></ProtectedRoute>} />
+        <Route path="/sindico/acessos" element={<ProtectedRoute minRole="sindico"><SindicoAccessConfig /></ProtectedRoute>} />
+        <Route path="/sindico/whatsapp" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppConfig /></ProtectedRoute>} />
+        <Route path="/sindico/whatsapp-interfone" element={<ProtectedRoute minRole="sindico"><SindicoWhatsAppInterfone /></ProtectedRoute>} />
+        <Route path="/liberacao-cadastros" element={<ProtectedRoute minRole="sindico"><LiberacaoCadastros /></ProtectedRoute>} />
+        <Route path="/morador/portaria-virtual" element={<ProtectedRoute><MoradorPortariaVirtual /></ProtectedRoute>} />
+        {/* Rotas públicas de visitante (sem autenticação) */}
+        <Route path="/interfone/:token" element={<InterfoneVisitor />} />
+        <Route path="/whatsapp/:token" element={<InterfoneWhatsApp />} />
+        <Route path="/portaria-virtual-tutorial" element={<PortariaVirtualTutorial />} />
+        <Route path="/contrato" element={<ContratoPage />} />
+        <Route path="/apresentacao" element={<ApresentacaoPage />} />
+        <Route path="/visitante/autorizar/:token" element={<AutorizarVisitante />} />
+        <Route path="/visitante/auto-cadastro" element={<AutoCadastroVisitante />} />
+        <Route path="/autorizacao/auto-cadastro/:token" element={<AutoCadastroPreAuth />} />
+        <Route path="/visitante/qr/:token" element={<QRVisitantePublic />} />
+        <Route path="/veiculo/aprovar/:token" element={<AprovarVeiculo />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

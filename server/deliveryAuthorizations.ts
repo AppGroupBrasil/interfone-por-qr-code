@@ -4,6 +4,7 @@ import { authenticate } from "./middleware.js";
 import { captureSnapshotForCondominio } from "./cameraSnapshot.js";
 import { emailDeliveryRecebido } from "./emailService.js";
 import { notifyPortariaWhatsApp, notifyUserWhatsApp } from "./whatsappService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get("/", authenticate, (req: Request, res: Response) => {
     const results = db.prepare(query).all(...params);
     res.json(results);
   } catch (err: any) {
-    console.error("Erro em deliveryAuthorizations :", err);
+    log.error("Erro em deliveryAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -90,7 +91,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
       message: "Autorização de delivery criada com sucesso.",
     });
   } catch (err: any) {
-    console.error("Erro em deliveryAuthorizations :", err);
+    log.error("Erro em deliveryAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -164,7 +165,7 @@ router.post("/portaria", authenticate, (req: Request, res: Response) => {
         numeroPedido: numero_pedido || undefined,
         bloco,
         apartamento,
-      }).catch((err) => console.error("[EMAIL] Erro delivery portaria:", err));
+      }).catch((err) => log.error("[EMAIL] Erro delivery portaria:", err));
     }
 
     res.status(201).json({
@@ -173,7 +174,7 @@ router.post("/portaria", authenticate, (req: Request, res: Response) => {
       message: "Delivery registrado pela portaria.",
     });
   } catch (err: any) {
-    console.error("Erro em deliveryAuthorizations /portaria:", err);
+    log.error("Erro em deliveryAuthorizations /portaria:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -233,7 +234,7 @@ router.post("/:id/recebido", authenticate, (req: Request, res: Response) => {
         numeroPedido: delivery.numero_pedido || undefined,
         bloco: delivery.bloco,
         apartamento: delivery.apartamento,
-      }).catch((err) => console.error("[EMAIL] Erro delivery recebido:", err));
+      }).catch((err) => log.error("[EMAIL] Erro delivery recebido:", err));
     }
 
     // 📱 WhatsApp: notificar morador que delivery foi recebido
@@ -244,7 +245,7 @@ router.post("/:id/recebido", authenticate, (req: Request, res: Response) => {
 
     res.json({ message: "Delivery marcado como recebido.", delivery: updated });
   } catch (err: any) {
-    console.error("Erro em deliveryAuthorizations :", err);
+    log.error("Erro em deliveryAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -273,7 +274,7 @@ router.delete("/:id", authenticate, (req: Request, res: Response) => {
     db.prepare("DELETE FROM delivery_authorizations WHERE id = ?").run(req.params.id);
     res.json({ message: "Autorização de delivery cancelada." });
   } catch (err: any) {
-    console.error("Erro em deliveryAuthorizations :", err);
+    log.error("Erro em deliveryAuthorizations :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

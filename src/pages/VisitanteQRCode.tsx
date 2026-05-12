@@ -1,5 +1,6 @@
 ﻿import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { AppLogo } from "@/components/AppLogo";
 import {
   ArrowLeft,
@@ -53,7 +54,11 @@ export default function VisitanteQRCode() {
   const [condominioNome, setCondominioNome] = useState("Condomínio Residencial");
   const [layout, setLayout] = useState<LayoutId>("classico");
 
-  const selfRegisterUrl = `${APP_ORIGIN}/visitante/auto-cadastro`;
+  const { user } = useAuth();
+  const cid = user?.condominioId;
+  const selfRegisterUrl = cid
+    ? `${APP_ORIGIN}/visitante/auto-cadastro?cid=${cid}`
+    : `${APP_ORIGIN}/visitante/auto-cadastro`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(selfRegisterUrl)}`;
 
   const handlePrint = () => window.print();

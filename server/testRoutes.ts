@@ -9,6 +9,7 @@ import { Router, Request, Response } from "express";
 import { authenticate, authorize } from "./middleware.js";
 import { sendPushToUser, firebaseInitialized } from "./pushService.js";
 import db from "./db.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -80,7 +81,7 @@ router.post("/push", authenticate, async (req: Request, res: Response) => {
       })),
     });
   } catch (err: any) {
-    console.error("Test push error:", err);
+    log.error("Test push error:", err);
     res.status(500).json({ error: "Erro ao enviar push de teste.", details: err.message });
   }
 });
@@ -208,7 +209,7 @@ router.post("/email", authenticate, async (req: Request, res: Response) => {
       region: process.env.AWS_SES_REGION || "sa-east-1",
     });
   } catch (err: any) {
-    console.error("Test email error:", err);
+    log.error("Test email error:", err);
     res.status(500).json({
       error: "Erro ao enviar email de teste.",
       details: err.message,

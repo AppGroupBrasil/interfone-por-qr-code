@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { captureSnapshotForCondominio } from "./cameraSnapshot.js";
 import { emailVisitantePendente, emailVisitanteRespondido } from "./emailService.js";
 import { notifyWhatsApp, notifyPortariaWhatsApp } from "./whatsappService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.get("/", authenticate, authorize("master", "administradora", "sindico", "
     const visitors = db.prepare(query).all(...params);
     res.json(visitors);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -80,7 +81,7 @@ router.post("/", authenticate, authorize("master", "administradora", "sindico", 
         visitanteNome: nome,
         visitanteDocumento: documento || undefined,
         token,
-      }).catch((err) => console.error("[EMAIL] Erro visitante pendente:", err));
+      }).catch((err) => log.error("[EMAIL] Erro visitante pendente:", err));
     }
 
     // 📱 WhatsApp: notificar moradores do bloco/apartamento sobre visitante
@@ -96,7 +97,7 @@ router.post("/", authenticate, authorize("master", "administradora", "sindico", 
 
     res.status(201).json(visitor);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -113,7 +114,7 @@ router.get("/auth/:token", (req: Request, res: Response) => {
 
     res.json(visitor);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -150,13 +151,13 @@ router.post("/auth/:token/respond", (req: Request, res: Response) => {
         apartamento: visitor.apartamento,
         visitanteNome: visitor.nome,
         status: action,
-      }).catch((err) => console.error("[EMAIL] Erro visitante respondido:", err));
+      }).catch((err) => log.error("[EMAIL] Erro visitante respondido:", err));
     }
 
     const updated = db.prepare("SELECT id, nome, documento, foto, bloco, apartamento, status FROM visitors WHERE token = ?").get(req.params.token);
     res.json(updated);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -166,8 +167,39 @@ router.post("/self-register", (req: Request, res: Response) => {
   try {
     const { nome, documento, telefone, foto, documento_foto, bloco, apartamento, condominio_id, face_descriptor, observacoes } = req.body;
 
-    if (!nome) {
-      res.status(400).json({ error: "Nome é obrigatório." });
+    if (typeof nome !== "string" || !nome.trim() || nome.length > 120) {
+      res.status(400).json({ error: "Nome inválido (até 120 caracteres)." });
+      return;
+    }
+    if (documento && (typeof documento !== "string" || documento.length > 30)) {
+      res.status(400).json({ error: "Documento inválido." });
+      return;
+    }
+    if (telefone && (typeof telefone !== "string" || telefone.length > 30)) {
+      res.status(400).json({ error: "Telefone inválido." });
+      return;
+    }
+
+    // Valida condominio_id contra DB — bloqueia poluição via QR forjado.
+    let validCondominioId: number | null = null;
+    if (condominio_id != null) {
+      const cid = Number(condominio_id);
+      if (!Number.isInteger(cid) || cid <= 0) {
+        res.status(400).json({ error: "Condomínio inválido." });
+        return;
+      }
+      const exists = db.prepare("SELECT id FROM condominios WHERE id = ? AND id != 0").get(cid);
+      if (!exists) {
+        res.status(400).json({ error: "Condomínio não encontrado." });
+        return;
+      }
+      validCondominioId = cid;
+    }
+
+    // Limita tamanho de fotos base64 (~1.5MB each ≈ 2M chars).
+    const tooBig = (s: unknown) => typeof s === "string" && s.length > 2_000_000;
+    if (tooBig(foto) || tooBig(documento_foto)) {
+      res.status(413).json({ error: "Foto muito grande." });
       return;
     }
 
@@ -176,24 +208,24 @@ router.post("/self-register", (req: Request, res: Response) => {
     const result = db.prepare(`
       INSERT INTO visitors (nome, documento, telefone, foto, documento_foto, bloco, apartamento, autorizado_interfone, token, condominio_id, status, face_descriptor, observacoes)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'nao', ?, ?, 'pendente', ?, ?)
-    `).run(nome, documento || null, telefone || null, foto || null, documento_foto || null, bloco || null, apartamento || null, token, condominio_id || null, face_descriptor ? JSON.stringify(face_descriptor) : null, observacoes || null);
+    `).run(nome.trim(), documento || null, telefone || null, foto || null, documento_foto || null, bloco || null, apartamento || null, token, validCondominioId, face_descriptor ? JSON.stringify(face_descriptor) : null, observacoes || null);
 
     const visitor = db.prepare("SELECT * FROM visitors WHERE id = ?").get(result.lastInsertRowid);
 
     // 📱 WhatsApp: notificar moradores sobre visitante auto-registrado
-    if (bloco && apartamento && condominio_id) {
+    if (bloco && apartamento && validCondominioId) {
       const moradores = db.prepare(
         "SELECT phone FROM users WHERE condominio_id = ? AND block = ? AND unit = ? AND role = 'morador' AND phone IS NOT NULL AND phone != ''"
-      ).all(condominio_id, bloco, apartamento) as { phone: string }[];
+      ).all(validCondominioId, bloco, apartamento) as { phone: string }[];
       for (const m of moradores) {
-        notifyWhatsApp(condominio_id, "whatsapp_notify_visitor_arrival", m.phone,
+        notifyWhatsApp(validCondominioId, "whatsapp_notify_visitor_arrival", m.phone,
           `🔔 *App Interfone* — Visitante se registrou\n\n👤 *${nome}*\n📍 Bloco ${bloco}, Apto ${apartamento}\n\nAguardando sua autorização.`);
       }
     }
 
     res.status(201).json(visitor);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -212,7 +244,7 @@ router.get("/moradores-bloco", authenticate, authorize("master", "administradora
     ).all(String(bloco), condominioId) as { id: number; name: string; unit: string; phone: string | null }[];
     res.json(moradores);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -260,7 +292,7 @@ router.get("/face-descriptors", authenticate, authorize("master", "administrador
       face_descriptor: v.face_descriptor ? JSON.parse(v.face_descriptor) : null,
     })));
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -279,7 +311,7 @@ router.patch("/:id/face-descriptor", authenticate, authorize("master", "administ
     );
     res.json({ ok: true });
   } catch (err: any) {
-    console.error("Erro ao salvar face_descriptor:", err);
+    log.error("Erro ao salvar face_descriptor:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -297,7 +329,7 @@ router.get("/pendentes-morador", authenticate, (req: Request, res: Response) => 
     ).all(user.condominio_id, user.block, user.unit);
     res.json(visitors);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -338,7 +370,7 @@ router.post("/:id/responder-morador", authenticate, (req: Request, res: Response
     const updated = db.prepare("SELECT id, nome, documento, foto, bloco, apartamento, status FROM visitors WHERE id = ?").get(req.params.id);
     res.json(updated);
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -349,7 +381,7 @@ router.delete("/:id", authenticate, authorize("master", "administradora", "sindi
     db.prepare("DELETE FROM visitors WHERE id = ? AND condominio_id = ?").run(req.params.id, req.user!.condominio_id);
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -382,15 +414,22 @@ router.get("/auth/:token/camera", (req: Request, res: Response) => {
       return;
     }
 
+    // Remover credenciais embutidas (rtsp://user:pass@host → rtsp://host)
+    // antes de devolver para endpoint público.
+    const sanitizeUrl = (u: string | null | undefined): string | null => {
+      if (!u) return null;
+      try { return u.replace(/^(\w+:\/\/)[^@/]+@/, "$1"); } catch { return null; }
+    };
+
     res.json({
       available: true,
       nome: camera.nome,
-      url_stream: camera.url_stream,
+      url_stream: sanitizeUrl(camera.url_stream),
       tipo_stream: camera.tipo_stream,
       setor: camera.setor,
     });
   } catch (err: any) {
-    console.error("Erro em visitors :", err);
+    log.error("Erro em visitors :", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

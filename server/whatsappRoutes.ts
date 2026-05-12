@@ -9,6 +9,7 @@ import { Router, Request, Response } from "express";
 import db from "./db.js";
 import { authenticate, authorize, getAccessibleCondominioIds } from "./middleware.js";
 import { testWhatsAppConnection, getGlobalCredentials } from "./whatsappService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -47,7 +48,7 @@ router.get(
 
       res.json(config);
     } catch (err: any) {
-      console.error("Erro ao buscar global config WhatsApp:", err);
+      log.error("Erro ao buscar global config WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -85,7 +86,7 @@ router.put(
 
       res.json({ success: true });
     } catch (err: any) {
-      console.error("Erro ao salvar global config WhatsApp:", err);
+      log.error("Erro ao salvar global config WhatsApp:", err);
       res.status(500).json({ error: "Erro ao salvar" });
     }
   }
@@ -134,7 +135,7 @@ router.get(
 
       res.json(cfgMap);
     } catch (err: any) {
-      console.error("Erro ao buscar config WhatsApp:", err);
+      log.error("Erro ao buscar config WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -181,7 +182,7 @@ router.put(
 
       res.json({ success: true });
     } catch (err: any) {
-      console.error("Erro ao salvar config WhatsApp:", err);
+      log.error("Erro ao salvar config WhatsApp:", err);
       res.status(500).json({ error: "Erro ao salvar configuração" });
     }
   }
@@ -211,7 +212,7 @@ router.post(
         res.status(400).json({ success: false, error: result.error });
       }
     } catch (err: any) {
-      console.error("Erro ao testar WhatsApp:", err);
+      log.error("Erro ao testar WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -244,7 +245,7 @@ router.get(
 
       res.json({ logs, total });
     } catch (err: any) {
-      console.error("Erro ao buscar logs WhatsApp:", err);
+      log.error("Erro ao buscar logs WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -299,7 +300,7 @@ router.get(
         estimatedCostToday: +(today.sent * costPerMsg).toFixed(2),
       });
     } catch (err: any) {
-      console.error("Erro stats WhatsApp:", err);
+      log.error("Erro stats WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -396,7 +397,7 @@ router.get(
         },
       });
     } catch (err: any) {
-      console.error("Erro stats/all WhatsApp:", err);
+      log.error("Erro stats/all WhatsApp:", err);
       res.status(500).json({ error: "Erro interno" });
     }
   }
@@ -440,7 +441,7 @@ router.put(
 
       res.json({ success: true });
     } catch (err: any) {
-      console.error("Erro ao salvar config WhatsApp condomínio:", err);
+      log.error("Erro ao salvar config WhatsApp condomínio:", err);
       res.status(500).json({ error: "Erro ao salvar" });
     }
   }

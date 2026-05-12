@@ -14,6 +14,7 @@ import { createRequire } from "module";
 import { Canvas, Image, createCanvas, loadImage } from "canvas";
 import path from "path";
 import { fileURLToPath } from "url";
+import { log } from "./logger.js";
 
 const require2 = createRequire(import.meta.url);
 
@@ -62,7 +63,7 @@ export async function loadModels(): Promise<void> {
     modelsLoaded = true;
     console.log("[FaceService] ✅ Modelos carregados com sucesso");
   } catch (err) {
-    console.error("[FaceService] ❌ Erro ao carregar modelos:", err);
+    log.error("[FaceService] ❌ Erro ao carregar modelos:", err);
     modelsLoading = false;
     throw err;
   }
@@ -100,7 +101,7 @@ export async function extractDescriptor(base64Photo: string): Promise<number[] |
 
     return Array.from(detection.descriptor);
   } catch (err) {
-    console.error("[FaceService] Erro ao extrair descriptor:", err);
+    log.error("[FaceService] Erro ao extrair descriptor:", err);
     return null;
   }
 }

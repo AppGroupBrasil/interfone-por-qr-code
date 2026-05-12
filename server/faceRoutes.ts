@@ -10,6 +10,7 @@ import { Router, Request, Response } from "express";
 import db from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import { extractDescriptor, compareFaces, isReady } from "./faceService.js";
+import { log } from "./logger.js";
 
 const router = Router();
 
@@ -26,8 +27,12 @@ const ensureModelsReady = (_req: Request, res: Response, next: Function) => {
 router.post("/compare-visitors", authenticate, authorize("master", "administradora", "sindico", "funcionario"), ensureModelsReady, async (req: Request, res: Response) => {
   try {
     const { photo } = req.body;
-    if (!photo) {
+    if (!photo || typeof photo !== "string") {
       res.status(400).json({ error: "Campo 'photo' (base64) é obrigatório." });
+      return;
+    }
+    if (photo.length > 4_000_000) { // ~3MB base64
+      res.status(413).json({ error: "Foto muito grande (máx ~3MB)." });
       return;
     }
 
@@ -124,7 +129,7 @@ router.post("/compare-visitors", authenticate, authorize("master", "administrado
       descriptor: descriptor, // retorna para o frontend salvar se cadastrar novo
     });
   } catch (err: any) {
-    console.error("[FaceRoutes] Erro em compare-visitors:", err);
+    log.error("[FaceRoutes] Erro em compare-visitors:", err);
     res.status(500).json({ error: "Erro ao processar reconhecimento facial." });
   }
 });
@@ -133,8 +138,12 @@ router.post("/compare-visitors", authenticate, authorize("master", "administrado
 router.post("/compare-preauths", authenticate, authorize("master", "administradora", "sindico", "funcionario"), ensureModelsReady, async (req: Request, res: Response) => {
   try {
     const { photo } = req.body;
-    if (!photo) {
+    if (!photo || typeof photo !== "string") {
       res.status(400).json({ error: "Campo 'photo' (base64) é obrigatório." });
+      return;
+    }
+    if (photo.length > 4_000_000) { // ~3MB base64
+      res.status(413).json({ error: "Foto muito grande (máx ~3MB)." });
       return;
     }
 
@@ -183,7 +192,7 @@ router.post("/compare-preauths", authenticate, authorize("master", "administrado
 
     res.json({ matched: false });
   } catch (err: any) {
-    console.error("[FaceRoutes] Erro em compare-preauths:", err);
+    log.error("[FaceRoutes] Erro em compare-preauths:", err);
     res.status(500).json({ error: "Erro ao processar reconhecimento facial." });
   }
 });
@@ -213,7 +222,7 @@ router.post("/extract", authenticate, authorize("master", "administradora", "sin
 
     res.json({ success: true, descriptor });
   } catch (err: any) {
-    console.error("[FaceRoutes] Erro em extract:", err);
+    log.error("[FaceRoutes] Erro em extract:", err);
     res.status(500).json({ error: "Erro ao extrair descriptor facial." });
   }
 });
@@ -222,8 +231,12 @@ router.post("/extract", authenticate, authorize("master", "administradora", "sin
 router.post("/compare-two", authenticate, authorize("master", "administradora", "sindico", "funcionario"), ensureModelsReady, async (req: Request, res: Response) => {
   try {
     const { photo1, photo2 } = req.body;
-    if (!photo1 || !photo2) {
+    if (!photo1 || !photo2 || typeof photo1 !== "string" || typeof photo2 !== "string") {
       res.status(400).json({ error: "Campos 'photo1' e 'photo2' (base64) são obrigatórios." });
+      return;
+    }
+    if (photo1.length > 4_000_000 || photo2.length > 4_000_000) {
+      res.status(413).json({ error: "Foto muito grande (máx ~3MB)." });
       return;
     }
 
@@ -253,7 +266,7 @@ router.post("/compare-two", authenticate, authorize("master", "administradora", 
 
     res.json({ matched, similarity, distance });
   } catch (err: any) {
-    console.error("[FaceRoutes] Erro em compare-two:", err);
+    log.error("[FaceRoutes] Erro em compare-two:", err);
     res.status(500).json({ error: "Erro ao comparar fotos." });
   }
 });
@@ -290,7 +303,7 @@ router.post(
 
       res.json({ success: true, message: "Rosto cadastrado com sucesso!" });
     } catch (err: any) {
-      console.error("[FaceRoutes] Erro ao registrar rosto:", err);
+      log.error("[FaceRoutes] Erro ao registrar rosto:", err);
       res.status(500).json({ error: "Erro ao registrar rosto." });
     }
   }
@@ -349,7 +362,7 @@ router.post(
         distance: result.distance,
       });
     } catch (err: any) {
-      console.error("[FaceRoutes] Erro selfie-auth:", err);
+      log.error("[FaceRoutes] Erro selfie-auth:", err);
       res.status(500).json({ error: "Erro ao autenticar por selfie." });
     }
   }

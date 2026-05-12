@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { log } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -745,7 +746,7 @@ export function performBackup(): string | null {
     console.log(`[BACKUP] Backup criado: ${backupPath}`);
     return backupPath;
   } catch (err) {
-    console.error("[BACKUP] Erro ao criar backup:", err);
+    log.error("[BACKUP] Erro ao criar backup:", err);
     return null;
   }
 }
@@ -763,7 +764,7 @@ export function cleanupDemoAccounts(): number {
     }
     return result.changes;
   } catch (err) {
-    console.error("[CLEANUP] Erro ao limpar contas demo:", err);
+    log.error("[CLEANUP] Erro ao limpar contas demo:", err);
     return 0;
   }
 }
@@ -876,15 +877,50 @@ export function cleanupExpiredAuthorizations(): number {
               apartamento: v.apartamento,
               placa: v.placa,
               motivo: "encerrada automaticamente (hor\u00E1rio limite)",
-            }).catch((err: any) => console.error("[EMAIL] Erro ve\u00EDculo encerrado:", err));
+            }).catch((err: any) => log.error("[EMAIL] Erro ve\u00EDculo encerrado:", err));
           }
-        }).catch((err) => console.error("[CLEANUP] Erro ao notificar moradores:", err));
+        }).catch((err) => log.error("[CLEANUP] Erro ao notificar moradores:", err));
       }
     }
 
     return total;
   } catch (err) {
-    console.error("[CLEANUP] Erro ao expirar autorizações:", err);
+    log.error("[CLEANUP] Erro ao expirar autorizações:", err);
+    return 0;
+  }
+}
+
+// ─── Cleanup: visitor QR shares (delete após data_fim + 7 dias) ───
+export function cleanupVisitorQRShares(): number {
+  try {
+    const result = db.prepare(`
+      DELETE FROM visitor_qr_shares
+      WHERE date(data_fim) < date('now', '-7 days')
+    `).run();
+    if (result.changes > 0) {
+      console.log(`[CLEANUP] ${result.changes} QR share(s) removido(s) (expirados +7d)`);
+    }
+    return result.changes;
+  } catch (err) {
+    log.error("[CLEANUP] Erro ao limpar QR shares:", err);
+    return 0;
+  }
+}
+
+// ─── Cleanup: visitors respondidos antigos (90 dias) ───
+export function cleanupOldVisitors(): number {
+  try {
+    const result = db.prepare(`
+      DELETE FROM visitors
+      WHERE status IN ('liberado', 'recusado', 'saiu')
+        AND COALESCE(responded_at, created_at) < datetime('now', '-90 days')
+    `).run();
+    if (result.changes > 0) {
+      console.log(`[CLEANUP] ${result.changes} visitante(s) antigo(s) removido(s)`);
+    }
+    return result.changes;
+  } catch (err) {
+    log.error("[CLEANUP] Erro ao limpar visitantes antigos:", err);
     return 0;
   }
 }
@@ -901,7 +937,7 @@ export function cleanupOldAuditLogs(): number {
     }
     return result.changes;
   } catch (err) {
-    console.error("[CLEANUP] Erro ao limpar logs:", err);
+    log.error("[CLEANUP] Erro ao limpar logs:", err);
     return 0;
   }
 }
@@ -974,6 +1010,9 @@ export interface DbUser {
   condominio_id: number | null;
   parent_administradora_id: number | null;
   avatar_url: string | null;
+  aprovado?: number;
+  is_demo?: number;
+  face_descriptor?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -11,6 +11,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import db from "./db.js";
+import { log } from "./logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,17 +21,19 @@ let firebaseInitialized = false;
 function initFirebase() {
   if (firebaseInitialized) return;
 
-  const serviceAccountPath = path.join(__dirname, "..", "server", "firebase-service-account.json");
-  // In production (Docker), try /app/server/
-  const altPath = path.join(__dirname, "firebase-service-account.json");
+  // Procura nesta ordem:
+  //   1) FIREBASE_SERVICE_ACCOUNT_PATH (env, recomendado em Docker)
+  //   2) ./server/firebase-service-account.json (dev local)
+  //   3) ./firebase-service-account.json (mesmo diretório do bundle)
+  const candidates = [
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
+    path.join(__dirname, "..", "server", "firebase-service-account.json"),
+    path.join(__dirname, "firebase-service-account.json"),
+  ].filter((p): p is string => typeof p === "string" && p.length > 0);
 
-  let credentialPath = "";
-  if (fs.existsSync(serviceAccountPath)) {
-    credentialPath = serviceAccountPath;
-  } else if (fs.existsSync(altPath)) {
-    credentialPath = altPath;
-  } else {
-    console.warn("⚠️  Firebase service account not found. Push notifications disabled.");
+  const credentialPath = candidates.find(p => fs.existsSync(p));
+  if (!credentialPath) {
+    log.warn("⚠️  Firebase service account não encontrado. Push notifications desativado.");
     return;
   }
 
@@ -42,7 +45,7 @@ function initFirebase() {
     firebaseInitialized = true;
     console.log("  🔔 Firebase Admin SDK initialized (push ready)");
   } catch (err) {
-    console.error("Firebase init error:", err);
+    log.error("Firebase init error:", err);
   }
 }
 
@@ -58,7 +61,7 @@ function initWebPush() {
   const subject = process.env.VAPID_SUBJECT || "mailto:contato@appinterfone.com.br";
 
   if (!publicKey || !privateKey) {
-    console.warn("⚠️  VAPID keys not set. Web Push notifications disabled.");
+    log.warn("⚠️  VAPID keys not set. Web Push notifications disabled.");
     return;
   }
 
@@ -67,7 +70,7 @@ function initWebPush() {
     webPushInitialized = true;
     console.log("  🌐 Web Push (VAPID) initialized");
   } catch (err) {
-    console.error("Web Push init error:", err);
+    log.error("Web Push init error:", err);
   }
 }
 
@@ -201,7 +204,7 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
 
     return response.successCount;
   } catch (err) {
-    console.error("FCM send error:", err);
+    log.error("FCM send error:", err);
     return 0;
   }
 }
@@ -236,7 +239,7 @@ async function sendWebPush(
         // Subscription expired or invalid — deactivate
         db.prepare("UPDATE device_tokens SET active = 0 WHERE token = ?").run(t.token);
       }
-      console.error("Web Push send error:", err?.statusCode || err);
+      log.error("Web Push send error:", err?.statusCode || err);
     }
   }
 
