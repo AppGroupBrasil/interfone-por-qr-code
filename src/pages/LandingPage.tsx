@@ -971,7 +971,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div style={{ display: "flex", flexWrap: "nowrap", justifyContent: "center", gap: "20px", maxWidth: "1100px", margin: "0 auto" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px", maxWidth: "1100px", margin: "0 auto" }}>
             {plans.map((plan) => (
               <div
                 key={`${plan.name}-${plan.price}`}
@@ -980,7 +980,7 @@ export default function LandingPage() {
                   borderRadius: "20px", padding: "32px 22px",
                   border: "2px solid #003580",
                   position: "relative", transition: "transform 0.2s, background 0.4s",
-                  flex: "1 1 0", minWidth: 0,
+                  flex: "1 1 280px", minWidth: "260px", maxWidth: "360px",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-6px)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
