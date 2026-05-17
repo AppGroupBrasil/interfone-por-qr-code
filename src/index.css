@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+/* ═══════════ Safe area (notch / status bar / barra de navegação) ═══════════
+   Aplica padding extra apenas quando o app está rodando como PWA instalado,
+   TWA ou wrapper Capacitor — onde a status bar do sistema fica em overlay.
+   Browser desktop/mobile padrão não recebe o padding. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html, body {
+    padding-top: max(env(safe-area-inset-top, 28px), 28px);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    background-color: var(--background);
+    box-sizing: border-box;
+  }
+}
+
+/* Capacitor (Android/iOS nativo) sempre — sem media query confiável,
+   detecta pelo user-agent via classe que adicionamos via JS no main.tsx */
+html.capacitor-native, html.capacitor-native body {
+  padding-top: max(env(safe-area-inset-top, 32px), 32px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background-color: var(--background);
+  box-sizing: border-box;
+}
+
 @theme inline {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --color-background: var(--background);

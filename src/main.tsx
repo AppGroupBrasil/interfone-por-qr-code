@@ -3,6 +3,17 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// Detecta wrapper Capacitor (Android/iOS) e marca <html> para aplicar safe-area
+try {
+  const isCapacitor =
+    typeof window !== "undefined" &&
+    (((window as any).Capacitor && (window as any).Capacitor.isNativePlatform?.()) ||
+      /Android.*wv\)|Capacitor/i.test(navigator.userAgent));
+  if (isCapacitor) {
+    document.documentElement.classList.add("capacitor-native");
+  }
+} catch {}
+
 // Apply saved theme immediately to prevent flash
 try {
   const savedTheme = localStorage.getItem("app-theme");
