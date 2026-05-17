@@ -157,81 +157,93 @@ export default function SindicoInterfoneConfig() {
   };
 
   // Print single QR
-  const handlePrint = (token: InterfoneToken) => {
-    const url = getInterfoneUrl(token.token);
-    const win = window.open("", "_blank", "width=600,height=700");
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head><title>Interfone Digital - ${token.bloco_nome}</title>
+  // Página A4 ou A5 para impressão de QR Code
+  const buildPrintHtml = (opts: { title: string; subtitle: string; qrUrl: string; accent: string; instructions: string[]; size: "A4" | "A5" }) => {
+    const isA5 = opts.size === "A5";
+    const qrPx = isA5 ? 220 : 320;
+    const titleSize = isA5 ? 26 : 36;
+    const subtitleSize = isA5 ? 14 : 18;
+    const stepFont = isA5 ? 12 : 15;
+    const stepNumSize = isA5 ? 28 : 36;
+    const stepNumFont = isA5 ? 14 : 18;
+    const margin = isA5 ? "10mm" : "18mm";
+    const stepsTitleSize = isA5 ? 16 : 20;
+    const ctaSize = isA5 ? 16 : 22;
+    const stepPadding = isA5 ? "8px 12px" : "14px 16px";
+    const stepMargin = isA5 ? 8 : 12;
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${opts.title} — App Interfone (${opts.size})</title>
       <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #fff; }
-        .logo { font-size: 28px; font-weight: 900; color: #003580; margin-bottom: 4px; }
-        .subtitle { font-size: 16px; color: #336699; margin-bottom: 30px; }
-        .qr-container { display: inline-block; padding: 20px; border: 3px solid #003580; border-radius: 16px; margin-bottom: 24px; }
-        .qr-container img { border-radius: 8px; }
-        .bloco { font-size: 32px; font-weight: 900; color: #003580; margin-top: 20px; }
-        .instruction { font-size: 15px; color: #336699; margin-top: 12px; line-height: 1.6; max-width: 350px; margin-left: auto; margin-right: auto; }
-        .phone-icon { font-size: 38px; margin-bottom: 8px; }
-        .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; }
+        @page { size: ${opts.size}; margin: ${margin}; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #1e293b; }
+        .page { width: 100%; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: ${isA5 ? 8 : 16}px 0; }
+        .header { text-align: center; margin-bottom: ${isA5 ? 10 : 18}px; }
+        .brand { font-size: ${isA5 ? 12 : 16}px; font-weight: 700; color: #336699; letter-spacing: 0.08em; text-transform: uppercase; }
+        .title { font-size: ${titleSize}px; font-weight: 900; color: ${opts.accent}; margin: 4px 0 0; line-height: 1.1; }
+        .subtitle { font-size: ${subtitleSize}px; color: #64748b; margin-top: 4px; }
+        .qr-box { padding: ${isA5 ? 14 : 22}px; border: 4px solid ${opts.accent}; border-radius: ${isA5 ? 16 : 24}px; margin: ${isA5 ? 10 : 18}px 0; background: #fff; }
+        .qr-box img { display: block; width: ${qrPx}px; height: ${qrPx}px; }
+        .cta { font-size: ${ctaSize}px; font-weight: 800; color: ${opts.accent}; text-align: center; margin-top: 4px; }
+        .steps { margin: ${isA5 ? 14 : 24}px auto 0; max-width: ${isA5 ? 380 : 520}px; width: 100%; }
+        .steps h2 { font-size: ${stepsTitleSize}px; font-weight: 800; color: ${opts.accent}; text-align: center; margin: 0 0 ${isA5 ? 10 : 16}px; }
+        .step { display: flex; align-items: flex-start; gap: ${isA5 ? 10 : 14}px; margin-bottom: ${stepMargin}px; padding: ${stepPadding}; border-radius: 12px; background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .step-num { width: ${stepNumSize}px; height: ${stepNumSize}px; border-radius: 50%; background: ${opts.accent}; color: #fff; font-weight: 900; font-size: ${stepNumFont}px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .step-text { font-size: ${stepFont}px; line-height: 1.4; color: #1e293b; padding-top: 3px; }
+        .step-text strong { color: ${opts.accent}; }
+        .footer { margin-top: auto; padding-top: ${isA5 ? 12 : 22}px; font-size: ${isA5 ? 9 : 11}px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; width: 100%; max-width: ${isA5 ? 380 : 520}px; }
       </style>
-      </head>
-      <body>
-        <div class="phone-icon">📞</div>
-        <div class="logo">Interfone Digital</div>
-        <div class="subtitle">App Interfone</div>
-        <div class="qr-container">
-          <img src="${getQRUrl(url)}" width="300" height="300" alt="QR Code" />
+    </head>
+    <body>
+      <div class="page">
+        <div class="header">
+          <div class="brand">📞 App Interfone</div>
+          <div class="title">${opts.title}</div>
+          <div class="subtitle">${opts.subtitle}</div>
         </div>
-        <div class="bloco">Bloco ${token.bloco_nome}</div>
-        <div class="instruction">
-          Escaneie o QR Code com a câmera do celular para ligar diretamente para o morador.
-        </div>
-        <div class="footer">App Interfone — Interfone Digital — www.appinterfone.com.br</div>
-        <script>setTimeout(() => { window.print(); }, 500);</script>
-      </body>
-      </html>
-    `);
-    win.document.close();
-  };
 
-  // Print all
-  const handlePrintAll = () => {
-    if (tokens.length === 0) return;
-    const win = window.open("", "_blank", "width=800,height=600");
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head><title>Interfone Digital - Todos os Blocos</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { text-align: center; color: #003580; margin-bottom: 4px; }
-        .sub { text-align: center; color: #336699; font-size: 14px; margin-bottom: 30px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        .item { text-align: center; page-break-inside: avoid; border: 2px solid #003580; border-radius: 16px; padding: 24px; }
-        .item img { border-radius: 8px; }
-        .bloco { font-size: 22px; font-weight: 800; margin-top: 12px; color: #003580; }
-        .info { font-size: 12px; color: #336699; margin-top: 6px; }
-      </style>
-      </head>
-      <body>
-        <h1>📞 Interfone Digital</h1>
-        <p class="sub">App Interfone — ${tokens.length} blocos</p>
-        <div class="grid">
-          ${tokens.map((t) => `
-            <div class="item">
-              <img src="${getQRUrl(getInterfoneUrl(t.token))}" width="200" height="200" />
-              <div class="bloco">Bloco ${t.bloco_nome}</div>
-              <div class="info">Escaneie para ligar para o morador</div>
+        <div class="qr-box"><img src="${opts.qrUrl}" alt="QR Code" /></div>
+        <div class="cta">📱 Escaneie com a câmera do celular</div>
+
+        <div class="steps">
+          <h2>Como usar</h2>
+          ${opts.instructions.map((t, i) => `
+            <div class="step">
+              <div class="step-num">${i + 1}</div>
+              <div class="step-text">${t}</div>
             </div>
           `).join("")}
         </div>
-        <script>setTimeout(() => { window.print(); }, 800);</script>
-      </body>
-      </html>
-    `);
+
+        <div class="footer">App Interfone — Interfone Digital para Condomínios — www.appinterfone.com.br</div>
+      </div>
+      <script>setTimeout(() => { window.print(); }, 600);</script>
+    </body>
+    </html>
+  `;
+  };
+
+  const handlePrint = (token: InterfoneToken, size: "A4" | "A5" = "A4") => {
+    const url = getInterfoneUrl(token.token);
+    const win = window.open("", "_blank", "width=820,height=900");
+    if (!win) return;
+    win.document.write(buildPrintHtml({
+      title: `Bloco ${token.bloco_nome}`,
+      subtitle: "Interfone Digital",
+      qrUrl: getQRUrl(url),
+      accent: "#003580",
+      size,
+      instructions: [
+        "<strong>Escaneie o QR Code</strong> com a câmera do celular.",
+        "<strong>Escolha o apartamento</strong> que deseja chamar.",
+        "<strong>Confirme o nome</strong> do morador para falar com ele.",
+        "Aguarde o morador atender e <strong>fale pelo próprio celular</strong>.",
+      ],
+    }));
     win.document.close();
   };
 
@@ -294,46 +306,24 @@ export default function SindicoInterfoneConfig() {
   };
 
   // Print condominium QR
-  const handlePrintCondoToken = () => {
+  const handlePrintCondoToken = (size: "A4" | "A5" = "A4") => {
     if (!condoToken) return;
     const url = getInterfoneUrl(condoToken.token);
-    const win = window.open("", "_blank", "width=600,height=700");
+    const win = window.open("", "_blank", "width=820,height=900");
     if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head><title>Interfone Digital - Entrada Principal</title>
-      <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #fff; }
-        .logo { font-size: 28px; font-weight: 900; color: #003580; margin-bottom: 4px; }
-        .subtitle { font-size: 16px; color: #336699; margin-bottom: 30px; }
-        .qr-container { display: inline-block; padding: 20px; border: 3px solid #10b981; border-radius: 16px; margin-bottom: 24px; }
-        .qr-container img { border-radius: 8px; }
-        .bloco { font-size: 28px; font-weight: 900; color: #10b981; margin-top: 20px; }
-        .instruction { font-size: 15px; color: #336699; margin-top: 12px; line-height: 1.6; max-width: 350px; margin-left: auto; margin-right: auto; }
-        .phone-icon { font-size: 38px; margin-bottom: 8px; }
-        .badge { display: inline-block; background: #10b981; color: #fff; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 700; margin-top: 12px; }
-        .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; }
-      </style>
-      </head>
-      <body>
-        <div class="phone-icon">📞</div>
-        <div class="logo">Interfone Digital</div>
-        <div class="subtitle">App Interfone</div>
-        <div class="qr-container">
-          <img src="${getQRUrl(url)}" width="300" height="300" alt="QR Code" />
-        </div>
-        <div class="bloco">ENTRADA PRINCIPAL</div>
-        <div class="badge">🏢 Todos os Blocos</div>
-        <div class="instruction">
-          Escaneie o QR Code com a câmera do celular.<br>
-          Escolha o bloco e apartamento para ligar diretamente para o morador.
-        </div>
-        <div class="footer">App Interfone — Interfone Digital — www.appinterfone.com.br</div>
-        <script>setTimeout(() => { window.print(); }, 500);</script>
-      </body>
-      </html>
-    `);
+    win.document.write(buildPrintHtml({
+      title: "Entrada Principal",
+      subtitle: "Interfone Digital — Todos os Blocos",
+      qrUrl: getQRUrl(url),
+      accent: "#10b981",
+      size,
+      instructions: [
+        "<strong>Escaneie o QR Code</strong> com a câmera do celular.",
+        "<strong>Escolha o bloco</strong> e depois o <strong>apartamento</strong>.",
+        "<strong>Confirme o nome</strong> do morador para falar com ele.",
+        "Aguarde o morador atender e <strong>fale pelo próprio celular</strong>.",
+      ],
+    }));
     win.document.close();
   };
 
@@ -488,15 +478,13 @@ export default function SindicoInterfoneConfig() {
             <Layout className="w-4 h-4" />
             Layout QR Code
           </button>
-          {tokens.length > 0 && (
-            <button
-              onClick={handlePrintAll}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: "#ffffff", border: "2px solid #003580", color: "#003580", padding: "14px 32px" }}
-            >
-              <Printer className="w-4 h-4" /> Imprimir Todos
-            </button>
-          )}
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 rounded-xl text-sm font-bold"
+            style={{ background: "#f1f5f9", border: "2px solid #003580", color: "#003580", padding: "14px 32px" }}
+          >
+            <ArrowLeft className="w-4 h-4" /> Voltar
+          </button>
         </div>
 
         {/* ═══ CONDOMINIUM-WIDE QR CODE ═══ */}
@@ -541,8 +529,11 @@ export default function SindicoInterfoneConfig() {
                   <button onClick={() => handleCopy(condoToken.token)} className="p-2 rounded-lg hover:bg-green-50" title="Copiar link">
                     {copied === condoToken.token ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-green-600" />}
                   </button>
-                  <button onClick={handlePrintCondoToken} className="p-2 rounded-lg hover:bg-green-50" title="Imprimir">
-                    <Printer className="w-4 h-4 text-green-600" />
+                  <button onClick={() => handlePrintCondoToken("A4")} className="p-2 rounded-lg hover:bg-green-50 flex items-center gap-1" title="Imprimir A4" style={{ fontSize: 11, color: "#16a34a", fontWeight: 700 }}>
+                    <Printer className="w-4 h-4 text-green-600" /> A4
+                  </button>
+                  <button onClick={() => handlePrintCondoToken("A5")} className="p-2 rounded-lg hover:bg-green-50 flex items-center gap-1" title="Imprimir A5" style={{ fontSize: 11, color: "#16a34a", fontWeight: 700 }}>
+                    <Printer className="w-4 h-4 text-green-600" /> A5
                   </button>
                   <button onClick={handleRegenerateCondoToken} className="p-2 rounded-lg hover:bg-orange-50" title="Regenerar">
                     <RefreshCw className="w-4 h-4 text-orange-500" />
@@ -628,8 +619,11 @@ export default function SindicoInterfoneConfig() {
                         <button onClick={() => handleDownload(token)} className="p-2 rounded-lg hover:bg-[#2d3354]/10" title="Baixar QR">
                           <Download className="w-4 h-4 text-[#2d3354]" />
                         </button>
-                        <button onClick={() => handlePrint(token)} className="p-2 rounded-lg hover:bg-[#2d3354]/10" title="Imprimir">
-                          <Printer className="w-4 h-4 text-[#2d3354]" />
+                        <button onClick={() => handlePrint(token, "A5")} className="p-2 rounded-lg hover:bg-[#2d3354]/10 flex items-center gap-1" title="Imprimir A5" style={{ fontSize: 11, color: "#003580", fontWeight: 700 }}>
+                          <Printer className="w-4 h-4 text-[#003580]" /> A5
+                        </button>
+                        <button onClick={() => handlePrint(token, "A4")} className="p-2 rounded-lg hover:bg-[#2d3354]/10 flex items-center gap-1" title="Imprimir A4" style={{ fontSize: 11, color: "#003580", fontWeight: 700 }}>
+                          <Printer className="w-4 h-4 text-[#2d3354]" /> A4
                         </button>
                         <button onClick={() => handleRegenerate(token)} className="p-2 rounded-lg hover:bg-orange-50" title="Regenerar">
                           <RefreshCw className="w-4 h-4 text-orange-500" />
@@ -735,7 +729,25 @@ export default function SindicoInterfoneConfig() {
             <p style={{ color: "#64748b", fontSize: 13, marginTop: 14, marginBottom: 20 }}>
               Escaneie com a câmera do celular para ligar
             </p>
-            <div className="grid grid-cols-3" style={{ gap: 10 }}>
+            <div className="grid grid-cols-2" style={{ gap: 10, marginBottom: 10 }}>
+              <button
+                onClick={() => handlePrint(showQR, "A4")}
+                className="flex flex-col items-center justify-center font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
+              >
+                <Printer className="w-5 h-5" />
+                <span>Imprimir A4</span>
+              </button>
+              <button
+                onClick={() => handlePrint(showQR, "A5")}
+                className="flex flex-col items-center justify-center font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
+              >
+                <Printer className="w-5 h-5" />
+                <span>Imprimir A5</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-2" style={{ gap: 10 }}>
               <button
                 onClick={() => handleCopy(showQR.token)}
                 className="flex flex-col items-center justify-center font-bold"
@@ -743,14 +755,6 @@ export default function SindicoInterfoneConfig() {
               >
                 <Copy className="w-5 h-5" />
                 <span>Copiar Link</span>
-              </button>
-              <button
-                onClick={() => handlePrint(showQR)}
-                className="flex flex-col items-center justify-center font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
-              >
-                <Printer className="w-5 h-5" />
-                <span>Imprimir</span>
               </button>
               <button
                 onClick={() => handleDownload(showQR)}

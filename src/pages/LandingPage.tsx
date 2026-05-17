@@ -162,7 +162,7 @@ const plans = [
     subtitle: "Até 299 unidades",
     price: "199",
     color: "#0ea5e9",
-    features: baseFeatures,
+    features: ["Blocos ilimitados", ...baseFeatures],
     popular: false,
   },
   {
@@ -170,7 +170,7 @@ const plans = [
     subtitle: "Acima de 300 unidades",
     price: "299",
     color: "#f59e0b",
-    features: baseFeatures,
+    features: ["Blocos ilimitados", ...baseFeatures],
     popular: false,
   },
 ];
@@ -961,6 +961,37 @@ export default function LandingPage() {
             <p style={{ color: t.text3, fontSize: "16px", maxWidth: "500px", margin: "0 auto" }}>
               Teste grátis por 7 dias. Sem taxa de implantação. Sem fidelidade. Cancele quando quiser.
             </p>
+          </div>
+
+          {/* Destaque blocos ilimitados */}
+          <div style={{
+            maxWidth: "900px", margin: "0 auto 32px",
+            background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)",
+            borderRadius: "20px", padding: "24px 28px",
+            display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap",
+            boxShadow: "0 12px 32px rgba(0,53,128,0.25)",
+            border: "2px solid rgba(255,255,255,0.15)",
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: "rgba(255,255,255,0.15)",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Building2 style={{ width: 28, height: 28, color: "#ffffff" }} />
+            </div>
+            <div style={{ flex: 1, minWidth: "260px" }}>
+              <p style={{ color: "#fbbf24", fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+                ⭐ Incluído em todos os planos
+              </p>
+              <h3 style={{ color: "#ffffff", fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)", fontWeight: 800, lineHeight: 1.3, marginBottom: 6 }}>
+                Interfone em cada bloco, sem limite
+              </h3>
+              <p style={{ color: "rgba(255,255,255,0.88)", fontSize: 14, lineHeight: 1.5 }}>
+                Além do interfone na <strong>entrada principal</strong> do condomínio, você instala um interfone digital
+                em <strong>cada bloco</strong> — quantos forem necessários, sem custo adicional por bloco.
+              </p>
+            </div>
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px", maxWidth: "1100px", margin: "0 auto" }}>

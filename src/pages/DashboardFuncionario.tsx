@@ -59,16 +59,16 @@ export default function DashboardFuncionario() {
     <div className="min-h-dvh flex flex-col" style={{ background: p.pageBg }}>
       {/* ═══════════ Header ═══════════ */}
       <header className="sticky top-0 z-40" style={{ background: p.headerBg, borderBottom: p.headerBorder, boxShadow: p.headerShadow, marginBottom: 0 }}>
-        <div className="flex items-center justify-between" style={{ padding: "20px 28px", height: "5rem" }}>
-          <div className="flex items-center" style={{ gap: 14 }}>
-            <div className="flex items-center justify-center" style={{ width: 48, height: 48, borderRadius: 16, background: p.iconBoxBg, border: p.iconBoxBorder }}>
-              <ShieldCheck style={{ width: 22, height: 22, color: p.text }} />
+        <div className="flex items-center justify-between" style={{ padding: "10px 16px 10px 12px" }}>
+          <div className="flex items-center" style={{ gap: 10, minWidth: 0, flex: 1 }}>
+            <div className="flex items-center justify-center shrink-0" style={{ width: 40, height: 40, borderRadius: 12, background: p.iconBoxBg, border: p.iconBoxBorder }}>
+              <ShieldCheck style={{ width: 18, height: 18, color: p.text }} />
             </div>
-            <div>
-              <span className="block text-white" style={{ fontWeight: 800, fontSize: 20, letterSpacing: "-0.01em" }}>
+            <div style={{ minWidth: 0 }}>
+              <span className="block" style={{ fontWeight: 800, fontSize: 15, letterSpacing: "-0.01em", color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {user?.condominio_nome || "Meu Condomínio"}
               </span>
-              <span className="flex items-center" style={{ fontSize: 13, color: p.textDim, gap: 6 }}>
+              <span className="flex items-center" style={{ fontSize: 12, color: p.textDim, gap: 5 }}>
                 <Shield style={{ width: 14, height: 14 }} />
                 {getRoleLabel(user?.role || "funcionario")}
                 {hasHidden && (
@@ -96,43 +96,35 @@ export default function DashboardFuncionario() {
               </span>
             </div>
           </div>
-          <div className="flex items-center" style={{ gap: 10 }}>
+          <div className="flex items-center shrink-0" style={{ gap: 6, marginLeft: 8 }}>
             <button
               className="flex items-center justify-center"
               onClick={() => navigate("/portaria/configuracoes")}
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+              style={{ width: 36, height: 36, borderRadius: 10, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
             >
-              <Settings style={{ width: 20, height: 20, color: p.text }} />
+              <Settings style={{ width: 17, height: 17, color: p.text }} />
             </button>
             <button
               className="flex items-center justify-center"
               onClick={() => navigate("/minha-conta")}
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+              style={{ width: 36, height: 36, borderRadius: 10, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
             >
-              <UserCircle style={{ width: 20, height: 20, color: p.text }} />
+              <UserCircle style={{ width: 17, height: 17, color: p.text }} />
             </button>
             <ThemePicker />
             <button
               className="flex items-center justify-center relative"
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+              style={{ width: 36, height: 36, borderRadius: 10, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
             >
-              <Bell style={{ width: 20, height: 20, color: p.text }} />
-              <span className="absolute" style={{ top: 8, right: 8, width: 8, height: 8, background: "#34d399", borderRadius: "50%", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+              <Bell style={{ width: 17, height: 17, color: p.text }} />
+              <span className="absolute" style={{ top: 6, right: 6, width: 7, height: 7, background: "#34d399", borderRadius: "50%", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
             </button>
             <button
               className="flex items-center justify-center"
               onClick={handleLogout}
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.2)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+              style={{ width: 36, height: 36, borderRadius: 10, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
             >
-              <LogOut style={{ width: 20, height: 20, color: p.text }} />
+              <LogOut style={{ width: 17, height: 17, color: p.text }} />
             </button>
           </div>
         </div>
