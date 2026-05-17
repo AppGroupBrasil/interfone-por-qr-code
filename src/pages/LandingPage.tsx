@@ -158,16 +158,8 @@ const baseFeatures = [
 
 const plans = [
   {
-    name: "Plano",
-    subtitle: "Até 24 unidades",
-    price: "99",
-    color: "#6366f1",
-    features: baseFeatures,
-    popular: false,
-  },
-  {
-    name: "Plano",
-    subtitle: "De 25 a 300 unidades",
+    name: "Plano App Interfone",
+    subtitle: "Até 299 unidades",
     price: "199",
     color: "#0ea5e9",
     features: baseFeatures,
@@ -1096,19 +1088,27 @@ export default function LandingPage() {
       }}>
         <div style={{ maxWidth: "700px", margin: "0 auto" }}>
           <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 800, color: "#003580", marginBottom: "16px", lineHeight: 1.3 }}>
-            PRECISA DE UMA FUNÇÃO OU PARÂMETRO ESPECÍFICO?
+            VOCÊ É INSTALADOR OU TRABALHA COM CFTV?
           </h2>
           <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.4rem)", color: "#003580", fontWeight: 700, marginBottom: "32px" }}>
-            🚀 DESENVOLVEMOS PARA VOCÊ SEM NENHUM CUSTO ADICIONAL!
+            Seja nosso parceiro e faça as instalações da abertura de portão remota.
           </p>
           <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
-            <div style={{
-              width: "80px", height: "80px", borderRadius: "50%",
-              background: "transparent", border: "3px solid #003580",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Code2 style={{ width: "40px", height: "40px", color: "#003580" }} />
-            </div>
+            <a
+              href="https://wa.me/5511933284364?text=Ol%C3%A1!%20Sou%20instalador%2FCFTV%20e%20quero%20ser%20parceiro%20do%20App%20Interfone."
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 10,
+                background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)",
+                color: "#ffffff", fontWeight: 700, fontSize: "1rem",
+                padding: "14px 28px", borderRadius: "999px",
+                textDecoration: "none", boxShadow: "0 8px 24px rgba(0,53,128,0.3)",
+              }}
+            >
+              <Wrench style={{ width: 20, height: 20 }} />
+              Quero ser parceiro
+            </a>
           </div>
         </div>
       </section>

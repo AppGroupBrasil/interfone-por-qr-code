@@ -390,6 +390,31 @@ router.put("/config", authenticate, (req: Request, res: Response) => {
 // CALL LOG — Register calls
 // ═══════════════════════════════════════════════════════════
 
+// GET call history (autenticado, scoped pelo condomínio do usuário)
+router.get("/calls", authenticate, (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: "Não autenticado" });
+    const limit = Math.min(parseInt(String(req.query.limit ?? "100")) || 100, 500);
+    let rows: any[];
+    if (user.role === "master") {
+      rows = db.prepare(
+        `SELECT * FROM interfone_calls ORDER BY created_at DESC LIMIT ?`
+      ).all(limit);
+    } else if (user.condominio_id) {
+      rows = db.prepare(
+        `SELECT * FROM interfone_calls WHERE condominio_id = ? ORDER BY created_at DESC LIMIT ?`
+      ).all(user.condominio_id, limit);
+    } else {
+      rows = [];
+    }
+    res.json(rows);
+  } catch (err: any) {
+    log.error("Erro ao listar chamadas:", err);
+    res.status(500).json({ error: "Erro ao listar chamadas" });
+  }
+});
+
 // POST a new call
 router.post("/calls", (req: Request, res: Response) => {
   try {

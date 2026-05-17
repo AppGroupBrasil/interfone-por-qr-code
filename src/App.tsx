@@ -71,6 +71,8 @@ const MinhaConta = lazy(() => import("@/pages/MinhaConta"));
 const SindicoQRConfig = lazy(() => import("@/pages/SindicoQRConfig"));
 const SindicoFeaturesConfig = lazy(() => import("@/pages/SindicoFeaturesConfig"));
 const SindicoInterfoneConfig = lazy(() => import("@/pages/SindicoInterfoneConfig"));
+const SindicoInterfoneHistorico = lazy(() => import("@/pages/SindicoInterfoneHistorico"));
+const MoradorInterfoneHistorico = lazy(() => import("@/pages/MoradorInterfoneHistorico"));
 const SindicoWhatsAppInterfone = lazy(() => import("@/pages/SindicoWhatsAppInterfone"));
 const SindicoGateConfig = lazy(() => import("@/pages/SindicoGateConfig"));
 const SindicoAccessConfig = lazy(() => import("@/pages/SindicoAccessConfig"));
@@ -265,6 +267,8 @@ function AppRoutes() {
         <Route path="/sindico/rondas" element={<ProtectedRoute minRole="sindico"><ControleRondasSindico /></ProtectedRoute>} />
         <Route path="/portaria/rondas" element={<ProtectedRoute minRole="funcionario"><RegistroRonda /></ProtectedRoute>} />
         <Route path="/sindico/interfone-config" element={<ProtectedRoute minRole="sindico"><SindicoInterfoneConfig /></ProtectedRoute>} />
+        <Route path="/sindico/interfone-historico" element={<ProtectedRoute minRole="sindico"><SindicoInterfoneHistorico /></ProtectedRoute>} />
+        <Route path="/morador/interfone-historico" element={<ProtectedRoute><MoradorInterfoneHistorico /></ProtectedRoute>} />
         <Route path="/morador/interfone-config" element={<ProtectedRoute><MoradorInterfoneConfig /></ProtectedRoute>} />
         <Route path="/morador/interfone" element={<ProtectedRoute><MoradorInterfone /></ProtectedRoute>} />
         <Route path="/portaria/interfone" element={<ProtectedRoute><FuncionarioInterfone /></ProtectedRoute>} />

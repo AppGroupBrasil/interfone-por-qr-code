@@ -306,8 +306,8 @@ export default function CadastroBlocos() {
                 Blocos cadastrados ({listaFiltrada.length})
               </h3>
 
-              {/* Filtro por condomínio */}
-              {condominios.length > 0 && (
+              {/* Filtro por condomínio — só mostra se usuário tem acesso a mais de 1 */}
+              {condominios.length > 1 && (user?.role === "master" || user?.role === "administradora") && (
                 <div className="flex items-center gap-3 p-4 rounded-xl border border-border/50" style={{ marginBottom: "19px" }}>
                   <Filter className="w-5 h-5 text-sky-400 shrink-0" />
                   <select

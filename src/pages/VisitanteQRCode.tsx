@@ -80,7 +80,7 @@ export default function VisitanteQRCode() {
       </div>
       <div style={{ textAlign: "center", marginBottom: "32px" }}>
         <div style={{ display: "inline-block", padding: "20px", border: "3px solid #003580", borderRadius: "20px" }}>
-          <img src={qrCodeUrl} alt="QR Code" style={{ width: "250px", height: "250px" }} />
+          <img src={qrCodeUrl} alt="QR Code" style={{ width: "250px", height: "250px", aspectRatio: "1 / 1", objectFit: "contain", maxWidth: "100%" }} />
         </div>
       </div>
       <div style={{ textAlign: "center", marginBottom: "40px" }}>
@@ -135,7 +135,7 @@ export default function VisitanteQRCode() {
           {/* Left: QR */}
           <div style={{ textAlign: "center", flexShrink: 0 }}>
             <div style={{ padding: "16px", border: "2px solid #003580", borderRadius: "16px", display: "inline-block" }}>
-              <img src={qrCodeUrl} alt="QR Code" style={{ width: "220px", height: "220px" }} />
+              <img src={qrCodeUrl} alt="QR Code" style={{ width: "220px", height: "220px", aspectRatio: "1 / 1", objectFit: "contain", maxWidth: "100%" }} />
             </div>
             <p style={{ fontSize: "12px", color: "#003580", fontWeight: "700", marginTop: "12px", letterSpacing: "1px", textTransform: "uppercase" }}>Escaneie para cadastrar</p>
           </div>
@@ -212,7 +212,7 @@ export default function VisitanteQRCode() {
         {/* QR Code centered */}
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
           <div style={{ display: "inline-block", padding: "24px", background: "#fff", borderRadius: "20px", boxShadow: "0 0 40px rgba(218,165,32,0.15)" }}>
-            <img src={qrCodeUrl} alt="QR Code" style={{ width: "240px", height: "240px" }} />
+            <img src={qrCodeUrl} alt="QR Code" style={{ width: "240px", height: "240px", aspectRatio: "1 / 1", objectFit: "contain", maxWidth: "100%" }} />
           </div>
         </div>
 
@@ -263,7 +263,7 @@ export default function VisitanteQRCode() {
 
         {/* QR — clean circle frame */}
         <div style={{ display: "inline-block", padding: "28px", borderRadius: "50%", background: "#f8fafc", border: "2px solid #e2e8f0", marginBottom: "32px" }}>
-          <img src={qrCodeUrl} alt="QR Code" style={{ width: "220px", height: "220px", borderRadius: "8px" }} />
+          <img src={qrCodeUrl} alt="QR Code" style={{ width: "220px", height: "220px", aspectRatio: "1 / 1", objectFit: "contain", maxWidth: "100%", borderRadius: "8px" }} />
         </div>
 
         <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>Cadastro de Visitante</h3>
@@ -348,7 +348,7 @@ export default function VisitanteQRCode() {
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
           <div style={{ display: "inline-block", padding: "3px", borderRadius: "24px", background: "linear-gradient(135deg, #94a3b8, #cbd5e1, #94a3b8)" }}>
             <div style={{ padding: "20px", background: "#fff", borderRadius: "22px" }}>
-              <img src={qrCodeUrl} alt="QR Code" style={{ width: "230px", height: "230px" }} />
+              <img src={qrCodeUrl} alt="QR Code" style={{ width: "230px", height: "230px", aspectRatio: "1 / 1", objectFit: "contain", maxWidth: "100%" }} />
             </div>
           </div>
           <p style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", marginTop: "14px", letterSpacing: "2px", textTransform: "uppercase" }}>Escaneie para Acesso</p>

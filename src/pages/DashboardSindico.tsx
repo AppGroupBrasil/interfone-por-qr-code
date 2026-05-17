@@ -70,24 +70,24 @@ export default function DashboardSindico() {
     <div className="min-h-dvh flex flex-col" style={{ background: p.pageBg }}>
       {/* ═══════════ Header ═══════════ */}
       <header className="sticky top-0 z-40" style={{ background: p.headerBg, borderBottom: p.headerBorder, boxShadow: p.headerShadow, marginBottom: 0 }}>
-        <div className="flex items-center justify-between" style={{ padding: "20px 28px", height: "5rem" }}>
-          <div className="flex items-center" style={{ gap: 14 }}>
-            <AppLogo size={48} rounded={16} background={p.iconBoxBg} border={typeof p.iconBoxBorder === "string" ? p.iconBoxBorder : undefined} />
-            <div>
-              <span className="block text-white" style={{ fontWeight: 800, fontSize: 20, letterSpacing: "-0.01em" }}>
+        <div className="flex items-center justify-between" style={{ padding: "10px 16px 10px 12px" }}>
+          <div className="flex items-center" style={{ gap: 12, minWidth: 0, flex: 1 }}>
+            <AppLogo size={64} rounded={16} background="transparent" padding={0} />
+            <div style={{ minWidth: 0 }}>
+              <span className="block" style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em", color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {user?.condominio_nome || "Meu Condomínio"}
               </span>
-              <span className="flex items-center" style={{ fontSize: 13, color: p.textDim, gap: 6 }}>
-                <Shield style={{ width: 14, height: 14 }} />
+              <span className="flex items-center" style={{ fontSize: 12, color: p.textDim, gap: 5 }}>
+                <Shield style={{ width: 12, height: 12 }} />
                 {getRoleLabel(user?.role || "sindico")}
               </span>
             </div>
           </div>
-          <div className="flex items-center" style={{ gap: 10 }}>
+          <div className="flex items-center shrink-0" style={{ gap: 8, marginLeft: 8 }}>
             <ThemePicker />
             <button
               className="flex items-center justify-center relative"
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
+              style={{ width: 40, height: 40, borderRadius: 12, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
             >
@@ -97,7 +97,7 @@ export default function DashboardSindico() {
             <button
               className="flex items-center justify-center"
               onClick={handleLogout}
-              style={{ width: 44, height: 44, borderRadius: 14, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
+              style={{ width: 40, height: 40, borderRadius: 12, background: p.btnBg, border: p.btnBorder, cursor: "pointer", transition: "all 0.15s" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.2)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
             >

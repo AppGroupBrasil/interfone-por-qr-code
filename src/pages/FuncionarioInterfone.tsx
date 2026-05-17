@@ -748,7 +748,7 @@ export default function FuncionarioInterfone() {
         </div>
       </header>
 
-      <main className="flex-1 p-4 pb-8" style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
+      <main className="flex-1 pb-8" style={{ maxWidth: 600, margin: "0 auto", width: "100%", paddingLeft: 20, paddingRight: 20, paddingTop: 16 }}>
         <ComoFunciona steps={[
           "📞 Portaria seleciona unidade e inicia chamada",
           "📱 Morador recebe chamada no app do celular",

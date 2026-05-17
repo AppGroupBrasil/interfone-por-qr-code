@@ -717,51 +717,53 @@ export default function SindicoInterfoneConfig() {
           onClick={() => setShowQR(null)}
         >
           <div
-            className="rounded-2xl p-6 max-w-sm w-full text-center"
-            style={{ background: "#fff" }}
+            className="rounded-2xl w-full text-center"
+            style={{ background: "#fff", maxWidth: 420, padding: "32px 24px 24px" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="font-bold text-xl mb-1" style={{ color: "#003580" }}>
+            <h2 className="font-bold mb-2" style={{ color: "#003580", fontSize: 22, marginTop: 8 }}>
               📞 Interfone Digital
             </h2>
-            <p className="text-sm mb-4" style={{ color: "#64748b" }}>Bloco {showQR.bloco_nome}</p>
-            <div className="inline-block p-3 rounded-xl" style={{ border: "3px solid #003580" }}>
+            <p style={{ color: "#64748b", fontSize: 14, marginBottom: 20 }}>Bloco {showQR.bloco_nome}</p>
+            <div className="inline-block rounded-xl" style={{ border: "3px solid #003580", padding: 12 }}>
               <img
                 src={getQRUrl(getInterfoneUrl(showQR.token))}
                 alt={`QR Bloco ${showQR.bloco_nome}`}
                 className="w-64 h-64"
               />
             </div>
-            <p className="text-xs mt-3 mb-4" style={{ color: "#64748b" }}>
+            <p style={{ color: "#64748b", fontSize: 13, marginTop: 14, marginBottom: 20 }}>
               Escaneie com a câmera do celular para ligar
             </p>
-            <div className="flex gap-2 justify-center">
+            <div className="grid grid-cols-3" style={{ gap: 10 }}>
               <button
                 onClick={() => handleCopy(showQR.token)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold"
-                style={{ background: "#f8fafc", border: "1px solid #003580", color: "#003580" }}
+                className="flex flex-col items-center justify-center font-bold"
+                style={{ background: "#f8fafc", border: "1.5px solid #003580", color: "#003580", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
               >
-                <Copy className="w-3.5 h-3.5" /> Copiar Link
+                <Copy className="w-5 h-5" />
+                <span>Copiar Link</span>
               </button>
               <button
                 onClick={() => handlePrint(showQR)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}
+                className="flex flex-col items-center justify-center font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
               >
-                <Printer className="w-3.5 h-3.5" /> Imprimir
+                <Printer className="w-5 h-5" />
+                <span>Imprimir</span>
               </button>
               <button
                 onClick={() => handleDownload(showQR)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold"
-                style={{ background: "#f8fafc", border: "1px solid #003580", color: "#003580" }}
+                className="flex flex-col items-center justify-center font-bold"
+                style={{ background: "#f8fafc", border: "1.5px solid #003580", color: "#003580", padding: "14px 8px", borderRadius: 12, fontSize: 13, gap: 6, minHeight: 72 }}
               >
-                <Download className="w-3.5 h-3.5" /> Baixar
+                <Download className="w-5 h-5" />
+                <span>Baixar</span>
               </button>
             </div>
             <button
               onClick={() => setShowQR(null)}
-              className="mt-4 text-xs"
-              style={{ color: "#64748b" }}
+              style={{ color: "#64748b", fontSize: 13, marginTop: 18, padding: "8px 16px" }}
             >
               Fechar
             </button>
