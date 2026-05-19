@@ -5,6 +5,35 @@ import { JWT_SECRET } from "./config.js";
 
 const COOKIE_NAME = "session_token";
 
+const APP_SLUG = "interfone-qr";
+const STATUS_VALIDOS_LICENCA = new Set(["ativa", "trial"]);
+
+function mapearRoleCentral(role: string): string {
+  const r = (role || "").toLowerCase();
+  if (r === "superadmin" || r === "master") return "master";
+  if (r === "admin" || r === "administrador" || r === "administradora") return "administradora";
+  if (r === "sindico") return "sindico";
+  if (r === "funcionario") return "funcionario";
+  return "morador";
+}
+
+function provisionarCentral(sub: string, email: string, nome: string, role: string): DbUser | null {
+  const existing = db.prepare("SELECT * FROM users WHERE central_uuid = ?").get(sub) as DbUser | undefined;
+  if (existing) return existing;
+  const porEmail = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as DbUser | undefined;
+  if (porEmail) {
+    db.prepare("UPDATE users SET central_uuid = ?, updated_at = datetime('now') WHERE id = ?").run(sub, porEmail.id);
+    return { ...porEmail, central_uuid: sub };
+  }
+  const info = db
+    .prepare(
+      `INSERT INTO users (name, email, password, role, central_uuid)
+       VALUES (?, ?, '!central!', ?, ?)`
+    )
+    .run(nome || email, email, mapearRoleCentral(role), sub);
+  return db.prepare("SELECT * FROM users WHERE id = ?").get(Number(info.lastInsertRowid)) as DbUser;
+}
+
 // ─── ROLES HIERARCHY ─────────────────────────────────────
 // master > administradora > sindico > funcionario > morador
 export type Role = "master" | "administradora" | "sindico" | "funcionario" | "morador";
@@ -45,7 +74,28 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number; sub?: string; apps?: Array<{ slug: string; role: string; status: string; expira_em: string | null }>; email?: string; nome?: string };
+
+    // ─── TOKEN DO AUTH-CENTRAL (apps[]) ───────────────────────
+    if (Array.isArray(decoded.apps) && decoded.sub && decoded.email) {
+      const licenca = decoded.apps.find((a) => a.slug === APP_SLUG);
+      if (!licenca || !STATUS_VALIDOS_LICENCA.has(licenca.status)) {
+        res.status(403).json({ error: "Sem licença ativa para Interfone QR" });
+        return;
+      }
+      if (licenca.expira_em && new Date(licenca.expira_em) < new Date()) {
+        res.status(403).json({ error: "Licença expirada" });
+        return;
+      }
+      const user = provisionarCentral(decoded.sub, decoded.email, decoded.nome || decoded.email, licenca.role);
+      if (!user) {
+        res.status(401).json({ error: "Falha ao provisionar usuário." });
+        return;
+      }
+      req.user = user;
+      next();
+      return;
+    }
 
     // ─── FUNCIONÁRIO TOKEN ──────────────────────────────────
     if (decoded.funcId) {

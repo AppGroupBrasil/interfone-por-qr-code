@@ -709,6 +709,15 @@ try {
   db.exec("ALTER TABLE users ADD COLUMN face_descriptor TEXT");
 }
 
+try {
+  db.prepare("SELECT central_uuid FROM users LIMIT 1").get();
+} catch {
+  db.exec("ALTER TABLE users ADD COLUMN central_uuid TEXT");
+  try {
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_central_uuid ON users(central_uuid) WHERE central_uuid IS NOT NULL");
+  } catch {}
+}
+
 // ─── Migration: add web_push_keys to device_tokens (Web Push subscriptions) ───
 try {
   db.prepare("SELECT web_push_keys FROM device_tokens LIMIT 1").get();
@@ -1013,6 +1022,7 @@ export interface DbUser {
   aprovado?: number;
   is_demo?: number;
   face_descriptor?: string | null;
+  central_uuid?: string | null;
   created_at: string;
   updated_at: string;
 }
