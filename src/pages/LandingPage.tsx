@@ -1190,65 +1190,12 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════
-          NOSSOS APLICATIVOS
+          CARROSSEL APP GROUP BRASIL
+          Renderizado via embed central:
+          https://appgroupbrasil.com.br/embed/app-group-banner.js
+          (script já incluído em index.html)
       ═══════════════════════════════════ */}
-      <section style={{ background: "#ffffff", transition: "background 0.4s" }}>
-        <div className="landing-section" style={{ maxWidth: "900px", textAlign: "center" }}>
-          <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 800, marginBottom: "12px", color: "#003580" }}>
-            Nossos Aplicativos
-          </h2>
-          <p style={{ fontSize: "clamp(0.95rem, 1.5vw, 1.1rem)", color: "#336699", marginBottom: "48px" }}>
-            Conheça as soluções completas do nosso ecossistema
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "32px" }}>
-            {/* App Interfone */}
-            <a href="https://www.appinterfone.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
-              <div style={{ width: "90px", height: "90px", borderRadius: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,53,128,0.15)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s" }}
-                onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
-                onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                <AppLogo size={80} rounded={18} />
-              </div>
-              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>App Interfone</span>
-              <span style={{ fontSize: "12px", color: "#336699" }}>appinterfone.com.br</span>
-            </a>
-            {/* Gestão e Limpeza */}
-            <a href="https://www.gestaoelimpeza.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
-              <div style={{ width: "90px", height: "90px", borderRadius: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,53,128,0.15)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s" }}
-                onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
-                onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                <img src="/logo-gestaoelimpeza.png" alt="Gestão e Limpeza" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
-              </div>
-              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>Gestão e Limpeza</span>
-              <span style={{ fontSize: "12px", color: "#336699" }}>gestaoelimpeza.com.br</span>
-            </a>
-            {/* App Correspondência */}
-            <a href="https://www.appcorrespondencia.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
-              <div style={{ width: "90px", height: "90px", borderRadius: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,53,128,0.15)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s" }}
-                onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
-                onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                <img src="/logo-appcorrespondencia.png" alt="App Correspondência" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
-              </div>
-              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>App Correspondência</span>
-              <span style={{ fontSize: "12px", color: "#336699" }}>appcorrespondencia.com.br</span>
-            </a>
-            {/* Manutenção X */}
-            <a href="https://www.manutencaox.com.br" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "160px" }}>
-              <div style={{ width: "90px", height: "90px", borderRadius: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,53,128,0.15)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s" }}
-                onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
-                onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                <img src="/logo-manutencaox.png" alt="Manutenção X" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
-              </div>
-              <span style={{ fontWeight: 700, fontSize: "14px", color: "#003580" }}>Manutenção X</span>
-              <span style={{ fontSize: "12px", color: "#336699" }}>manutencaox.com.br</span>
-            </a>
-          </div>
-
-        </div>
-      </section>
+      <div id="apps-carousel-root" />
 
       {/* ═══════════════════════════════════
           FOOTER
