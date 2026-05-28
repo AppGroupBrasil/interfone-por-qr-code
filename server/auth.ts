@@ -11,10 +11,11 @@ import { log } from "./logger.js";
 
 const router = Router();
 const COOKIE_NAME = "session_token";
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+const TOKEN_TTL = "24h";
+const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000; // 24h — alinhado ao TTL do JWT
 
 function signToken(userId: number): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
 
 function sanitizeUser(user: DbUser) {
@@ -511,8 +512,20 @@ function trackCondominioAccess(condominioId: number) {
   `).run(condominioId);
 }
 
+interface DbFuncionario {
+  id: number;
+  nome: string;
+  sobrenome: string;
+  login: string;
+  password: string;
+  cargo: string | null;
+  condominio_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 async function handleFuncionarioLogin(credential: string, password: string, res: any) {
-  const func = db.prepare("SELECT * FROM funcionarios WHERE login = ?").get(credential) as any;
+  const func = db.prepare("SELECT * FROM funcionarios WHERE login = ?").get(credential) as DbFuncionario | undefined;
   if (!func) {
     res.status(401).json({ error: "Login ou senha incorretos." });
     return;
@@ -529,7 +542,7 @@ async function handleFuncionarioLogin(credential: string, password: string, res:
   db.prepare("UPDATE funcionarios SET updated_at = datetime('now') WHERE id = ?").run(func.id);
   if (func.condominio_id) trackCondominioAccess(func.condominio_id);
 
-  const token = jwt.sign({ funcId: func.id }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ funcId: func.id }, JWT_SECRET, { expiresIn: TOKEN_TTL });
 
   let condominioNome: string | null = null;
   if (func.condominio_id) {
@@ -642,6 +655,40 @@ router.get("/me", (req, res) => {
   } catch {
     res.clearCookie(COOKIE_NAME);
     res.status(401).json({ error: "Sessão inválida." });
+  }
+});
+
+// ─── REFRESH (renew token before expiry) ─────────────────
+router.post("/refresh", (req, res) => {
+  try {
+    let token: string | undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) token = authHeader.slice(7);
+    if (!token) token = req.cookies?.[COOKIE_NAME];
+    if (!token) {
+      res.status(401).json({ error: "Não autenticado." });
+      return;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number };
+    let newToken: string;
+    if (decoded.userId) {
+      const user = db.prepare("SELECT id FROM users WHERE id = ?").get(decoded.userId);
+      if (!user) { res.status(401).json({ error: "Usuário não encontrado." }); return; }
+      newToken = signToken(decoded.userId);
+    } else if (decoded.funcId) {
+      const func = db.prepare("SELECT id FROM funcionarios WHERE id = ?").get(decoded.funcId);
+      if (!func) { res.status(401).json({ error: "Funcionário não encontrado." }); return; }
+      newToken = jwt.sign({ funcId: decoded.funcId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
+    } else {
+      res.status(401).json({ error: "Token inválido." });
+      return;
+    }
+
+    setCookie(res, newToken);
+    res.json({ token: newToken });
+  } catch {
+    res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
   }
 });
 

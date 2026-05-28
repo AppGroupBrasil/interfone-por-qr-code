@@ -99,7 +99,17 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 
     // ─── FUNCIONÁRIO TOKEN ──────────────────────────────────
     if (decoded.funcId) {
-      const func = db.prepare("SELECT * FROM funcionarios WHERE id = ?").get(decoded.funcId) as any;
+      const func = db.prepare("SELECT * FROM funcionarios WHERE id = ?").get(decoded.funcId) as {
+        id: number;
+        nome: string;
+        sobrenome: string;
+        login: string;
+        password: string;
+        cargo: string | null;
+        condominio_id: number | null;
+        created_at: string;
+        updated_at: string;
+      } | undefined;
       if (!func) {
         res.clearCookie(COOKIE_NAME);
         res.status(401).json({ error: "Funcionário não encontrado." });

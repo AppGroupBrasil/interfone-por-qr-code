@@ -5,9 +5,27 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
 import { API_BASE, isNative } from "./config";
 
 const TOKEN_KEY = "auth_token";
+
+let cachedToken: string | null = null;
+let tokenHydrated = false;
+
+async function hydrateToken() {
+  if (tokenHydrated) return;
+  tokenHydrated = true;
+  if (isNativeRuntime()) {
+    try {
+      const { value } = await Preferences.get({ key: TOKEN_KEY });
+      if (value) cachedToken = value;
+    } catch {}
+  } else {
+    try { cachedToken = localStorage.getItem(TOKEN_KEY); } catch {}
+  }
+}
+void hydrateToken();
 const DEMO_BLOCKED_EVENT = "appinterfone:demo-blocked";
 
 function isNativeRuntime(): boolean {
@@ -147,21 +165,23 @@ async function handleBlockedUserResponse(response: Response): Promise<void> {
 }
 
 // ─── Token helpers ───────────────────────────────────────
+// Web: cookie httpOnly é a fonte de verdade (server-side); localStorage só para Bearer fallback.
+// Capacitor: SharedPreferences nativo (@capacitor/preferences) — mais seguro que localStorage.
+// Cache em memória mantém API síncrona para os callers existentes.
 export function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  if (cachedToken) return cachedToken;
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
 }
 
 export function setToken(token: string | null) {
+  cachedToken = token;
+  if (isNativeRuntime()) {
+    if (token) Preferences.set({ key: TOKEN_KEY, value: token }).catch(() => {});
+    else Preferences.remove({ key: TOKEN_KEY }).catch(() => {});
+  }
   try {
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-    }
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
   } catch {}
 }
 

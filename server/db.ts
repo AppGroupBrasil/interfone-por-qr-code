@@ -610,6 +610,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
   CREATE INDEX IF NOT EXISTS idx_blocks_condominio ON blocks(condominio_id);
   CREATE INDEX IF NOT EXISTS idx_funcionarios_condominio ON funcionarios(condominio_id);
+  CREATE INDEX IF NOT EXISTS idx_funcionarios_login ON funcionarios(login);
   CREATE INDEX IF NOT EXISTS idx_visitors_condominio_status ON visitors(condominio_id, status);
   CREATE INDEX IF NOT EXISTS idx_visitors_token ON visitors(token);
   CREATE INDEX IF NOT EXISTS idx_pre_auth_condominio_status ON pre_authorizations(condominio_id, status);
@@ -877,7 +878,7 @@ export function cleanupExpiredAuthorizations(): number {
               title: "\u26A0\uFE0F Libera\u00E7\u00E3o de ve\u00EDculo encerrada",
               body: `Sua autoriza\u00E7\u00E3o para o ve\u00EDculo ${v.placa} (${v.bloco} - Apt ${v.apartamento}) foi encerrada automaticamente. Refa\u00E7a pelo app se precisar.`,
               data: { type: "vehicle_cancelled", vehicleId: String(v.id) },
-            }).catch(() => {});
+            }).catch((err) => log.warn("[push] vehicle_cancelled falhou:", err));
             // Email
             emailVeiculoEncerrado({
               condominioId: cfg.condominio_id,

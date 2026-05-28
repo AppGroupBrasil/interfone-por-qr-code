@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
+import { safeHtml } from "@/lib/sanitize";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
 import {
@@ -1074,7 +1075,7 @@ export default function MoradorInterfone() {
                 ["&#128241;", "Nao precisa estar em casa — funciona de qualquer lugar com internet, transformando seu celular no interfone do apartamento."],
               ] as [string, string][]).map(([icon, text], i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} dangerouslySetInnerHTML={{ __html: icon }} />
+                  <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} dangerouslySetInnerHTML={safeHtml(icon)} />
                   <p style={{ fontSize: 13, color: isDark ? "#cbd5e1" : "#334155", lineHeight: 1.5, margin: 0 }}>{text}</p>
                 </div>
               ))}

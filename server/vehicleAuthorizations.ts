@@ -423,7 +423,7 @@ router.post("/:id/confirmar-entrada", authenticate, (req: Request, res: Response
             "UPDATE vehicle_authorizations SET camera_snapshot = ?, camera_snapshot_at = datetime('now'), camera_snapshot_nome = ? WHERE id = ?"
           ).run(snap.snapshot, snap.camera_nome, req.params.id);
         }
-      }).catch(() => {});
+      }).catch((err) => log.warn("[vehicle] snapshot falhou:", err));
     }
 
     const updated = db.prepare("SELECT * FROM vehicle_authorizations WHERE id = ?").get(req.params.id);
@@ -663,7 +663,7 @@ router.post("/cancelar-dia", authenticate, (req: Request, res: Response) => {
         title: "\u26A0\uFE0F Libera\u00E7\u00E3o de ve\u00EDculo encerrada",
         body: `Sua autoriza\u00E7\u00E3o para o ve\u00EDculo ${v.placa} (${v.bloco} - Apt ${v.apartamento}) foi encerrada. Refa\u00E7a pelo app se precisar.`,
         data: { type: "vehicle_cancelled", vehicleId: String(v.id) },
-      }).catch(() => {});
+      }).catch((err) => log.warn("[vehicle] snapshot falhou:", err));
       // Email
       emailVeiculoEncerrado({
         condominioId: user.condominio_id!,

@@ -87,7 +87,7 @@ export function notifyWhatsApp(
   message: string
 ): void {
   if (!isNotifyEnabled(condominioId, notifyKey)) return;
-  sendWhatsAppText(condominioId, phone, message).catch(() => {});
+  sendWhatsAppText(condominioId, phone, message).catch((err) => log.warn("[whatsapp] envio falhou:", err));
 }
 
 /**
@@ -105,7 +105,7 @@ export function notifyPortariaWhatsApp(
     `SELECT phone FROM users WHERE condominio_id = ? AND role IN ('funcionario', 'sindico', 'administradora') AND phone IS NOT NULL AND phone != ''`
   ).all(condominioId) as { phone: string }[];
   for (const u of users) {
-    sendWhatsAppText(condominioId, u.phone, message).catch(() => {});
+    sendWhatsAppText(condominioId, u.phone, message).catch((err) => log.warn("[whatsapp] envio falhou:", err));
   }
 }
 
@@ -121,7 +121,7 @@ export function notifyUserWhatsApp(
   if (!isNotifyEnabled(condominioId, notifyKey)) return;
   const user = db.prepare("SELECT phone FROM users WHERE id = ?").get(userId) as { phone: string } | undefined;
   if (!user?.phone) return;
-  sendWhatsAppText(condominioId, user.phone, message).catch(() => {});
+  sendWhatsAppText(condominioId, user.phone, message).catch((err) => log.warn("[whatsapp] envio falhou:", err));
 }
 
 function normalizePhone(phone: string): string {

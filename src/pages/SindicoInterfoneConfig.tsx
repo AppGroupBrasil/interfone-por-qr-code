@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { AppLogo } from "@/components/AppLogo";
+import { safeHtml } from "@/lib/sanitize";
 import {
   ArrowLeft,
   Plus,
@@ -434,7 +435,7 @@ export default function SindicoInterfoneConfig() {
                 ["&#128296;", "Se um QR vazar, regenere-o: o anterior e invalidado imediatamente e um novo e gerado."],
               ] as [string, string][]).map(([icon, text], i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} dangerouslySetInnerHTML={{ __html: icon }} />
+                  <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }} dangerouslySetInnerHTML={safeHtml(icon)} />
                   <p style={{ fontSize: 13, color: isDark ? "#cbd5e1" : "#334155", lineHeight: 1.5, margin: 0 }}>{text}</p>
                 </div>
               ))}

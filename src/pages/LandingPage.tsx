@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLogo } from "@/components/AppLogo";
+import { safeHtml } from "@/lib/sanitize";
 import {
   Shield, BookOpen, DoorOpen, Camera,
   Users, Building2, ChevronRight, Check, Star,
@@ -604,7 +605,7 @@ export default function LandingPage() {
                     <Icon style={{ width: "24px", height: "24px", color: modeStyle(mode, "#ffffff", "#003580") }} />
                   </div>
                   <h3 style={{ fontWeight: 700, fontSize: "16px", marginBottom: "8px", color: t.text2 }}>{f.title}</h3>
-                  <p style={{ fontSize: "14px", color: t.text3, lineHeight: 1.6, flex: 1 }} dangerouslySetInnerHTML={{ __html: f.desc }} />
+                  <p style={{ fontSize: "14px", color: t.text3, lineHeight: 1.6, flex: 1 }} dangerouslySetInnerHTML={safeHtml(f.desc)} />
 
                   {/* Profile badges */}
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "16px", paddingTop: "14px", borderTop: `1px solid ${modeStyle(mode, "rgba(255,255,255,0.08)", "rgba(0,53,128,0.08)")}` }}>
@@ -1082,7 +1083,7 @@ export default function LandingPage() {
                   <p style={{ fontWeight: 700, fontSize: "16px", color: modeStyle(mode, "#f1f5f9", "#ffffff"), marginBottom: "4px" }}>
                     {addon.title}
                   </p>
-                  <p style={{ fontSize: "13px", color: mode === "dark" ? t.text3 : "rgba(255,255,255,0.8)", lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: addon.desc }} />
+                  <p style={{ fontSize: "13px", color: mode === "dark" ? t.text3 : "rgba(255,255,255,0.8)", lineHeight: 1.5 }} dangerouslySetInnerHTML={safeHtml(addon.desc)} />
                 </div>
                 <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
                   <div>

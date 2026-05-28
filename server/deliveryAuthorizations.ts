@@ -146,7 +146,7 @@ router.post("/portaria", authenticate, (req: Request, res: Response) => {
             "UPDATE delivery_authorizations SET camera_snapshot = ?, camera_snapshot_at = datetime('now'), camera_snapshot_nome = ? WHERE id = ?"
           ).run(snap.snapshot, snap.camera_nome, newId);
         }
-      }).catch(() => {});
+      }).catch((err) => log.warn("[delivery] snapshot falhou:", err));
     }
 
     // WhatsApp: notify morador about delivery arrival
@@ -216,7 +216,7 @@ router.post("/:id/recebido", authenticate, (req: Request, res: Response) => {
             "UPDATE delivery_authorizations SET camera_snapshot = ?, camera_snapshot_at = datetime('now'), camera_snapshot_nome = ? WHERE id = ?"
           ).run(snap.snapshot, snap.camera_nome, req.params.id);
         }
-      }).catch(() => {});
+      }).catch((err) => log.warn("[delivery] snapshot falhou:", err));
     }
 
     // Return updated record with morador info for WhatsApp
