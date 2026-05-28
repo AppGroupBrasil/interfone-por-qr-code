@@ -40,11 +40,19 @@ export function AppLogo({
         ...style,
       }}
     >
-      <img
-        src="/logo.png"
-        alt={alt}
-        style={{ width: "100%", height: "100%", objectFit }}
-      />
+      <picture>
+        <source srcSet="/logo.webp" type="image/webp" />
+        <img
+          src="/logo.png"
+          alt={alt}
+          width={size}
+          height={size}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          style={{ width: "100%", height: "100%", objectFit }}
+        />
+      </picture>
     </div>
   );
 }
