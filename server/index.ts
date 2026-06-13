@@ -9,6 +9,7 @@ import http from "http";
 import { fileURLToPath } from "url";
 import { initSignalingServer } from "./websocket.js";
 import authRouter from "./auth.js";
+import ssoRouter from "./sso.js";
 import provisioningRouter from "./provisioning.js";
 import funcionariosRouter from "./funcionarios.js";
 import blocosRouter from "./blocos.js";
@@ -183,6 +184,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Routes
+app.use("/sso", ssoRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/provisioning", provisioningRouter);
 app.use("/api/funcionarios", funcionariosRouter);
