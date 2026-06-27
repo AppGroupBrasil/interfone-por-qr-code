@@ -1,3 +1,7 @@
+# Deploy do App Interfone — doc completa: docs/DEPLOY-INFRA.md
+# Push em main → SSH no Hetzner → git reset --hard → docker compose up -d --build.
+# O app roda atrás do Traefik do Coolify (rede externa `coolify`): NÃO é publicado
+# pelo Coolify, mas DEPENDE dele em runtime. Vars ficam em /opt/appinterfone/.env.
 name: Deploy
 
 on:

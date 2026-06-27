@@ -1,3 +1,11 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  App Interfone — produção. Doc completa: docs/DEPLOY-INFRA.md
+#  ⚠️  NÃO EXCLUIR O COOLIFY e NÃO remover a rede `coolify` nem as labels
+#      Traefik abaixo: o `coolify-proxy` (Traefik) roteia este app + ~10 outros
+#      via a rede externa `coolify`. Removê-los derruba TODOS os sites do servidor.
+#  Deploy: git push em main → GitHub Actions (NÃO pelo Coolify). Vars em
+#  /opt/appinterfone/.env no servidor. Push (campainha) via FIREBASE_SERVICE_ACCOUNT_JSON.
+# ═══════════════════════════════════════════════════════════════════════════
 services:
   appinterfone:
     env_file:
@@ -68,6 +76,8 @@ services:
       start_period: 15s
 
 networks:
+  # ⚠️ OBRIGATÓRIA — rede do Coolify onde vive o `coolify-proxy` (Traefik) que
+  # serve este app e ~10 outros. NÃO remover. Ver docs/DEPLOY-INFRA.md.
   coolify:
     external: true
 
