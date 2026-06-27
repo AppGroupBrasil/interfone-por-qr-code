@@ -21,6 +21,19 @@ let firebaseInitialized = false;
 function initFirebase() {
   if (firebaseInitialized) return;
 
+  // 0) Conta de serviço inline via env (recomendado em Coolify/PaaS — dispensa arquivo/volume)
+  const inlineJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (inlineJson && inlineJson.trim().startsWith("{")) {
+    try {
+      admin.initializeApp({ credential: admin.credential.cert(JSON.parse(inlineJson)) });
+      firebaseInitialized = true;
+      console.log("  🔔 Firebase Admin SDK initialized (env JSON, push ready)");
+      return;
+    } catch (err) {
+      log.error("Firebase init error (env JSON):", err);
+    }
+  }
+
   // Procura nesta ordem:
   //   1) FIREBASE_SERVICE_ACCOUNT_PATH (env, recomendado em Docker)
   //   2) ./server/firebase-service-account.json (dev local)

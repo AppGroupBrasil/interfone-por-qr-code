@@ -23,7 +23,9 @@ services:
       - SES_FROM_EMAIL=${SES_FROM_EMAIL:-naoresponda@appinterfone.com.br}
       - SES_FROM_NAME=${SES_FROM_NAME:-App Interfone}
       - APP_URL=${APP_URL:-https://appinterfone.com.br}
-      # Firebase Cloud Messaging
+      # Firebase Cloud Messaging — preferir JSON inline via env (secret do Coolify).
+      # Se vazio, cai para o arquivo em FIREBASE_SERVICE_ACCOUNT_PATH.
+      - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON:-}
       - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH:-/app/secrets/firebase-service-account.json}
       # Web Push (VAPID)
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}

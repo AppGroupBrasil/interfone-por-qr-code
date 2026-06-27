@@ -46,6 +46,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001");
 
+// Atrás do Traefik (Coolify): confiar em 1 hop para obter req.ip/protocolo reais
+// (rate limiting por IP do cliente, cookies secure). Não usar `true` — seria spoofável.
+app.set("trust proxy", 1);
+
 // Middleware
 
 // Security headers (helmet)
@@ -266,6 +270,14 @@ function shutdown(signal: string) {
 }
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
+
+// Resiliência: registrar (não derrubar silenciosamente) erros não tratados
+process.on("unhandledRejection", (reason: any) => {
+  log.error("unhandledRejection", { message: reason?.message ?? String(reason) });
+});
+process.on("uncaughtException", (err: any) => {
+  log.error("uncaughtException", { message: err?.message, stack: IS_PROD ? undefined : err?.stack });
+});
 
 // Readiness
 app.get("/api/ready", (_req, res) => {

@@ -115,6 +115,18 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
         res.status(401).json({ error: "Funcionário não encontrado." });
         return;
       }
+      // Block check: condomínio bloqueado também impede o funcionário
+      if (func.condominio_id) {
+        const condoF = db.prepare("SELECT bloqueado FROM condominios WHERE id = ?")
+          .get(func.condominio_id) as { bloqueado: number } | undefined;
+        if (condoF && condoF.bloqueado === 1) {
+          res.status(403).json({
+            error: "Acesso bloqueado! Entre em contato com o síndico ou administradora.",
+            blocked: true,
+          });
+          return;
+        }
+      }
       // Map funcionário to DbUser-like shape for downstream compatibility
       req.user = {
         id: func.id,

@@ -753,7 +753,7 @@ router.put("/account/password", authenticate, async (req, res) => {
       return;
     }
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, 12);
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hash, user.id);
 
     // 📧 Email: password changed notification
@@ -885,7 +885,7 @@ router.post("/password-reset/reset", async (req, res) => {
       return;
     }
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, 12);
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hash, user.id);
 
     // Mark code as used

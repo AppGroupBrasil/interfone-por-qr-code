@@ -9,7 +9,7 @@
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
     "start": "node dist-server/index.js",
-    "build:server": "tsc -p tsconfig.server.json || true",
+    "build:server": "tsc -p tsconfig.server.json",
     "build:all": "npm run build && npm run build:server",
     "build:android": "vite build --mode capacitor && npx cap copy android && npx cap sync android",
     "cap:open": "npx cap open android",
