@@ -236,6 +236,11 @@ app.post("/api/backup", authenticate, authorize("master"), (_req, res) => {
   }
 });
 
+// Unknown API routes → 404 JSON (evita o fallback SPA devolver index.html em /api/*)
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Rota não encontrada." });
+});
+
 // Serve static frontend files in production
 if (process.env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../dist");
