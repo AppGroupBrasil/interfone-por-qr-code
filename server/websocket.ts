@@ -335,6 +335,12 @@ export function initSignalingServer(_server?: Server) {
             client.callId = callId;
             client.type = "visitor";
 
+            // Lista de bloqueados do morador — aplicada no servidor (não só na UI)
+            if (visitanteNome && isVisitorBlocked(moradorId, visitanteNome)) {
+              ws.send(JSON.stringify({ type: "call-rejected", callId }));
+              break;
+            }
+
             const moradorClient = moradorConnections.get(moradorId);
             if (moradorClient && moradorClient.ws.readyState === WebSocket.OPEN) {
               moradorClient.callId = callId;
@@ -377,6 +383,16 @@ export function initSignalingServer(_server?: Server) {
                 } else {
                   // Tell visitor to keep waiting
                   ws.send(JSON.stringify({ type: "call-waiting-push", callId }));
+                  // Expira a espera se o morador não abrir o app (evita visitante preso em "aguardando")
+                  setTimeout(() => {
+                    if (pendingPushCalls.has(callId)) {
+                      pendingPushCalls.delete(callId);
+                      dbg(`  [WS] Pending visitor call ${callId} expired (60s timeout)`);
+                      if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "call-unavailable", callId, reason: "timeout" }));
+                      }
+                    }
+                  }, 60_000);
                 }
               }).catch(() => {
                 pendingPushCalls.delete(callId);
@@ -675,6 +691,20 @@ export function initSignalingServer(_server?: Server) {
   });
 
   dbg("  📞 Interfone WebSocket connections active");
+}
+
+/** Verifica se o nome do visitante está na lista de bloqueados do morador */
+function isVisitorBlocked(moradorId: number, visitanteNome: string): boolean {
+  try {
+    const cfg = db.prepare("SELECT bloqueados FROM interfone_config WHERE user_id = ?").get(moradorId) as { bloqueados?: string } | undefined;
+    if (!cfg?.bloqueados) return false;
+    const lista: string[] = JSON.parse(cfg.bloqueados);
+    if (!Array.isArray(lista)) return false;
+    const nome = visitanteNome.trim().toLowerCase();
+    return lista.some(b => typeof b === "string" && b.trim().toLowerCase() === nome);
+  } catch {
+    return false;
+  }
 }
 
 function findClientById(id: string): WsClient | undefined {

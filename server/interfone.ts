@@ -401,6 +401,10 @@ router.get("/calls", authenticate, (req: Request, res: Response) => {
       rows = db.prepare(
         `SELECT * FROM interfone_calls ORDER BY created_at DESC LIMIT ?`
       ).all(limit);
+    } else if (user.role === "morador") {
+      rows = db.prepare(
+        `SELECT * FROM interfone_calls WHERE morador_id = ? ORDER BY created_at DESC LIMIT ?`
+      ).all(user.id, limit);
     } else if (user.condominio_id) {
       rows = db.prepare(
         `SELECT * FROM interfone_calls WHERE condominio_id = ? ORDER BY created_at DESC LIMIT ?`
@@ -517,27 +521,6 @@ router.put("/calls/:id", (req: Request, res: Response) => {
   } catch (err: any) {
     log.error("Erro ao atualizar chamada:", err);
     res.status(500).json({ error: "Erro ao atualizar chamada" });
-  }
-});
-
-// GET call history (morador/admin)
-router.get("/calls", authenticate, (req: Request, res: Response) => {
-  try {
-    const { role, condominio_id, id } = req.user!;
-    let rows;
-    if (role === "morador") {
-      rows = db.prepare(
-        "SELECT * FROM interfone_calls WHERE morador_id = ? ORDER BY created_at DESC LIMIT 100"
-      ).all(id);
-    } else {
-      rows = db.prepare(
-        "SELECT * FROM interfone_calls WHERE condominio_id = ? ORDER BY created_at DESC LIMIT 200"
-      ).all(condominio_id);
-    }
-    res.json(rows);
-  } catch (err: any) {
-    log.error("Erro em interfone :", err);
-    res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
 
