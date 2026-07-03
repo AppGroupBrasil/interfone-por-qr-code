@@ -39,6 +39,12 @@ services:
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:contato@appinterfone.com.br}
+      # OTA (Capgo self-hosted) — canais beta/produção do app Android.
+      # OTA_BETA_USERS: ids de usuário (custom_id) que recebem o canal beta.
+      # OTA_MIN_NATIVE_CODE: versionCode mínimo do APK para receber bundles.
+      - OTA_BETA_USERS=${OTA_BETA_USERS:-}
+      - OTA_BETA_DEVICES=${OTA_BETA_DEVICES:-}
+      - OTA_MIN_NATIVE_CODE=${OTA_MIN_NATIVE_CODE:-0}
     volumes:
       # Persist SQLite database
       - appinterfone_data:/app/data

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { apiFetch, setToken, clearToken } from "@/lib/api";
 import { initPushNotifications, unregisterPushToken } from "@/lib/pushNotifications";
 import { isDemoMode, setDemoMode } from "@/hooks/useDemoGuard";
+import { isNative } from "@/lib/config";
 
 // ─── ROLE TYPES ──────────────────────────────────────────
 export type UserRole = "master" | "administradora" | "sindico" | "funcionario" | "morador";
@@ -117,6 +118,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
     return () => controller.abort();
   }, []);
+
+  // OTA: custom_id nas checagens de update — o servidor usa para decidir
+  // o canal (beta/produção) por usuário via OTA_BETA_USERS
+  useEffect(() => {
+    if (!isNative) return;
+    import("@capgo/capacitor-updater")
+      .then(({ CapacitorUpdater }) =>
+        CapacitorUpdater.setCustomId({ customId: user ? String(user.id) : "" })
+      )
+      .catch(() => {});
+  }, [user?.id]);
 
   const login = async (email: string, password: string) => {
     const res = await apiFetch("/api/auth/login", {

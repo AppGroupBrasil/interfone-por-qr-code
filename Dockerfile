@@ -20,6 +20,9 @@ COPY . .
 # Build frontend (Vite)
 RUN npm run build
 
+# OTA bundle (Capgo self-hosted): zip do dist + manifest com checksum SHA-256
+RUN node scripts/build-ota-bundle.mjs
+
 # Build server (TypeScript → JavaScript)
 RUN npm run build:server
 
@@ -49,6 +52,9 @@ COPY --from=builder /app/dist ./dist
 
 # Copy compiled server from builder
 COPY --from=builder /app/dist-server ./dist-server
+
+# OTA bundle — registrado no volume /app/data/ota pelo initOta() no boot
+COPY --from=builder /app/ota-build ./ota-build
 
 # Firebase service account: NÃO copiada aqui — montar via secret/volume em runtime.
 # Caminho lido de FIREBASE_SERVICE_ACCOUNT_PATH (default ./server/firebase-service-account.json).

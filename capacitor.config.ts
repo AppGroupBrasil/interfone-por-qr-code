@@ -43,6 +43,15 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true,
     },
+    // OTA updates (self-hosted) — bundle web baixado do próprio servidor.
+    // statsUrl/channelUrl vazios desativam chamadas à nuvem da Capgo.
+    CapacitorUpdater: {
+      autoUpdate: true,
+      updateUrl: 'https://appinterfone.com.br/api/app-update',
+      statsUrl: '',
+      channelUrl: '',
+      appReadyTimeout: 10000,
+    },
   },
 };
 

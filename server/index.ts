@@ -32,6 +32,7 @@ import visitorQRShareRouter from "./visitorQRShare.js";
 import faceRouter from "./faceRoutes.js";
 import gateRouter from "./gateRoutes.js";
 import whatsappRouter from "./whatsappRoutes.js";
+import otaRouter, { initOta } from "./ota.js";
 import { loadModels as loadFaceModels } from "./faceService.js";
 import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs, cleanupVisitorQRShares, cleanupOldVisitors } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
@@ -212,6 +213,7 @@ app.use("/api/visitor-qr", visitorQRShareRouter);
 app.use("/api/face", faceRouter);
 app.use("/api/gate", gateRouter);
 app.use("/api/whatsapp", whatsappRouter);
+app.use("/api/app-update", otaRouter);
 
 // Test routes — only available in development
 if (process.env.NODE_ENV !== "production") {
@@ -291,6 +293,8 @@ app.get("/api/ready", (_req, res) => {
 
 server.listen(PORT, "0.0.0.0", () => {
   log.info(`HTTP escutando em 0.0.0.0:${PORT}`, { env: process.env.NODE_ENV });
+
+  initOta();
 
   loadFaceModels().then(() => {
     log.info("Modelos de reconhecimento facial carregados");

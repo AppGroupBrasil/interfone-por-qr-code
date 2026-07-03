@@ -1,7 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
+import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import App from "./App";
 import "./index.css";
+
+// OTA: sem notifyAppReady dentro de appReadyTimeout o plugin considera o
+// bundle quebrado e faz rollback automático para a versão embutida no APK.
+if (Capacitor.isNativePlatform()) {
+  CapacitorUpdater.notifyAppReady().catch(() => {});
+}
 
 // Detecta wrapper Capacitor (Android/iOS) e marca <html> para aplicar safe-area
 try {
