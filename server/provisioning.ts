@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import db from "./db.js";
+import db, { deleteUserCascade } from "./db.js";
 
 const router = Router();
 
@@ -66,7 +66,8 @@ router.post("/cadastro", (req: Request, res: Response) => {
     const email = String(d.email || "").toLowerCase().trim();
     if (!email) { res.json({ ok: true, ignorado: "sem email" }); return; }
     if (ev.acao === "delete") {
-      db.prepare("DELETE FROM users WHERE lower(email) = ?").run(email);
+      const alvo = db.prepare("SELECT id FROM users WHERE lower(email) = ?").get(email) as { id: number } | undefined;
+      if (alvo) deleteUserCascade(alvo.id);
       res.json({ ok: true });
       return;
     }

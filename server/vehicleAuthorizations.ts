@@ -84,7 +84,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
     // Check: unique access per plate
     if (getConfig("vehicle_unique_access") === "true") {
       const existing = db.prepare(
-        "SELECT id FROM vehicle_authorizations WHERE condominio_id = ? AND placa = ? AND status = 'ativa' AND data_fim >= date('now')"
+        "SELECT id FROM vehicle_authorizations WHERE condominio_id = ? AND placa = ? AND status = 'ativa' AND data_fim >= date('now', 'localtime')"
       ).get(user.condominio_id, placa.toUpperCase()) as any;
       if (existing) {
         res.status(400).json({
@@ -98,7 +98,7 @@ router.post("/", authenticate, (req: Request, res: Response) => {
     if (getConfig("vehicle_limit_per_apt") === "true") {
       const limit = parseInt(getConfig("vehicle_limit_per_apt_count") || "3", 10);
       const count = db.prepare(
-        "SELECT COUNT(*) as c FROM vehicle_authorizations WHERE condominio_id = ? AND bloco = ? AND apartamento = ? AND status = 'ativa' AND data_fim >= date('now')"
+        "SELECT COUNT(*) as c FROM vehicle_authorizations WHERE condominio_id = ? AND bloco = ? AND apartamento = ? AND status = 'ativa' AND data_fim >= date('now', 'localtime')"
       ).get(user.condominio_id, user.block, user.unit) as { c: number };
       if (count.c >= limit) {
         res.status(400).json({
@@ -189,7 +189,7 @@ router.post("/portaria-cadastro", authenticate, (req: Request, res: Response) =>
       .get(user.condominio_id, "vehicle_unique_access") as { value: string } | undefined;
     if (cfgRow?.value === "true") {
       const existing = db.prepare(
-        "SELECT id FROM vehicle_authorizations WHERE condominio_id = ? AND placa = ? AND status IN ('ativa','pendente_aprovacao') AND data_fim >= date('now')"
+        "SELECT id FROM vehicle_authorizations WHERE condominio_id = ? AND placa = ? AND status IN ('ativa','pendente_aprovacao') AND data_fim >= date('now', 'localtime')"
       ).get(user.condominio_id, placa.toUpperCase()) as any;
       if (existing) {
         res.status(400).json({
@@ -209,7 +209,7 @@ router.post("/portaria-cadastro", authenticate, (req: Request, res: Response) =>
         .get(user.condominio_id, "vehicle_limit_per_apt_count") as { value: string } | undefined;
       const limit = parseInt(limitCountRow?.value || "3", 10);
       const count = db.prepare(
-        "SELECT COUNT(*) as c FROM vehicle_authorizations WHERE condominio_id = ? AND bloco = ? AND apartamento = ? AND status IN ('ativa','pendente_aprovacao') AND data_fim >= date('now')"
+        "SELECT COUNT(*) as c FROM vehicle_authorizations WHERE condominio_id = ? AND bloco = ? AND apartamento = ? AND status IN ('ativa','pendente_aprovacao') AND data_fim >= date('now', 'localtime')"
       ).get(user.condominio_id, bloco, apartamento) as { c: number };
       if (count.c >= limit) {
         res.status(400).json({
@@ -225,7 +225,7 @@ router.post("/portaria-cadastro", authenticate, (req: Request, res: Response) =>
     ).get(user.condominio_id, bloco, apartamento) as { id: number; name: string; phone: string | null } | undefined;
 
     const token = crypto.randomUUID();
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
     const result = db.prepare(`
       INSERT INTO vehicle_authorizations
@@ -348,7 +348,7 @@ router.post("/aprovar/:token", (req: Request, res: Response) => {
     }
 
     if (acao === "aprovar") {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
       db.prepare(`
         UPDATE vehicle_authorizations
         SET status = 'ativa',
@@ -612,7 +612,7 @@ router.post("/:id/responder-morador", authenticate, (req: Request, res: Response
     }
 
     if (acao === "aprovar") {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
       db.prepare(`
         UPDATE vehicle_authorizations
         SET status = 'ativa', data_inicio = ?, data_fim = ?, morador_observacao = ?
@@ -638,7 +638,7 @@ router.post("/:id/responder-morador", authenticate, (req: Request, res: Response
 router.post("/cancelar-dia", authenticate, (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
     // Fetch affected authorizations before cancelling (for notifications)
     const affected = db.prepare(`

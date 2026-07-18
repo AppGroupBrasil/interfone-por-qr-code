@@ -32,7 +32,8 @@ RUN npm run build:server
 FROM node:20.18-alpine AS production
 
 # Install runtime dependencies for canvas and create non-root user
-RUN apk add --no-cache pixman cairo pango jpeg giflib && \
+# tzdata: fuso horário IANA (America/Sao_Paulo) para new Date() usar horário local do Brasil
+RUN apk add --no-cache pixman cairo pango jpeg giflib tzdata && \
     addgroup -g 1001 -S appinterfone && \
     adduser -S appinterfone -u 1001
 
@@ -65,9 +66,9 @@ COPY public ./public
 # Copy face recognition models
 COPY public/models ./public/models
 
-# Create data directory for SQLite and set ownership
-RUN mkdir -p /app/data && \
-    chown -R appinterfone:appinterfone /app/data && \
+# Create data + backup directories for SQLite and set ownership
+RUN mkdir -p /app/data /app/backups && \
+    chown -R appinterfone:appinterfone /app/data /app/backups && \
     chown -R appinterfone:appinterfone /app
 
 # Switch to non-root user
@@ -76,6 +77,7 @@ USER appinterfone
 # Environment
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV TZ=America/Sao_Paulo
 
 # Expose port
 EXPOSE 3001

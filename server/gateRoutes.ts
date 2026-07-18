@@ -1365,7 +1365,7 @@ router.post(
       }
 
       // 2. Check date validity
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
       if (vehicle.data_fim && vehicle.data_fim < today) {
         res.json({
           found: true, authorized: false, opened: false,

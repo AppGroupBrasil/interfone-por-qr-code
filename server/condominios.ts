@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { type DbCondominio } from "./db.js";
+import db, { deleteUserCascade, type DbCondominio } from "./db.js";
 import { authenticate, authorize, condominioScope } from "./middleware.js";
 import { log } from "./logger.js";
 
@@ -95,7 +95,8 @@ router.delete("/:id", authorize("master"), (req, res) => {
       db.prepare("DELETE FROM visitors WHERE condominio_id = ?").run(condoId);
       db.prepare("DELETE FROM blocks WHERE condominio_id = ?").run(condoId);
       db.prepare("DELETE FROM funcionarios WHERE condominio_id = ?").run(condoId);
-      db.prepare("DELETE FROM users WHERE condominio_id = ?").run(condoId);
+      const condoUsers = db.prepare("SELECT id FROM users WHERE condominio_id = ?").all(condoId) as { id: number }[];
+      for (const u of condoUsers) deleteUserCascade(u.id);
       db.prepare("DELETE FROM condominios WHERE id = ?").run(condoId);
     });
     deleteCondominio();

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import db, { type DbUser } from "./db.js";
+import db, { deleteUserCascade, type DbUser } from "./db.js";
 import { authenticate, authorize, condominioScope } from "./middleware.js";
 import { validatePin } from "./passwordPolicy.js";
 import { log } from "./logger.js";
@@ -176,12 +176,15 @@ router.delete("/administradora/:id", authorize("master"), (req, res) => {
 
     if (!user.parent_administradora_id) {
       // This is a main administradora — also delete all sub-users and unlink condominios
-      db.prepare("DELETE FROM users WHERE parent_administradora_id = ? AND role = 'administradora'").run(parseInt(id));
+      const subs = db.prepare(
+        "SELECT id FROM users WHERE parent_administradora_id = ? AND role = 'administradora'"
+      ).all(parseInt(id)) as { id: number }[];
+      for (const s of subs) deleteUserCascade(s.id);
       db.prepare("UPDATE condominios SET administradora_id = NULL WHERE administradora_id = ?").run(parseInt(id));
     }
     // If it's a sub-user, just delete it (no condominio unlink needed)
 
-    db.prepare("DELETE FROM users WHERE id = ?").run(parseInt(id));
+    deleteUserCascade(parseInt(id));
     res.json({ success: true, message: user.parent_administradora_id ? "Sub-usuário excluído." : "Administradora excluída." });
   } catch (err) {
     log.error("Erro ao excluir administradora:", err);
@@ -385,7 +388,7 @@ router.delete("/sindico/:id", authorize("master", "administradora"), (req, res) 
     }
 
     db.prepare("UPDATE condominios SET admin_user_id = NULL WHERE admin_user_id = ?").run(parseInt(id));
-    db.prepare("DELETE FROM users WHERE id = ?").run(parseInt(id));
+    deleteUserCascade(parseInt(id));
     res.json({ success: true, message: "Síndico excluído." });
   } catch (err) {
     log.error("Erro ao excluir síndico:", err);

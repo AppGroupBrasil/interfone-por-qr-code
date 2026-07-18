@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import db from "./db.js";
+import db, { deleteUserCascade } from "./db.js";
 import { authenticate, authorize, condominioScope, moradorSelfScope } from "./middleware.js";
 import { emailContaCriada } from "./emailService.js";
 import { validatePin } from "./passwordPolicy.js";
@@ -176,7 +176,7 @@ router.delete("/:id", authorize("master", "administradora", "sindico"), (req, re
       return;
     }
 
-    db.prepare("DELETE FROM users WHERE id = ?").run(Number.parseInt(id));
+    deleteUserCascade(Number.parseInt(id));
     res.json({ success: true, message: "Morador excluído." });
   } catch (err) {
     log.error("Erro ao excluir morador:", err);
@@ -268,7 +268,7 @@ router.delete("/:id/rejeitar", authorize("master", "administradora", "sindico"),
       res.status(404).json({ error: "Morador pendente não encontrado." });
       return;
     }
-    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    deleteUserCascade(id);
     res.json({ success: true, message: `Cadastro de ${morador.name} rejeitado e removido.` });
   } catch (err) {
     log.error("Erro ao rejeitar morador:", err);

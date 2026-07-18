@@ -726,10 +726,59 @@ try {
   db.exec("ALTER TABLE device_tokens ADD COLUMN web_push_keys TEXT");
 }
 
+// ─── Exclusão de usuário sem falha de FK ───
+// Várias tabelas referenciam users(id) sem ON DELETE CASCADE, então um
+// DELETE FROM users cru falha com "FOREIGN KEY constraint failed" e o usuário
+// não consegue ser excluído. Esta função descobre dinamicamente todas as tabelas
+// que apontam para users e, numa transação, remove as linhas dependentes antes
+// de excluir o usuário. Também desvincula sub-usuários (parent_administradora_id).
+export function deleteUserCascade(userId: number): void {
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+    .all() as { name: string }[];
+
+  const tx = db.transaction((uid: number) => {
+    for (const { name } of tables) {
+      if (name === "users" || name.startsWith("sqlite_")) continue;
+      const fks = db.prepare(`PRAGMA foreign_key_list("${name}")`).all() as {
+        table: string;
+        from: string;
+      }[];
+      if (!fks.some((fk) => fk.table === "users")) continue;
+      const cols = db.prepare(`PRAGMA table_info("${name}")`).all() as {
+        name: string;
+        notnull: number;
+      }[];
+      for (const fk of fks) {
+        if (fk.table !== "users") continue;
+        const col = cols.find((c) => c.name === fk.from);
+        // Coluna opcional: desvincula (preserva o histórico do condomínio).
+        // Coluna obrigatória: a linha não faz sentido sem o usuário, então remove.
+        if (col && col.notnull === 0) {
+          db.prepare(`UPDATE "${name}" SET "${fk.from}" = NULL WHERE "${fk.from}" = ?`).run(uid);
+        } else {
+          db.prepare(`DELETE FROM "${name}" WHERE "${fk.from}" = ?`).run(uid);
+        }
+      }
+    }
+    // Auto-referência: não deletar sub-usuários em cascata, apenas desvincular.
+    db.prepare("UPDATE users SET parent_administradora_id = NULL WHERE parent_administradora_id = ?").run(uid);
+    db.prepare("DELETE FROM users WHERE id = ?").run(uid);
+  });
+  tx(userId);
+}
+
 // ─── Database Backup ───
-const backupDir = process.env.NODE_ENV === "production"
-  ? path.join("/app", "data", "backups")
+// Fora do volume do banco (/app/data) para que a perda/corrupção do volume não
+// leve banco e backups juntos. Configurável por BACKUP_DIR.
+const backupDir = process.env.BACKUP_DIR
+  ? process.env.BACKUP_DIR
+  : process.env.NODE_ENV === "production"
+  ? path.join("/app", "backups")
   : path.join(__dirname, "..", "backups");
+
+// Quantos backups manter. Com backup a cada 6h, 28 ≈ 7 dias de histórico.
+const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 28;
 
 export function performBackup(): string | null {
   try {
@@ -743,13 +792,13 @@ export function performBackup(): string | null {
     // Use SQLite's backup API via better-sqlite3
     db.backup(backupPath);
 
-    // Keep only the last 7 backups
+    // Mantém apenas os BACKUP_KEEP backups mais recentes
     const files = fs.readdirSync(backupDir)
       .filter(f => f.startsWith("data-") && f.endsWith(".db"))
       .sort()
       .reverse();
 
-    for (const file of files.slice(7)) {
+    for (const file of files.slice(BACKUP_KEEP)) {
       fs.unlinkSync(path.join(backupDir, file));
     }
 
@@ -764,15 +813,15 @@ export function performBackup(): string | null {
 // ─── Cleanup: auto-delete demo accounts after 30 days ───
 export function cleanupDemoAccounts(): number {
   try {
-    const result = db.prepare(`
-      DELETE FROM users 
-      WHERE is_demo = 1 
-        AND created_at < datetime('now', '-30 days')
-    `).run();
-    if (result.changes > 0) {
-      console.log(`[CLEANUP] ${result.changes} conta(s) demo removida(s) (30+ dias)`);
+    // Cascade para não falhar por FK (contas demo geram chamadas/registros).
+    const antigos = db.prepare(
+      "SELECT id FROM users WHERE is_demo = 1 AND created_at < datetime('now', '-30 days')"
+    ).all() as { id: number }[];
+    for (const u of antigos) deleteUserCascade(u.id);
+    if (antigos.length > 0) {
+      console.log(`[CLEANUP] ${antigos.length} conta(s) demo removida(s) (30+ dias)`);
     }
-    return result.changes;
+    return antigos.length;
   } catch (err) {
     log.error("[CLEANUP] Erro ao limpar contas demo:", err);
     return 0;
@@ -789,7 +838,7 @@ export function cleanupExpiredAuthorizations(): number {
       UPDATE pre_authorizations 
       SET status = 'expirada' 
       WHERE status = 'ativa' 
-        AND data_fim < date('now')
+        AND data_fim < date('now', 'localtime')
     `).run();
     total += preResult.changes;
 
@@ -798,7 +847,7 @@ export function cleanupExpiredAuthorizations(): number {
       UPDATE vehicle_authorizations 
       SET status = 'expirada' 
       WHERE status = 'ativa' 
-        AND data_fim < date('now')
+        AND data_fim < date('now', 'localtime')
     `).run();
     total += vehicleResult.changes;
 
@@ -846,7 +895,7 @@ export function cleanupExpiredAuthorizations(): number {
 
     for (const cfg of autoCancelConfigs) {
       if (!cfg.value || cfg.value > nowHHMM) continue;
-      const todayStr = nowLocal.toISOString().split("T")[0];
+      const todayStr = nowLocal.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
       // Fetch affected vehicles before cancelling (for notifications)
       const affectedVehicles = db.prepare(`

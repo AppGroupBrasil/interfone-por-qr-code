@@ -20,6 +20,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - TZ=America/Sao_Paulo
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://appinterfone.com.br,https://www.appinterfone.com.br,capacitor://localhost}
       - DEMO_MODE=${DEMO_MODE:-false}
@@ -48,6 +49,8 @@ services:
     volumes:
       # Persist SQLite database
       - appinterfone_data:/app/data
+      # Backups do banco — volume separado para sobreviver à perda do volume de dados
+      - appinterfone_backups:/app/backups
       # Firebase service account — descomentar e garantir que o arquivo exista
       # para habilitar push notifications.
       # - ./server/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
@@ -89,4 +92,6 @@ networks:
 
 volumes:
   appinterfone_data:
+    driver: local
+  appinterfone_backups:
     driver: local

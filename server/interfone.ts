@@ -485,25 +485,17 @@ router.put("/calls/:id", (req: Request, res: Response) => {
       if (duracao_segundos != null) { sql += ", duracao_segundos = ?"; params.push(duracao_segundos); }
     }
 
-    sql += " WHERE id = ?";
-    // Support both integer DB id and string call_id (WS signaling id)
+    // Endpoint público: casar SOMENTE pelo call_id não-sequencial (ICALL-...),
+    // nunca pelo id inteiro — evita enumeração e spam de e-mail de chamada perdida.
+    sql += " WHERE call_id = ?";
     const idParam = String(req.params.id);
-    const numId = parseInt(idParam);
-    if (!isNaN(numId) && String(numId) === idParam) {
-      params.push(numId);
-    } else {
-      // It's a WS call_id string — match by call_id column
-      sql = sql.replace("WHERE id = ?", "WHERE call_id = ?");
-      params.push(idParam);
-    }
+    params.push(idParam);
 
     db.prepare(sql).run(...params);
 
     // 📧 Email: send missed call notification on timeout
     if (status === "timeout") {
-      const call = (!isNaN(numId) && String(numId) === idParam)
-        ? db.prepare("SELECT * FROM interfone_calls WHERE id = ?").get(numId) as any
-        : db.prepare("SELECT * FROM interfone_calls WHERE call_id = ?").get(idParam) as any;
+      const call = db.prepare("SELECT * FROM interfone_calls WHERE call_id = ?").get(idParam) as any;
       if (call?.morador_id) {
         emailChamadaPerdida({
           condominioId: call.condominio_id,

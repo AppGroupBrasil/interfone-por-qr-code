@@ -51,6 +51,9 @@ declare global {
   namespace Express {
     interface Request {
       user?: DbUser;
+      // true quando o token é de funcionário ({funcId}): req.user.id refere-se a
+      // funcionarios.id, NÃO a users.id. Endpoints que gravam em users(id) devem checar isto.
+      isFuncionario?: boolean;
     }
   }
 }
@@ -145,6 +148,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
         created_at: func.created_at,
         updated_at: func.updated_at,
       } as DbUser;
+      req.isFuncionario = true;
       next();
       return;
     }

@@ -2,7 +2,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import db, { type DbUser, type DbCondominio } from "./db.js";
+import db, { deleteUserCascade, type DbUser, type DbCondominio } from "./db.js";
 import { authenticate } from "./middleware.js";
 import { emailBoasVindasMorador, emailBoasVindasSindico, emailSenhaAlterada, emailCodigoRecuperacao } from "./emailService.js";
 import { JWT_SECRET, DEMO_MODE, SAMPLE_ACCOUNTS_ON_REGISTER } from "./config.js";
@@ -625,37 +625,11 @@ router.post("/login", async (req, res) => {
 });
 
 // ─── ME (Check session) ─────────────────────────────────
-router.get("/me", (req, res) => {
-  try {
-    // 1) Try Authorization header first (Capacitor / mobile app)
-    let token: string | undefined;
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      token = authHeader.slice(7);
-    }
-    // 2) Fall back to cookie (web browser)
-    if (!token) {
-      token = req.cookies?.[COOKIE_NAME];
-    }
-    if (!token) {
-      res.status(401).json({ error: "Não autenticado." });
-      return;
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(decoded.userId) as DbUser | undefined;
-
-    if (!user) {
-      res.clearCookie(COOKIE_NAME);
-      res.status(401).json({ error: "Usuário não encontrado." });
-      return;
-    }
-
-    res.json({ user: sanitizeUser(user) });
-  } catch {
-    res.clearCookie(COOKIE_NAME);
-    res.status(401).json({ error: "Sessão inválida." });
-  }
+// Delega ao authenticate: trata token de usuário {userId}, de funcionário {funcId}
+// e da central {sub, apps[]}. Antes só lia userId e quebrava a sessão de porteiros
+// e de usuários da central no restore (401 → logout a cada recarga/reabertura).
+router.get("/me", authenticate, (req, res) => {
+  res.json({ user: sanitizeUser(req.user!) });
 });
 
 // ─── REFRESH (renew token before expiry) ─────────────────
@@ -709,9 +683,24 @@ router.put("/account", authenticate, async (req, res) => {
       return;
     }
 
-    // Check email uniqueness if changed (skip for funcionario who may not have email)
-    if (email && email !== user.email) {
-      const existing = db.prepare("SELECT id FROM users WHERE email = ? AND id != ?").get(email, user.id) as any;
+    // Funcionário: req.user.id é funcionarios.id — gravar em users corromperia a
+    // conta de OUTRA pessoa com o mesmo id numérico. Atualiza a tabela correta.
+    if (req.isFuncionario) {
+      const partes = name.trim().split(/\s+/);
+      const nome = partes.shift() || name.trim();
+      const sobrenome = partes.join(" ");
+      db.prepare(
+        "UPDATE funcionarios SET nome = ?, sobrenome = ?, updated_at = datetime('now') WHERE id = ?"
+      ).run(nome, sobrenome, user.id);
+      res.json({ user: sanitizeUser({ ...user, name: name.trim() } as DbUser), message: "Dados atualizados com sucesso." });
+      return;
+    }
+
+    const normEmail = email ? String(email).toLowerCase().trim() : null;
+
+    // Check email uniqueness if changed
+    if (normEmail && normEmail !== user.email) {
+      const existing = db.prepare("SELECT id FROM users WHERE email = ? AND id != ?").get(normEmail, user.id) as any;
       if (existing) {
         res.status(400).json({ error: "Este e-mail já está em uso." });
         return;
@@ -720,7 +709,7 @@ router.put("/account", authenticate, async (req, res) => {
 
     db.prepare(
       "UPDATE users SET name = ?, phone = ?, email = ?, block = ?, unit = ? WHERE id = ?"
-    ).run(name.trim(), phone || null, email || user.email, block ?? user.block, unit ?? user.unit, user.id);
+    ).run(name.trim(), phone || null, normEmail || user.email, block ?? user.block, unit ?? user.unit, user.id);
 
     // Return updated user
     const updated = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as DbUser;
@@ -742,10 +731,8 @@ router.put("/account/password", authenticate, async (req, res) => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      res.status(400).json({ error: "A nova senha deve ter pelo menos 6 caracteres." });
-      return;
-    }
+    // Mesma política de PIN do resto do sistema (6 dígitos, sem PINs fracos).
+    if (!validatePin(newPassword, res)) return;
 
     const valid = await bcrypt.compare(currentPassword, user.password);
     if (!valid) {
@@ -754,6 +741,13 @@ router.put("/account/password", authenticate, async (req, res) => {
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
+    // Funcionário: req.user.id é funcionarios.id — gravar em users trocaria a senha
+    // de OUTRA pessoa. Atualiza a tabela correta.
+    if (req.isFuncionario) {
+      db.prepare("UPDATE funcionarios SET password = ?, updated_at = datetime('now') WHERE id = ?").run(hash, user.id);
+      res.json({ message: "Senha alterada com sucesso." });
+      return;
+    }
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hash, user.id);
 
     // 📧 Email: password changed notification
@@ -781,8 +775,8 @@ router.delete("/account", authenticate, (req, res) => {
       return;
     }
 
-    // Delete user
-    db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+    // Delete user (com limpeza de dependências para evitar erro de FK)
+    deleteUserCascade(user.id);
 
     // Clear session
     res.clearCookie(COOKIE_NAME, { path: "/" });
@@ -801,8 +795,9 @@ router.post("/password-reset/request", async (req, res) => {
       res.status(400).json({ error: "Informe um e-mail válido." });
       return;
     }
+    const emailNorm = String(email).toLowerCase().trim();
 
-    const user = db.prepare("SELECT id, name, email FROM users WHERE email = ?").get(email) as { id: number; name: string; email: string } | undefined;
+    const user = db.prepare("SELECT id, name, email FROM users WHERE email = ?").get(emailNorm) as { id: number; name: string; email: string } | undefined;
     // Always return success to prevent email enumeration
     if (!user) {
       res.json({ message: "Se o e-mail estiver cadastrado, você receberá um código de recuperação." });
@@ -810,13 +805,13 @@ router.post("/password-reset/request", async (req, res) => {
     }
 
     // Invalidate previous codes
-    db.prepare("UPDATE password_reset_codes SET used = 1 WHERE email = ? AND used = 0").run(email);
+    db.prepare("UPDATE password_reset_codes SET used = 1 WHERE email = ? AND used = 0").run(emailNorm);
 
     // Generate 6-digit code
     const code = String(crypto.randomInt(100000, 999999));
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
 
-    db.prepare("INSERT INTO password_reset_codes (email, code, expires_at) VALUES (?, ?, ?)").run(email, code, expiresAt);
+    db.prepare("INSERT INTO password_reset_codes (email, code, expires_at) VALUES (?, ?, ?)").run(emailNorm, code, expiresAt);
 
     // Send email
     emailCodigoRecuperacao({ email: user.email, nome: user.name, codigo: code })
@@ -837,10 +832,11 @@ router.post("/password-reset/verify", (req, res) => {
       res.status(400).json({ error: "E-mail e código são obrigatórios." });
       return;
     }
+    const emailNorm = String(email).toLowerCase().trim();
 
     const record = db.prepare(
       "SELECT id, expires_at FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 ORDER BY id DESC LIMIT 1"
-    ).get(email, code) as { id: number; expires_at: string } | undefined;
+    ).get(emailNorm, code) as { id: number; expires_at: string } | undefined;
 
     if (!record) {
       res.status(400).json({ error: "Código inválido ou já utilizado." });
@@ -869,17 +865,18 @@ router.post("/password-reset/reset", async (req, res) => {
     }
 
     if (!validatePin(newPassword, res)) return;
+    const emailNorm = String(email).toLowerCase().trim();
 
     const record = db.prepare(
       "SELECT id, expires_at FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 ORDER BY id DESC LIMIT 1"
-    ).get(email, code) as { id: number; expires_at: string } | undefined;
+    ).get(emailNorm, code) as { id: number; expires_at: string } | undefined;
 
     if (!record || new Date(record.expires_at) < new Date()) {
       res.status(400).json({ error: "Código inválido ou expirado." });
       return;
     }
 
-    const user = db.prepare("SELECT id, name FROM users WHERE email = ?").get(email) as { id: number; name: string } | undefined;
+    const user = db.prepare("SELECT id, name FROM users WHERE email = ?").get(emailNorm) as { id: number; name: string } | undefined;
     if (!user) {
       res.status(400).json({ error: "Usuário não encontrado." });
       return;

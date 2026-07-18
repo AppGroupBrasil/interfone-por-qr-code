@@ -228,6 +228,11 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Readiness — precisa vir ANTES do catch-all /api (senão devolve 404)
+app.get("/api/ready", (_req, res) => {
+  res.json({ status: "ready", uptime: process.uptime() });
+});
+
 // Manual backup endpoint (master only)
 app.post("/api/backup", authenticate, authorize("master"), (_req, res) => {
   const backupPath = performBackup();
@@ -284,11 +289,6 @@ process.on("unhandledRejection", (reason: any) => {
 });
 process.on("uncaughtException", (err: any) => {
   log.error("uncaughtException", { message: err?.message, stack: IS_PROD ? undefined : err?.stack });
-});
-
-// Readiness
-app.get("/api/ready", (_req, res) => {
-  res.json({ status: "ready", uptime: process.uptime() });
 });
 
 server.listen(PORT, "0.0.0.0", () => {

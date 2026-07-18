@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { type DbUser, type DbCondominio } from "./db.js";
+import db, { deleteUserCascade, type DbUser, type DbCondominio } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import bcrypt from "bcryptjs";
 import { emailCondominioBloqueado, emailCondominioDesbloqueado } from "./emailService.js";
@@ -420,7 +420,7 @@ router.delete("/users/:id", (req, res) => {
       return;
     }
 
-    db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+    deleteUserCascade(userId);
 
     logAction(req.user!.id, "DELETE_USER", "user", userId, `Excluiu usuário "${user.name}" (${user.email}) role=${user.role}`);
 
