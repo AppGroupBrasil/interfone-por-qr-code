@@ -77,6 +77,7 @@ export default function GlobalIncomingCall() {
 
       ws.onopen = () => {
         console.log("[Global Interfone] Connected as morador listener");
+        (globalThis as any).__interfoneWsOpen = true;
         ws.send(JSON.stringify({
           type: "register-morador",
           moradorId: user.id,
@@ -132,6 +133,7 @@ export default function GlobalIncomingCall() {
       };
 
       ws.onclose = () => {
+        (globalThis as any).__interfoneWsOpen = false;
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
         console.log("[Global Interfone] Disconnected, reconnecting in 2s...");
         reconnectRef.current = setTimeout(connectWs, 2000);

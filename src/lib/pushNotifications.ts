@@ -88,6 +88,9 @@ async function initNativePush(): Promise<void> {
       PushNotifications.addListener("pushNotificationReceived", (notification) => {
         console.log("Push received (foreground):", notification);
         if (notification.data?.type === "interfone-call") {
+          // App em 1º plano com WS ativo: a chamada chega (ou já chegou) pelo WebSocket
+          // com o toque próprio — ignorar o push pra não tocar em dobro
+          if ((globalThis as any).__interfoneWsOpen) return;
           try {
             const audio = new Audio("/sounds/ringtone-call.wav");
             audio.loop = true;

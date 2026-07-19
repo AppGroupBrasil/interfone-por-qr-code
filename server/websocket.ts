@@ -355,6 +355,15 @@ export function initSignalingServer(_server?: Server) {
                 apartamento,
                 visitorClientId: clientId,
               }));
+              // WS pode ser "zumbi" (app em segundo plano com socket TCP vivo mas JS suspenso):
+              // push sempre, pra campainha tocar pela bandeja; app em 1º plano ignora o push.
+              sendPushToUser(moradorId, {
+                title: "📞 Chamada do Interfone",
+                body: `${visitanteNome || "Visitante"} está chamando no interfone`,
+                data: { type: "interfone-call", callId, moradorId: String(moradorId) },
+                channelId: "interfone_calls",
+                sound: "ringtone",
+              }).catch(() => {});
             } else {
               // Morador offline — send push notification and keep visitor waiting
               dbg(`  [WS] Morador ${moradorId} offline, sending push notification...`);
@@ -560,6 +569,14 @@ export function initSignalingServer(_server?: Server) {
                 callerRole: client.type,
                 callerClientId: clientId,
               }));
+              // Mesmo raciocínio do call-request: socket pode estar zumbi, push garante o toque
+              sendPushToUser(targetUserId, {
+                title: "📞 Chamada da Portaria",
+                body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
+                data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
+                channelId: "interfone_calls",
+                sound: "ringtone",
+              }).catch(() => {});
             } else {
               // Morador offline — keep pending call for up to 30s
               dbg(`  [WS] Internal call: morador ${targetUserId} offline, sending push...`);

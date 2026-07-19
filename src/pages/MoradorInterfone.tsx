@@ -205,6 +205,7 @@ export default function MoradorInterfone() {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        (globalThis as any).__interfoneWsOpen = true;
         ws.send(JSON.stringify({
           type: "register-morador",
           moradorId: user.id,
@@ -318,6 +319,7 @@ export default function MoradorInterfone() {
       };
 
       ws.onclose = () => {
+        (globalThis as any).__interfoneWsOpen = false;
         // Only reconnect if this is still the active WS
         if (wsRef.current !== ws) return;
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
