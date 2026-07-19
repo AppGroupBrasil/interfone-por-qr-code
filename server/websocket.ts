@@ -448,7 +448,13 @@ export function initSignalingServer(_server?: Server) {
           }
 
           // ─── Answer call (works for external AND internal calls) ───
+          case "client-debug": {
+            console.log(`[AUDIT] client-debug clientId=${clientId} user=${authUser?.id ?? "anon"} morador=${client.moradorId ?? "-"}: ${JSON.stringify(msg).slice(0, 500)}`);
+            break;
+          }
+
           case "call-answer": {
+            console.log(`[AUDIT] call-answer clientId=${clientId} user=${authUser?.id ?? "anon"} morador=${client.moradorId ?? "-"} callId=${msg.callId}`);
             // Ensure this client has the callId set (for handoff scenarios)
             if (msg.callId && !client.callId) {
               client.callId = msg.callId;

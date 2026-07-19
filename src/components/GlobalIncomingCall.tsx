@@ -105,6 +105,7 @@ export default function GlobalIncomingCall() {
               break;
 
             case "incoming-call":
+              try { ws.send(JSON.stringify({ type: "client-debug", tag: "overlay-ring", callId: msg.callId, ts: Date.now() })); } catch {}
               setIncomingCall({
                 callId: msg.callId,
                 callerName: msg.visitanteNome || "Visitante",
@@ -194,11 +195,24 @@ export default function GlobalIncomingCall() {
     };
   }, [isMorador, isOnInterfonePage, connectWs, stopRingtone]);
 
-  const handleAnswer = () => {
+  const handleAnswer = (e?: React.MouseEvent) => {
     stopRingtone();
     const callData = incomingCall;
     // Send call-answer so the visitor gets notified immediately
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && callData) {
+      try {
+        const ne = e?.nativeEvent as PointerEvent | undefined;
+        wsRef.current.send(JSON.stringify({
+          type: "client-debug",
+          tag: "overlay-answer",
+          callId: callData.callId,
+          isTrusted: ne ? ne.isTrusted : null,
+          pointerType: ne && "pointerType" in ne ? ne.pointerType : null,
+          x: ne?.clientX ?? null,
+          y: ne?.clientY ?? null,
+          ts: Date.now(),
+        }));
+      } catch {}
       wsRef.current.send(JSON.stringify({
         type: "call-answer",
         callId: callData.callId,
@@ -219,9 +233,19 @@ export default function GlobalIncomingCall() {
     navigate("/morador/interfone", { state: { pendingCall: callData } });
   };
 
-  const handleReject = () => {
+  const handleReject = (e?: React.MouseEvent) => {
     stopRingtone();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        const ne = e?.nativeEvent as PointerEvent | undefined;
+        wsRef.current.send(JSON.stringify({
+          type: "client-debug",
+          tag: "overlay-reject",
+          callId: incomingCall?.callId,
+          isTrusted: ne ? ne.isTrusted : null,
+          ts: Date.now(),
+        }));
+      } catch {}
       wsRef.current.send(JSON.stringify({
         type: "call-reject",
         callId: incomingCall?.callId,
