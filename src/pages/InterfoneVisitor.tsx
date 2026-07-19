@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { buildWsUrl } from "@/lib/config";
+import { getIceServers } from "@/lib/iceServers";
 import { compressCanvas } from "@/lib/imageUtils";
 import { AppLogo } from "@/components/AppLogo";
 import {
@@ -271,10 +272,7 @@ export default function InterfoneVisitor() {
       }
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
+        iceServers: await getIceServers(),
       });
       pcRef.current = pc;
 

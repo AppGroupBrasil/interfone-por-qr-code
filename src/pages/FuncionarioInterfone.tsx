@@ -4,6 +4,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
+import { getIceServers } from "@/lib/iceServers";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -429,10 +430,7 @@ export default function FuncionarioInterfone() {
       localStreamRef.current = stream;
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
+        iceServers: await getIceServers(),
       });
       pcRef.current = pc;
 
@@ -628,10 +626,7 @@ export default function FuncionarioInterfone() {
       console.log("[Portaria] Got local audio stream, tracks:", stream.getAudioTracks().length);
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
+        iceServers: await getIceServers(),
       });
       pcRef.current = pc;
 

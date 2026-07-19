@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { safeHtml } from "@/lib/sanitize";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
+import { getIceServers } from "@/lib/iceServers";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -449,10 +450,7 @@ export default function MoradorInterfone() {
       console.log("[Morador] handleWebRTCOffer: got audio, tracks:", stream.getAudioTracks().length, "enabled:", stream.getAudioTracks()[0]?.enabled);
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
+        iceServers: await getIceServers(),
       });
       pcRef.current = pc;
 
@@ -670,10 +668,7 @@ export default function MoradorInterfone() {
       console.log("[Morador] Got local audio stream, tracks:", stream.getAudioTracks().length);
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
+        iceServers: await getIceServers(),
       });
       pcRef.current = pc;
 

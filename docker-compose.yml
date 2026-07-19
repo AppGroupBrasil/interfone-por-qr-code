@@ -46,6 +46,8 @@ services:
       - OTA_BETA_USERS=${OTA_BETA_USERS:-}
       - OTA_BETA_DEVICES=${OTA_BETA_DEVICES:-}
       - OTA_MIN_NATIVE_CODE=${OTA_MIN_NATIVE_CODE:-0}
+      # TURN (coturn) — segredo compartilhado p/ credenciais efêmeras (REST API)
+      - TURN_SECRET=${TURN_SECRET:-}
     volumes:
       # Persist SQLite database
       - appinterfone_data:/app/data
@@ -83,6 +85,28 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # TURN relay (WebRTC) — sem ele, chamadas falham com celular em CGNAT (5G).
+  # network_mode: host é obrigatório p/ faixa de portas de relay UDP.
+  coturn:
+    image: coturn/coturn:4
+    container_name: appinterfone-coturn
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      -n
+      --listening-port=3478
+      --min-port=49160
+      --max-port=49400
+      --realm=appinterfone.com.br
+      --use-auth-secret
+      --static-auth-secret=${TURN_SECRET}
+      --fingerprint
+      --no-cli
+      --no-tls
+      --no-dtls
+      --log-file=stdout
+      --simple-log
 
 networks:
   # ⚠️ OBRIGATÓRIA — rede do Coolify onde vive o `coolify-proxy` (Traefik) que

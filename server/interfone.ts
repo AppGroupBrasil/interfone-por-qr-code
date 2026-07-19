@@ -7,6 +7,28 @@ import { log } from "./logger.js";
 
 const router = Router();
 
+// GET /api/interfone/turn-credentials — credenciais efêmeras (TURN REST API)
+// Público: visitantes não autenticados também precisam do relay do coturn.
+router.get("/turn-credentials", (_req: Request, res: Response) => {
+  const secret = process.env.TURN_SECRET;
+  if (!secret) {
+    res.json({ urls: [], username: null, credential: null, ttlSeconds: 0 });
+    return;
+  }
+  const ttlSeconds = 6 * 3600;
+  const username = String(Math.floor(Date.now() / 1000) + ttlSeconds);
+  const credential = crypto.createHmac("sha1", secret).update(username).digest("base64");
+  res.json({
+    urls: [
+      "turn:appinterfone.com.br:3478?transport=udp",
+      "turn:appinterfone.com.br:3478?transport=tcp",
+    ],
+    username,
+    credential,
+    ttlSeconds,
+  });
+});
+
 // ═══════════════════════════════════════════════════════════
 // TOKENS — QR Code per block (managed by síndico)
 // ═══════════════════════════════════════════════════════════
