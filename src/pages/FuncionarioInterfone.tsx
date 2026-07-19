@@ -32,6 +32,7 @@ import {
   WifiOff,
   Search,
   Building,
+  Camera,
 } from "lucide-react";
 import { apiFetch, getToken } from "@/lib/api";
 import { useTheme } from "@/hooks/useTheme";
@@ -84,6 +85,11 @@ export default function FuncionarioInterfone() {
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  // Evita o "play" preto do <video> vazio: só mostra o vídeo quando o stream começa
+  const [remoteVideoOn, setRemoteVideoOn] = useState(false);
+  useEffect(() => {
+    if (callState !== "connected") setRemoteVideoOn(false);
+  }, [callState]);
   const [callHistory, setCallHistory] = useState<CallLog[]>([]);
 
   // Internal call states
@@ -879,8 +885,26 @@ export default function FuncionarioInterfone() {
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  onPlaying={() => setRemoteVideoOn(true)}
+                  onEmptied={() => setRemoteVideoOn(false)}
                   className="w-full h-full object-cover"
+                  style={{ opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
                 />
+                {!remoteVideoOn && (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center text-white px-6 text-center"
+                    style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}
+                  >
+                    <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+                      style={{ background: "rgba(255,255,255,0.15)", border: "3px solid rgba(255,255,255,0.3)" }}
+                    >
+                      <Camera className="w-8 h-8 text-white animate-pulse" />
+                    </div>
+                    <p className="text-sm font-bold">Conectando com o interfone…</p>
+                    <p className="text-xs text-blue-200 mt-1">O vídeo do visitante vai aparecer em instantes</p>
+                  </div>
+                )}
                 <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(0,0,0,0.6)" }}>
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <span className="text-xs text-white font-bold">{formatTime(callDuration)}</span>

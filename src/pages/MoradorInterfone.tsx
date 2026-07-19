@@ -88,6 +88,11 @@ export default function MoradorInterfone() {
   const [authRequest, setAuthRequest] = useState<AuthRequest | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  // Evita o "play" preto do <video> vazio: só mostra o vídeo quando o stream começa
+  const [remoteVideoOn, setRemoteVideoOn] = useState(false);
+  useEffect(() => {
+    if (viewState !== "connected") setRemoteVideoOn(false);
+  }, [viewState]);
   const [history, setHistory] = useState<CallHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -885,9 +890,26 @@ export default function MoradorInterfone() {
             ref={remoteVideoRef}
             autoPlay
             playsInline
+            onPlaying={() => setRemoteVideoOn(true)}
+            onEmptied={() => setRemoteVideoOn(false)}
             className="w-full h-full object-cover"
-            style={{ position: "absolute", inset: 0 }}
+            style={{ position: "absolute", inset: 0, opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
           />
+          {!remoteVideoOn && (
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center text-white px-8 text-center"
+              style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}
+            >
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+                style={{ background: "rgba(255,255,255,0.15)", border: "3px solid rgba(255,255,255,0.3)" }}
+              >
+                <Camera className="w-12 h-12 text-white animate-pulse" />
+              </div>
+              <p className="text-lg font-bold">Conectando com o interfone…</p>
+              <p className="text-sm text-blue-200 mt-2">Aguarde, o vídeo do visitante vai aparecer em instantes</p>
+            </div>
+          )}
 
           {/* Overlay info */}
           <div className="absolute top-0 left-0 right-0 p-4" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%)" }}>
@@ -1089,7 +1111,7 @@ export default function MoradorInterfone() {
         <div className="text-center" style={{ paddingTop: "0.5cm", paddingBottom: "0.5cm" }}>
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ background: isDark ? "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" : "#ffffff", border: "3px solid #e2e8f0" }}
+            style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", border: "3px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,53,128,0.25)" }}
           >
             <Phone className="w-10 h-10 text-white" />
           </div>
@@ -1118,7 +1140,7 @@ export default function MoradorInterfone() {
         <button
           onClick={handleCallPortaria}
           className="w-full flex items-center justify-center gap-3 rounded-2xl font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
-          style={{ background: isDark ? "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" : "#ffffff", boxShadow: "0 4px 16px rgba(0,53,128,0.3)", paddingTop: "0.5cm", paddingBottom: "0.5cm", marginBottom: "0.5cm" }}
+          style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", boxShadow: "0 4px 16px rgba(0,53,128,0.3)", paddingTop: "0.5cm", paddingBottom: "0.5cm", marginBottom: "0.5cm" }}
         >
           <PhoneCall className="w-5 h-5" />
           Ligar para Portaria
