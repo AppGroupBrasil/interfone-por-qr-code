@@ -99,6 +99,21 @@ export default function FuncionarioInterfone() {
   const [isOutgoingCall, setIsOutgoingCall] = useState(false);
   const [outgoingTargetName, setOutgoingTargetName] = useState("");
   const [isInternalCall, setIsInternalCall] = useState(false);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  // O ontrack pode disparar antes do <video> montar, e o WebView às vezes bloqueia
+  // o autoplay: enquanto o vídeo não toca, reanexa o stream e insiste no play()
+  useEffect(() => {
+    if (callState !== "connected" || isInternalCall || remoteVideoOn) return;
+    const timer = setInterval(() => {
+      const v = remoteVideoRef.current;
+      if (!v) return;
+      if (remoteStreamRef.current && v.srcObject !== remoteStreamRef.current) {
+        v.srcObject = remoteStreamRef.current;
+      }
+      if (v.paused) v.play().catch(() => {});
+    }, 800);
+    return () => clearInterval(timer);
+  }, [callState, isInternalCall, remoteVideoOn]);
   const peerTypeRef = useRef<string>("visitor");
 
   // Refs that mirror state — used inside WebSocket onmessage to avoid stale closures
@@ -431,9 +446,12 @@ export default function FuncionarioInterfone() {
           playRemoteAudio(event.track, event.streams);
         }
         // Also assign to video element if available (for visitor video)
-        if (event.streams[0] && remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-          remoteVideoRef.current.play().catch(() => {});
+        if (event.streams[0]) {
+          remoteStreamRef.current = event.streams[0];
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+            remoteVideoRef.current.play().catch(() => {});
+          }
         }
       };
 
@@ -533,6 +551,7 @@ export default function FuncionarioInterfone() {
     pcRef.current?.close();
     pcRef.current = null;
     localStreamRef.current = null;
+    remoteStreamRef.current = null;
     // Reset audio element but keep it in DOM (it's a JSX element)
     if (remoteAudioRef.current) {
       remoteAudioRef.current.pause();
@@ -886,6 +905,7 @@ export default function FuncionarioInterfone() {
                   autoPlay
                   playsInline
                   onPlaying={() => setRemoteVideoOn(true)}
+                  onPause={() => setRemoteVideoOn(false)}
                   onEmptied={() => setRemoteVideoOn(false)}
                   className="w-full h-full object-cover"
                   style={{ opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
@@ -894,6 +914,14 @@ export default function FuncionarioInterfone() {
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center text-white px-6 text-center"
                     style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}
+                    onClick={() => {
+                      const v = remoteVideoRef.current;
+                      if (!v) return;
+                      if (remoteStreamRef.current && v.srcObject !== remoteStreamRef.current) {
+                        v.srcObject = remoteStreamRef.current;
+                      }
+                      v.play().catch(() => {});
+                    }}
                   >
                     <div
                       className="w-16 h-16 rounded-full flex items-center justify-center mb-3"

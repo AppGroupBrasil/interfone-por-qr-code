@@ -101,6 +101,21 @@ export default function MoradorInterfone() {
   // Internal call states
   const [isOutgoingCall, setIsOutgoingCall] = useState(false);
   const [isInternalCall, setIsInternalCall] = useState(false);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  // O ontrack pode disparar antes do <video> montar, e o WebView às vezes bloqueia
+  // o autoplay: enquanto o vídeo não toca, reanexa o stream e insiste no play()
+  useEffect(() => {
+    if (viewState !== "connected" || isInternalCall || remoteVideoOn) return;
+    const timer = setInterval(() => {
+      const v = remoteVideoRef.current;
+      if (!v) return;
+      if (remoteStreamRef.current && v.srcObject !== remoteStreamRef.current) {
+        v.srcObject = remoteStreamRef.current;
+      }
+      if (v.paused) v.play().catch(() => {});
+    }, 800);
+    return () => clearInterval(timer);
+  }, [viewState, isInternalCall, remoteVideoOn]);
   const peerTypeRef = useRef<string>("visitor");
 
   // Refs that mirror state — used inside WebSocket onmessage to avoid stale closures
@@ -451,9 +466,12 @@ export default function MoradorInterfone() {
           playRemoteAudio(event.track, event.streams);
         }
         // Also assign to video element if available (for visitor video)
-        if (event.streams[0] && remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-          remoteVideoRef.current.play().catch(() => {});
+        if (event.streams[0]) {
+          remoteStreamRef.current = event.streams[0];
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+            remoteVideoRef.current.play().catch(() => {});
+          }
         }
       };
 
@@ -593,6 +611,7 @@ export default function MoradorInterfone() {
     pcRef.current?.close();
     pcRef.current = null;
     localStreamRef.current = null;
+    remoteStreamRef.current = null;
     // Reset audio element but keep it in DOM (it's a JSX element)
     if (remoteAudioRef.current) {
       remoteAudioRef.current.pause();
@@ -891,6 +910,7 @@ export default function MoradorInterfone() {
             autoPlay
             playsInline
             onPlaying={() => setRemoteVideoOn(true)}
+            onPause={() => setRemoteVideoOn(false)}
             onEmptied={() => setRemoteVideoOn(false)}
             className="w-full h-full object-cover"
             style={{ position: "absolute", inset: 0, opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
@@ -899,6 +919,14 @@ export default function MoradorInterfone() {
             <div
               className="absolute inset-0 flex flex-col items-center justify-center text-white px-8 text-center"
               style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)" }}
+              onClick={() => {
+                const v = remoteVideoRef.current;
+                if (!v) return;
+                if (remoteStreamRef.current && v.srcObject !== remoteStreamRef.current) {
+                  v.srcObject = remoteStreamRef.current;
+                }
+                v.play().catch(() => {});
+              }}
             >
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
@@ -1113,7 +1141,7 @@ export default function MoradorInterfone() {
             className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
             style={{ background: "linear-gradient(135deg, #0062d1 0%, #003d99 50%, #001d4a 100%)", border: "3px solid #e2e8f0", boxShadow: "0 4px 16px rgba(0,53,128,0.25)" }}
           >
-            <Phone className="w-10 h-10 text-white" />
+            <Phone className="w-10 h-10 text-white animate-pulse" />
           </div>
           <h2 className="text-lg font-bold" style={{ color: "#003580" }}>Interfone Ativo</h2>
           <p className="text-sm text-muted-foreground mt-1">

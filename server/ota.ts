@@ -138,6 +138,13 @@ router.post("/", (req: Request, res: Response) => {
     res.json({ message: "Atualizado.", version: "" });
     return;
   }
+  // Nunca rebaixar: se o aparelho já roda um bundle nosso mais novo que o do
+  // canal (ex.: beta antes do promote, ou checagem que caiu em production
+  // antes do custom_id carregar), não devolve o antigo
+  if (state.bundles[currentBundle] && currentBundle > version) {
+    res.json({ message: "Atualizado.", version: "" });
+    return;
+  }
 
   res.json({
     version,

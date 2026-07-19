@@ -122,13 +122,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // OTA: custom_id nas checagens de update — o servidor usa para decidir
   // o canal (beta/produção) por usuário via OTA_BETA_USERS
   useEffect(() => {
-    if (!isNative) return;
+    // Enquanto a sessão restaura, user é null — limpar o customId aqui faria a
+    // checagem OTA cair no canal production; só mexe depois do auth resolver
+    if (!isNative || isLoading) return;
     import("@capgo/capacitor-updater")
       .then(({ CapacitorUpdater }) =>
         CapacitorUpdater.setCustomId({ customId: user ? String(user.id) : "" })
       )
       .catch(() => {});
-  }, [user?.id]);
+  }, [user?.id, isLoading]);
 
   const login = async (email: string, password: string) => {
     const res = await apiFetch("/api/auth/login", {
