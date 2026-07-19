@@ -387,6 +387,15 @@ export default function InterfoneVisitor() {
     localStreamRef.current = null;
   };
 
+  // Fecha WS e mídia ao desmontar a página
+  useEffect(() => {
+    return () => {
+      cleanup();
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, []);
+
   // Select apartment
   const handleSelectApto = async (apto: Apartamento) => {
     setSelectedApto(apto);

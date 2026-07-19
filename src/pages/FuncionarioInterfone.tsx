@@ -455,6 +455,10 @@ export default function FuncionarioInterfone() {
 
       pc.onconnectionstatechange = () => {
         console.log("[Portaria] WebRTC connection state:", pc.connectionState);
+        if (pc.connectionState === "failed") {
+          console.error("[Portaria] Conexão de mídia falhou — encerrando chamada");
+          handleEndCall();
+        }
       };
 
       pc.oniceconnectionstatechange = () => {
@@ -641,6 +645,10 @@ export default function FuncionarioInterfone() {
 
       pc.onconnectionstatechange = () => {
         console.log("[Portaria] outgoing WebRTC state:", pc.connectionState);
+        if (pc.connectionState === "failed") {
+          console.error("[Portaria] Conexão de mídia falhou — encerrando chamada");
+          handleEndCall();
+        }
       };
 
       pc.oniceconnectionstatechange = () => {

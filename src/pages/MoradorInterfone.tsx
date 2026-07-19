@@ -384,12 +384,12 @@ export default function MoradorInterfone() {
     const resumedCall: IncomingCall = {
       callId: pending.callId,
       visitanteNome: pending.callerName || "Visitante",
-      visitanteEmpresa: null,
-      visitanteFoto: null,
-      nivelSeguranca: 0,
-      bloco: "",
-      apartamento: "",
-      visitorClientId: "",
+      visitanteEmpresa: pending.visitanteEmpresa ?? null,
+      visitanteFoto: pending.visitanteFoto ?? null,
+      nivelSeguranca: pending.nivelSeguranca ?? 0,
+      bloco: pending.bloco || "",
+      apartamento: pending.apartamento || "",
+      visitorClientId: pending.visitorClientId || "",
     };
     setIncomingCall(resumedCall);
     setIsInternalCall(!!pending.isInternal);
@@ -402,6 +402,18 @@ export default function MoradorInterfone() {
     // Clear navigation state so refreshing the page doesn't replay
     window.history.replaceState({}, "");
   }, []); // run once on mount
+
+  // Watchdog: "connected" sem mídia estabelecida em 30s → encerra em vez de travar
+  useEffect(() => {
+    if (viewState !== "connected") return;
+    const t = setTimeout(() => {
+      if (pcRef.current?.connectionState !== "connected") {
+        console.error("[Morador] Sem mídia 30s após atender — encerrando");
+        handleEndCall();
+      }
+    }, 30_000);
+    return () => clearTimeout(t);
+  }, [viewState]);
 
   const fetchHistory = async () => {
     try {
@@ -475,6 +487,10 @@ export default function MoradorInterfone() {
 
       pc.onconnectionstatechange = () => {
         console.log("[Morador] WebRTC connection state:", pc.connectionState);
+        if (pc.connectionState === "failed") {
+          console.error("[Morador] Conexão de mídia falhou — encerrando chamada");
+          handleEndCall();
+        }
       };
 
       pc.oniceconnectionstatechange = () => {
@@ -683,6 +699,10 @@ export default function MoradorInterfone() {
 
       pc.onconnectionstatechange = () => {
         console.log("[Morador] outgoing WebRTC state:", pc.connectionState);
+        if (pc.connectionState === "failed") {
+          console.error("[Morador] Conexão de mídia falhou — encerrando chamada");
+          handleEndCall();
+        }
       };
 
       pc.oniceconnectionstatechange = () => {

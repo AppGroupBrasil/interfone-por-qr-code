@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import { buildWsUrl, isNative } from "@/lib/config";
-import { getToken } from "@/lib/api";
+import { getToken, apiFetch } from "@/lib/api";
 import { stopIncomingCallVibration, vibrateIncomingCall } from "@/lib/mediaDiagnostics";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
@@ -22,6 +22,12 @@ interface IncomingCallData {
   callerName: string;
   callerRole?: string;
   isInternal: boolean;
+  visitanteEmpresa?: string | null;
+  visitanteFoto?: string | null;
+  nivelSeguranca?: number;
+  bloco?: string;
+  apartamento?: string;
+  visitorClientId?: string;
 }
 
 export default function GlobalIncomingCall() {
@@ -110,6 +116,12 @@ export default function GlobalIncomingCall() {
                 callId: msg.callId,
                 callerName: msg.visitanteNome || "Visitante",
                 isInternal: false,
+                visitanteEmpresa: msg.visitanteEmpresa ?? null,
+                visitanteFoto: msg.visitanteFoto ?? null,
+                nivelSeguranca: msg.nivelSeguranca ?? 0,
+                bloco: msg.bloco || "",
+                apartamento: msg.apartamento || "",
+                visitorClientId: msg.visitorClientId || "",
               });
               playRingtone();
               break;
@@ -229,6 +241,14 @@ export default function GlobalIncomingCall() {
       wsRef.current = null;
     }
     setIncomingCall(null);
+    // Registra atendida no histórico (MoradorInterfone só faz isso no fluxo sem handoff)
+    if (callData && !callData.isInternal) {
+      apiFetch(`/api/interfone/calls/${callData.callId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "atendida" }),
+      }).catch(() => {});
+    }
     // Navigate with call data so MoradorInterfone can pick up the active call
     navigate("/morador/interfone", { state: { pendingCall: callData } });
   };
