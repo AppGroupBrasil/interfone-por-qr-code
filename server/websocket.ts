@@ -361,7 +361,7 @@ export function initSignalingServer(_server?: Server) {
                 title: "📞 Chamada do Interfone",
                 body: `${visitanteNome || "Visitante"} está chamando no interfone`,
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
-                channelId: "interfone_calls",
+                channelId: "interfone_calls_v2",
                 sound: "ringtone",
               }).catch(() => {});
             } else {
@@ -381,7 +381,7 @@ export function initSignalingServer(_server?: Server) {
                 title: "\uD83D\uDCDE Chamada do Interfone",
                 body: `${visitanteNome || "Visitante"} está chamando no interfone`,
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
-                channelId: "interfone_calls",
+                channelId: "interfone_calls_v2",
                 sound: "ringtone",
               }).then((sent) => {
                 dbg(`  [WS] Push sent to moradorId=${moradorId}: ${sent} device(s)`);
@@ -574,7 +574,7 @@ export function initSignalingServer(_server?: Server) {
                 title: "📞 Chamada da Portaria",
                 body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
-                channelId: "interfone_calls",
+                channelId: "interfone_calls_v2",
                 sound: "ringtone",
               }).catch(() => {});
             } else {
@@ -592,7 +592,7 @@ export function initSignalingServer(_server?: Server) {
                 title: "\uD83D\uDCDE Chamada da Portaria",
                 body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
-                channelId: "interfone_calls",
+                channelId: "interfone_calls_v2",
                 sound: "ringtone",
               }).then((sent) => {
                 dbg(`  [WS] Push sent to moradorId=${targetUserId}: ${sent} device(s)`);

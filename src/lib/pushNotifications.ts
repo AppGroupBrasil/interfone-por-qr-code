@@ -122,15 +122,39 @@ async function initNativePush(): Promise<void> {
     }
 
     try {
-      await PushNotifications.createChannel({
-        id: ANDROID_CALLS_CHANNEL_ID,
-        name: "Chamadas do Interfone",
-        description: "Chamadas e alertas importantes do interfone digital",
-        importance: 5,
-        visibility: 1,
-        vibration: true,
-        lights: true,
-      });
+      // Canais Android são imutáveis após criados: o toque longo exige um canal novo (v2),
+      // que só pode existir em builds que trazem res/raw/ringtone.wav (versionCode >= 12)
+      let nativeBuild = 0;
+      try {
+        const { App } = await import("@capacitor/app");
+        nativeBuild = parseInt((await App.getInfo()).build, 10) || 0;
+      } catch {}
+
+      if (nativeBuild >= 12) {
+        await PushNotifications.createChannel({
+          id: "interfone_calls_v2",
+          name: "Chamadas do Interfone",
+          description: "Chamadas e alertas importantes do interfone digital",
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+          sound: "ringtone.wav",
+        });
+        try {
+          await PushNotifications.deleteChannel({ id: ANDROID_CALLS_CHANNEL_ID });
+        } catch {}
+      } else {
+        await PushNotifications.createChannel({
+          id: ANDROID_CALLS_CHANNEL_ID,
+          name: "Chamadas do Interfone",
+          description: "Chamadas e alertas importantes do interfone digital",
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+        });
+      }
     } catch (channelError) {
       console.warn("Failed to ensure Android notification channel:", channelError);
     }
