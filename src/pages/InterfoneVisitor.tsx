@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { buildWsUrl } from "@/lib/config";
 import { getIceServers } from "@/lib/iceServers";
+import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIce";
 import { compressCanvas } from "@/lib/imageUtils";
 import { AppLogo } from "@/components/AppLogo";
 import {
@@ -118,6 +119,7 @@ export default function InterfoneVisitor() {
   // WebRTC / WebSocket refs
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceRef = useRef<PendingIce[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -210,12 +212,14 @@ export default function InterfoneVisitor() {
           handleWebRTCOffer(msg.offer);
           break;
         case "webrtc-answer":
-          if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.answer));
+          if (pcRef.current) {
+            pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.answer))
+              .then(() => flushPendingIce(pcRef.current, pendingIceRef.current, msg.callId, "Visitor"))
+              .catch((e) => console.error("[Visitor] setRemoteDescription(answer) falhou:", e));
+          }
           break;
         case "ice-candidate":
-          if (pcRef.current && msg.candidate) {
-            pcRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate));
-          }
+          queueOrAddIce(pcRef.current, msg, pendingIceRef.current, "Visitor");
           break;
         case "resend-offer":
           // Morador reconnected after handoff — resend WebRTC offer
@@ -325,6 +329,7 @@ export default function InterfoneVisitor() {
     // Visitor shouldn't normally receive offer, but handle gracefully
     if (!pcRef.current) return;
     await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+    flushPendingIce(pcRef.current, pendingIceRef.current, callIdRef.current ?? undefined, "Visitor");
     const answer = await pcRef.current.createAnswer();
     await pcRef.current.setLocalDescription(answer);
     wsRef.current?.send(JSON.stringify({

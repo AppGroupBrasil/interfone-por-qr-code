@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getIceServers } from "@/lib/iceServers";
+import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIce";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -128,6 +129,7 @@ export default function FuncionarioInterfone() {
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceRef = useRef<PendingIce[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -285,12 +287,14 @@ export default function FuncionarioInterfone() {
             handleWebRTCOffer(msg.offer, msg.callId);
             break;
           case "webrtc-answer":
-            if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.answer));
+            if (pcRef.current) {
+              pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.answer))
+                .then(() => flushPendingIce(pcRef.current, pendingIceRef.current, msg.callId, "Portaria"))
+                .catch((e) => console.error("[Portaria] setRemoteDescription(answer) falhou:", e));
+            }
             break;
           case "ice-candidate":
-            if (pcRef.current && msg.candidate) {
-              pcRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate));
-            }
+            queueOrAddIce(pcRef.current, msg, pendingIceRef.current, "Portaria");
             break;
           case "call-ended":
             setCallState("ended");
@@ -477,6 +481,7 @@ export default function FuncionarioInterfone() {
       };
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      flushPendingIce(pc, pendingIceRef.current, callId, "Portaria");
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
