@@ -231,7 +231,8 @@ router.get("/public/:token", (req: Request, res: Response) => {
             apartments.set(unit, { unit, moradores: [] });
           }
           const moradorEntry: any = { id: m.id, name: m.name };
-          if (m.whatsapp_interfone && m.phone) {
+          // Backup do interfone: WhatsApp ligado por padrão (opt-out = "0")
+          if (m.phone && m.whatsapp_interfone !== "0") {
             moradorEntry.whatsapp = m.phone;
           }
           apartments.get(unit)!.moradores.push(moradorEntry);
@@ -269,7 +270,8 @@ router.get("/public/:token", (req: Request, res: Response) => {
         apartments.set(unit, { unit, moradores: [] });
       }
       const moradorEntry: any = { id: m.id, name: m.name };
-      if (m.whatsapp_interfone && m.phone) {
+      // Backup do interfone: WhatsApp ligado por padrão (opt-out = "0")
+      if (m.phone && m.whatsapp_interfone !== "0") {
         moradorEntry.whatsapp = m.phone;
       }
       apartments.get(unit)!.moradores.push(moradorEntry);

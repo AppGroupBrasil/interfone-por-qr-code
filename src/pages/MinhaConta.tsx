@@ -74,7 +74,7 @@ export default function MinhaConta() {
         const res = await apiFetch("/api/interfone/config");
         if (res.ok) {
           const data = await res.json();
-          setWhatsappInterfone(!!data.whatsapp_interfone);
+          setWhatsappInterfone(data.whatsapp_interfone !== "0");
         }
       } catch {}
     })();
@@ -437,7 +437,7 @@ export default function MinhaConta() {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         ...currentConfig,
-                        whatsapp_interfone: newVal ? "1" : null,
+                        whatsapp_interfone: newVal ? "1" : "0",
                       }),
                     });
                     if (res.ok) {
