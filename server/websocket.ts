@@ -769,7 +769,10 @@ export function initSignalingServer(_server?: Server) {
       }
     });
 
-    ws.on("close", () => {
+    ws.on("close", (code?: number, reason?: Buffer) => {
+      if (client.moradorId) {
+        console.log(`[AUDIT] close morador=${client.moradorId} client=${clientId} code=${code ?? "-"} reason=${reason?.toString() || "-"}`);
+      }
       // Clean up — only delete from moradorConnections if this client is still the current entry
       if (client.moradorId) {
         const current = moradorConnections.get(client.moradorId);
