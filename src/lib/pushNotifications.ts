@@ -149,7 +149,17 @@ async function initNativePush(): Promise<void> {
         nativeBuild = parseInt((await App.getInfo()).build, 10) || 0;
       } catch {}
 
-      if (nativeBuild >= 12) {
+      if (nativeBuild >= 13) {
+        // A chamada é montada pelo IncomingCallService nativo, que cria o canal
+        // interfone_calls_v3 com USAGE_NOTIFICATION_RINGTONE (volume de toque).
+        // Criar canal aqui só duplicaria a entrada nas configurações — e o
+        // plugin do Capacitor só sabe criar com USAGE_NOTIFICATION (volume baixo).
+        for (const id of [ANDROID_CALLS_CHANNEL_ID, "interfone_calls_v2"]) {
+          try {
+            await PushNotifications.deleteChannel({ id });
+          } catch {}
+        }
+      } else if (nativeBuild >= 12) {
         await PushNotifications.createChannel({
           id: "interfone_calls_v2",
           name: "Chamadas do Interfone",
