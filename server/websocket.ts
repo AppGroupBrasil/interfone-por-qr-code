@@ -96,6 +96,7 @@ function authenticateWs(req: IncomingMessage): DbUser | null {
 }
 
 interface WsClient {
+  id: string;
   ws: WebSocket;
   type: "visitor" | "morador" | "funcionario";
   moradorId?: number;
@@ -189,7 +190,7 @@ export function initSignalingServer(_server?: Server) {
     // Try to authenticate — visitors won't have credentials
     const authUser = authenticateWs(req);
     dbg(`  [WS] Auth: ${authUser ? `userId=${authUser.id} role=${authUser.role}` : "anonymous"}`);
-    const client: WsClient = { ws, type: "visitor", userId: authUser?.id };
+    const client: WsClient = { id: clientId, ws, type: "visitor", userId: authUser?.id };
     clients.set(clientId, client);
 
     ws.on("message", (raw: Buffer) => {
@@ -220,6 +221,18 @@ export function initSignalingServer(_server?: Server) {
             client.type = "morador";
             client.moradorId = authUser.id;
             client.condominioId = authUser.condominio_id ?? undefined;
+
+            // Um morador = uma conexão viva. Quando o WebView recarrega (abrir o app
+            // pela notificação, cold start), o socket antigo fica ZUMBI no servidor
+            // por minutos — e roubava o webrtc-offer/ICE da chamada nova, dando a
+            // "tela azul sem imagem". Derruba o anterior antes de assumir.
+            const previous = moradorConnections.get(authUser.id);
+            if (previous && previous !== client) {
+              previous.callId = undefined; // não deixar o close handler encerrar a chamada nova
+              clients.delete(previous.id);
+              dbg(`  [WS] Conexão anterior do morador ${authUser.id} derrubada (${previous.id})`);
+              try { previous.ws.close(4002, "replaced"); } catch {}
+            }
             moradorConnections.set(authUser.id, client);
 
             // Check for pending call handoff (GlobalIncomingCall → MoradorInterfone)
@@ -242,12 +255,33 @@ export function initSignalingServer(_server?: Server) {
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
             }
 
-            // Check for pending push call (visitor or portaria called while morador was offline)
+            // Chamada que chegou por push enquanto o morador estava offline.
+            // Pega sempre a MAIS RECENTE e descarta as mortas (quem chamou saiu):
+            // uma entrada velha era entregue no lugar da chamada nova e o morador
+            // via a tela de chamada de uma ligação que não existia mais.
+            let pending: { callId: string; pc: NonNullable<ReturnType<typeof pendingPushCalls.get>> } | null = null;
             for (const [pcCallId, pc] of pendingPushCalls) {
-              if (pc.moradorId === authUser.id && (Date.now() - pc.timestamp < 120000)) {
+              if (pc.moradorId !== authUser.id) continue;
+              const caller = findClientById(pc.visitorClientId);
+              const alive = Date.now() - pc.timestamp < 120000
+                && caller !== undefined
+                && caller.ws.readyState === WebSocket.OPEN;
+              if (!alive) {
+                pendingPushCalls.delete(pcCallId);
+                continue;
+              }
+              if (!pending || pc.timestamp > pending.pc.timestamp) pending = { callId: pcCallId, pc };
+            }
+
+            if (pending) {
+              const pcCallId = pending.callId;
+              const pc = pending.pc;
+              {
                 dbg(`  [WS] Push call found: moradorId=${authUser.id} callId=${pcCallId} internal=${!!pc.isInternal}`);
                 client.callId = pcCallId;
-                pendingPushCalls.delete(pcCallId);
+                // NÃO apagar aqui: se o app recarregar de novo (cold start pela
+                // notificação) a chamada precisa ser re-entregue. É apagada ao
+                // atender/recusar/encerrar, ou expira em 120s.
                 if (pc.isInternal) {
                   // Internal call from portaria — deliver as internal-incoming-call
                   ws.send(JSON.stringify({
@@ -271,7 +305,6 @@ export function initSignalingServer(_server?: Server) {
                     visitorClientId: pc.visitorClientId,
                   }));
                 }
-                break;
               }
             }
             break;
@@ -765,21 +798,27 @@ function findClientById(id: string): WsClient | undefined {
   return clients.get(id);
 }
 
+/**
+ * Sempre a conexão MAIS RECENTE que casa (o Map preserva a ordem de inserção).
+ * Se sobrou um socket antigo do mesmo aparelho, ele não rouba mais a sinalização.
+ */
 function findClientByCallId(callId: string, type: "visitor" | "morador" | "funcionario"): WsClient | undefined {
+  let found: WsClient | undefined;
   for (const [, c] of clients) {
     if (c.callId === callId && c.type === type && c.ws.readyState === WebSocket.OPEN) {
-      return c;
+      found = c;
     }
   }
-  return undefined;
+  return found;
 }
 
-/** Find the OTHER party in a call (by callId), excluding the sender */
+/** Find the OTHER party in a call (by callId), excluding the sender — a mais recente */
 function findPeerByCallId(callId: string, excludeClientId: string): WsClient | undefined {
+  let found: WsClient | undefined;
   for (const [id, c] of clients) {
     if (c.callId === callId && id !== excludeClientId && c.ws.readyState === WebSocket.OPEN) {
-      return c;
+      found = c;
     }
   }
-  return undefined;
+  return found;
 }

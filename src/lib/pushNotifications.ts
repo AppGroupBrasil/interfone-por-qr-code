@@ -8,6 +8,7 @@
 
 import { apiFetch } from "./api";
 import { isNative } from "./config";
+import { startCallRing, stopCallRing } from "./callRing";
 
 let pushInitialized = false;
 let currentToken: string | null = null;
@@ -99,23 +100,13 @@ async function initNativePush(): Promise<void> {
           // App em 1º plano com WS ativo: a chamada chega (ou já chegou) pelo WebSocket
           // com o toque próprio — ignorar o push pra não tocar em dobro
           if ((globalThis as any).__interfoneWsOpen) return;
-          try {
-            const audio = new Audio("/sounds/ringtone-call.wav");
-            audio.loop = true;
-            audio.volume = 0.8;
-            audio.play().catch(() => {});
-            (globalThis as any).__pushCallAudio = audio;
-            setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 30000);
-          } catch {}
+          startCallRing();
+          setTimeout(stopCallRing, 30000);
         }
       });
 
       PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
         console.log("Push action:", action);
-        try {
-          const fgAudio = (globalThis as any).__pushCallAudio;
-          if (fgAudio) { fgAudio.pause(); fgAudio.currentTime = 0; (globalThis as any).__pushCallAudio = null; }
-        } catch {}
         const data = action.notification.data;
         if (data?.type === "interfone-call") {
           globalThis.location.href = "/morador/interfone";
@@ -126,14 +117,9 @@ async function initNativePush(): Promise<void> {
         }
       });
 
-      // Ao atender/recusar pelo painel (GlobalIncomingCall dispara este evento),
-      // parar TODAS as fontes de toque: o áudio de push em 1º plano E a notificação
-      // nativa na bandeja (cancelar a notificação silencia o som de 30s do canal).
+      // Ao atender/recusar pelo painel: tirar a chamada da bandeja. O som em si
+      // é do CallRinger nativo, parado por stopCallRing() em quem atende.
       globalThis.addEventListener("stop-push-ringtone", () => {
-        try {
-          const fgAudio = (globalThis as any).__pushCallAudio;
-          if (fgAudio) { fgAudio.pause(); fgAudio.currentTime = 0; (globalThis as any).__pushCallAudio = null; }
-        } catch {}
         PushNotifications.removeAllDeliveredNotifications().catch(() => {});
       });
 
@@ -150,11 +136,10 @@ async function initNativePush(): Promise<void> {
       } catch {}
 
       if (nativeBuild >= 13) {
-        // A chamada é montada pelo IncomingCallService nativo, que cria o canal
-        // interfone_calls_v3 com USAGE_NOTIFICATION_RINGTONE (volume de toque).
-        // Criar canal aqui só duplicaria a entrada nas configurações — e o
-        // plugin do Capacitor só sabe criar com USAGE_NOTIFICATION (volume baixo).
-        for (const id of [ANDROID_CALLS_CHANNEL_ID, "interfone_calls_v2"]) {
+        // A chamada é montada pelo IncomingCallService nativo (canal
+        // interfone_calls_v4, silencioso — quem toca é o CallRinger).
+        // Criar canal aqui só duplicaria a entrada nas configurações.
+        for (const id of [ANDROID_CALLS_CHANNEL_ID, "interfone_calls_v2", "interfone_calls_v3"]) {
           try {
             await PushNotifications.deleteChannel({ id });
           } catch {}

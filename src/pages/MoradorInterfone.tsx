@@ -10,10 +10,8 @@ import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIc
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
-  stopIncomingCallVibration,
-  vibrateIncomingCall,
 } from "@/lib/mediaDiagnostics";
-import { playRingtone as libPlayRingtone, stopRingtone as libStopRingtone } from "@/lib/ringtones";
+import { startCallRing, stopCallRing } from "@/lib/callRing";
 import {
   Phone,
   PhoneOff,
@@ -426,12 +424,10 @@ export default function MoradorInterfone() {
   };
 
   const playRingtone = () => {
-    libPlayRingtone();
-    vibrateIncomingCall();
+    startCallRing();
   };
   const stopRingtone = () => {
-    libStopRingtone();
-    stopIncomingCallVibration();
+    stopCallRing();
     globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   };
 

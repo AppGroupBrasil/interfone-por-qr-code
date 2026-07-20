@@ -12,7 +12,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getToken, apiFetch } from "@/lib/api";
-import { stopIncomingCallVibration, vibrateIncomingCall } from "@/lib/mediaDiagnostics";
+import { startCallRing, stopCallRing } from "@/lib/callRing";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
 const WS_URL = buildWsUrl("/ws/interfone");
@@ -36,7 +36,6 @@ export default function GlobalIncomingCall() {
   const location = useLocation();
   const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
 
   // Don't render if not a morador, or if already on the interfone page
@@ -44,31 +43,12 @@ export default function GlobalIncomingCall() {
   const isOnInterfonePage = location.pathname === "/morador/interfone";
 
   const playRingtone = useCallback(() => {
-    try {
-      if (!ringtoneRef.current) {
-        const audio = new Audio("/sounds/ringtone-call.wav");
-        audio.loop = true;
-        audio.volume = 0.8;
-        audio.play().catch(() => {});
-        ringtoneRef.current = audio;
-        vibrateIncomingCall();
-        // O painel assumiu a chamada: silenciar a notificação de push na bandeja
-        // (e seu som de 30s) para não tocar em dobro com o toque do painel.
-        globalThis.dispatchEvent(new Event("stop-push-ringtone"));
-      }
-    } catch {}
+    startCallRing();
   }, []);
 
   const stopRingtone = useCallback(() => {
-    try {
-      if (ringtoneRef.current) {
-        ringtoneRef.current.pause();
-        ringtoneRef.current.currentTime = 0;
-        ringtoneRef.current = null;
-      }
-    } catch {}
-    stopIncomingCallVibration();
-    // Also stop push ringtone (from Web Push notification)
+    stopCallRing();
+    // Tira a notificação da bandeja (o som já é do CallRinger, não dela)
     globalThis.dispatchEvent(new Event("stop-push-ringtone"));
   }, []);
 
