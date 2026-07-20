@@ -231,6 +231,7 @@ export function initSignalingServer(_server?: Server) {
             // por minutos — e roubava o webrtc-offer/ICE da chamada nova, dando a
             // "tela azul sem imagem". Derruba o anterior antes de assumir.
             const previous = moradorConnections.get(authUser.id);
+            console.log(`[AUDIT] register-morador ${authUser.id} novo=${clientId} page=${msg.page ?? "-"} derrubando=${previous && previous !== client ? previous.id : "-"}`);
             if (previous && previous !== client) {
               previous.callId = undefined; // não deixar o close handler encerrar a chamada nova
               clients.delete(previous.id);
