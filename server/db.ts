@@ -726,6 +726,15 @@ try {
   db.exec("ALTER TABLE device_tokens ADD COLUMN web_push_keys TEXT");
 }
 
+// ─── Migration: add app_build (versionCode nativo) para rotear push da chamada ───
+// Apps >= PUSH_FULLSCREEN_MIN_BUILD recebem a chamada DATA-ONLY (tela cheia);
+// apps antigos continuam recebendo notification message (sem regressão).
+try {
+  db.prepare("SELECT app_build FROM device_tokens LIMIT 1").get();
+} catch {
+  db.exec("ALTER TABLE device_tokens ADD COLUMN app_build INTEGER NOT NULL DEFAULT 0");
+}
+
 // ─── Exclusão de usuário sem falha de FK ───
 // Várias tabelas referenciam users(id) sem ON DELETE CASCADE, então um
 // DELETE FROM users cru falha com "FOREIGN KEY constraint failed" e o usuário

@@ -98,19 +98,51 @@ interface PushPayload {
   channelId?: string;
   /** Sound file name */
   sound?: string;
+  /**
+   * Quando true, o push do Android é enviado DATA-ONLY (sem bloco notification),
+   * para que o FirebaseMessagingService nativo (IncomingCallService) sempre rode
+   * onMessageReceived — inclusive com o app em segundo plano/morto — e monte uma
+   * notificação de CHAMADA em tela cheia (full-screen intent). No iOS o alerta é
+   * preservado via apns.payload.aps.alert. Usado só na chamada do interfone.
+   */
+  fullScreen?: boolean;
 }
+
+interface TokenRow {
+  token: string;
+  platform: string;
+  web_push_keys: string | null;
+  app_build?: number | null;
+}
+
+interface FcmToken {
+  token: string;
+  appBuild: number;
+}
+
+function toFcmToken(t: TokenRow): FcmToken {
+  return { token: t.token, appBuild: Number(t.app_build) || 0 };
+}
+
+/**
+ * versionCode nativo mínimo que traz o IncomingCallService (chamada em tela
+ * cheia via data-only). Apps abaixo disso recebem a chamada como notification
+ * message, exatamente como antes — sem regressão. O maior AAB publicado é
+ * vc12/1.0.11 (sem o service), então o primeiro release com tela cheia é o 13.
+ */
+const FULLSCREEN_MIN_BUILD = Number(process.env.PUSH_FULLSCREEN_MIN_BUILD) || 13;
 
 // ─── Send push to a specific user ───
 export async function sendPushToUser(userId: number, payload: PushPayload): Promise<number> {
   if (!firebaseInitialized && !webPushInitialized) return 0;
 
   const tokens = db.prepare(
-    "SELECT token, platform, web_push_keys FROM device_tokens WHERE user_id = ? AND active = 1"
-  ).all(userId) as { token: string; platform: string; web_push_keys: string | null }[];
+    "SELECT token, platform, web_push_keys, app_build FROM device_tokens WHERE user_id = ? AND active = 1"
+  ).all(userId) as TokenRow[];
 
   if (tokens.length === 0) return 0;
 
-  const fcmTokens = tokens.filter(t => t.platform !== "web").map(t => t.token);
+  const fcmTokens = tokens.filter(t => t.platform !== "web").map(toFcmToken);
   const webTokens = tokens.filter(t => t.platform === "web" && t.web_push_keys);
 
   let sent = 0;
@@ -133,17 +165,17 @@ export async function sendPushToCondominioRole(
 
   const placeholders = roles.map(() => "?").join(",");
   const tokens = db.prepare(`
-    SELECT dt.token, dt.platform, dt.web_push_keys
+    SELECT dt.token, dt.platform, dt.web_push_keys, dt.app_build
     FROM device_tokens dt
     INNER JOIN users u ON u.id = dt.user_id
-    WHERE u.condominio_id = ? 
+    WHERE u.condominio_id = ?
       AND u.role IN (${placeholders})
       AND dt.active = 1
-  `).all(condominioId, ...roles) as { token: string; platform: string; web_push_keys: string | null }[];
+  `).all(condominioId, ...roles) as TokenRow[];
 
   if (tokens.length === 0) return 0;
 
-  const fcmTokens = tokens.filter(t => t.platform !== "web").map(t => t.token);
+  const fcmTokens = tokens.filter(t => t.platform !== "web").map(toFcmToken);
   const webTokens = tokens.filter(t => t.platform === "web" && t.web_push_keys);
 
   let sent = 0;
@@ -166,11 +198,43 @@ export async function sendPushToMoradores(condominioId: number, payload: PushPay
   return sendPushToCondominioRole(condominioId, ["morador"], payload);
 }
 
-// ─── Core: send to FCM tokens ───
-async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise<number> {
-  if (!firebaseInitialized || tokens.length === 0) return 0;
+// ─── Monta a MulticastMessage (data-only para chamada em tela cheia, ou notification) ───
+function buildFcmMessage(
+  tokens: string[],
+  payload: PushPayload,
+  dataOnly: boolean
+): admin.messaging.MulticastMessage {
+  if (dataOnly) {
+    // ─── CHAMADA (full-screen intent) ───
+    // DATA-ONLY no Android: sem bloco `notification` (nem top-level nem em
+    // android.notification), o FCM SDK entrega em onMessageReceived mesmo com o
+    // app em background/morto, e o IncomingCallService nativo monta a chamada
+    // em tela cheia. title/body vão no data para o service ler. iOS mantém o
+    // alerta via apns.aps.alert.
+    return {
+      tokens,
+      data: {
+        ...(payload.data || {}),
+        title: payload.title,
+        body: payload.body,
+        channelId: payload.channelId || "interfone_calls_v2",
+      },
+      android: {
+        priority: "high",
+      },
+      apns: {
+        payload: {
+          aps: {
+            alert: { title: payload.title, body: payload.body },
+            sound: payload.sound === "ringtone" ? "default" : (payload.sound || "default"),
+            "interruption-level": "time-sensitive",
+          },
+        },
+      },
+    };
+  }
 
-  const message: admin.messaging.MulticastMessage = {
+  return {
     tokens,
     notification: {
       title: payload.title,
@@ -196,6 +260,12 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
       },
     },
   };
+}
+
+// ─── Envia uma leva de tokens FCM com o formato escolhido ───
+async function sendMulticast(tokens: string[], payload: PushPayload, dataOnly: boolean): Promise<number> {
+  if (tokens.length === 0) return 0;
+  const message = buildFcmMessage(tokens, payload, dataOnly);
 
   try {
     const response = await admin.messaging().sendEachForMulticast(message);
@@ -220,6 +290,26 @@ async function sendPushToTokens(tokens: string[], payload: PushPayload): Promise
     log.error("FCM send error:", err);
     return 0;
   }
+}
+
+// ─── Core: send to FCM tokens ───
+async function sendPushToTokens(tokens: FcmToken[], payload: PushPayload): Promise<number> {
+  if (!firebaseInitialized || tokens.length === 0) return 0;
+
+  if (payload.fullScreen === true) {
+    // Chamada do interfone: apps novos (>= FULLSCREEN_MIN_BUILD) recebem DATA-ONLY
+    // e mostram a chamada em tela cheia; apps antigos recebem notification message
+    // (comportamento atual), pois não têm o IncomingCallService para montá-la.
+    const modern = tokens.filter(t => t.appBuild >= FULLSCREEN_MIN_BUILD).map(t => t.token);
+    const legacy = tokens.filter(t => t.appBuild < FULLSCREEN_MIN_BUILD).map(t => t.token);
+    const [a, b] = await Promise.all([
+      sendMulticast(modern, payload, true),
+      sendMulticast(legacy, payload, false),
+    ]);
+    return a + b;
+  }
+
+  return sendMulticast(tokens.map(t => t.token), payload, false);
 }
 
 // ─── Web Push: send to browser subscriptions ───

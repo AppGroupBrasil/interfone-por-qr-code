@@ -115,6 +115,7 @@ export default function MoradorInterfone() {
         v.srcObject = remoteStreamRef.current;
       }
       if (v.paused) v.play().catch(() => {});
+      if (!v.paused && v.videoWidth > 0) setRemoteVideoOn(true);
     }, 800);
     return () => clearInterval(timer);
   }, [viewState, isInternalCall, remoteVideoOn]);
@@ -927,11 +928,11 @@ export default function MoradorInterfone() {
             ref={remoteVideoRef}
             autoPlay
             playsInline
+            muted
             onPlaying={() => setRemoteVideoOn(true)}
-            onPause={() => setRemoteVideoOn(false)}
             onEmptied={() => setRemoteVideoOn(false)}
             className="w-full h-full object-cover"
-            style={{ position: "absolute", inset: 0, opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
+            style={{ position: "absolute", inset: 0 }}
           />
           {!remoteVideoOn && (
             <div

@@ -66,6 +66,13 @@ async function initNativePush(): Promise<void> {
         pushInitialized = true;
         emitPushPermissionStatus("enabled");
 
+        // versionCode nativo → servidor decide se manda a chamada em tela cheia (data-only)
+        let appBuild = 0;
+        try {
+          const { App } = await import("@capacitor/app");
+          appBuild = parseInt((await App.getInfo()).build, 10) || 0;
+        } catch {}
+
         try {
           await apiFetch("/api/device-tokens", {
             method: "POST",
@@ -74,6 +81,7 @@ async function initNativePush(): Promise<void> {
               token: token.value,
               platform: "android",
               deviceInfo: navigator.userAgent,
+              appBuild,
             }),
           });
         } catch (err) {
@@ -116,6 +124,17 @@ async function initNativePush(): Promise<void> {
         } else if (data?.type === "visitor") {
           globalThis.location.href = "/portaria/visitantes";
         }
+      });
+
+      // Ao atender/recusar pelo painel (GlobalIncomingCall dispara este evento),
+      // parar TODAS as fontes de toque: o áudio de push em 1º plano E a notificação
+      // nativa na bandeja (cancelar a notificação silencia o som de 30s do canal).
+      globalThis.addEventListener("stop-push-ringtone", () => {
+        try {
+          const fgAudio = (globalThis as any).__pushCallAudio;
+          if (fgAudio) { fgAudio.pause(); fgAudio.currentTime = 0; (globalThis as any).__pushCallAudio = null; }
+        } catch {}
+        PushNotifications.removeAllDeliveredNotifications().catch(() => {});
       });
 
       nativeListenersRegistered = true;

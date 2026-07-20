@@ -363,7 +363,22 @@ export function initSignalingServer(_server?: Server) {
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
                 channelId: "interfone_calls_v2",
                 sound: "ringtone",
+                fullScreen: true,
               }).catch(() => {});
+              // Rede de segurança: o socket do morador pode estar ZUMBI (app em 2º plano,
+              // TCP vivo mas JS suspenso — o incoming-call acima se perde). Guardar como
+              // pending faz o register-morador re-entregar a chamada quando o app voltar
+              // (< 120s), mesmo que o push do FCM tenha atrasado ou caído. Limpo ao
+              // atender/recusar/encerrar e na desconexão do visitante.
+              pendingPushCalls.set(callId, {
+                callId, visitorClientId: clientId, moradorId,
+                visitanteNome: visitanteNome || "Visitante",
+                visitanteEmpresa: visitanteEmpresa || null,
+                visitanteFoto: visitanteFoto || null,
+                nivelSeguranca: nivelSeguranca || 0,
+                bloco: bloco || "", apartamento: apartamento || "",
+                timestamp: Date.now(),
+              });
             } else {
               // Morador offline — send push notification and keep visitor waiting
               dbg(`  [WS] Morador ${moradorId} offline, sending push notification...`);
@@ -383,6 +398,7 @@ export function initSignalingServer(_server?: Server) {
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
                 channelId: "interfone_calls_v2",
                 sound: "ringtone",
+                fullScreen: true,
               }).then((sent) => {
                 dbg(`  [WS] Push sent to moradorId=${moradorId}: ${sent} device(s)`);
                 if (sent === 0) {
@@ -455,6 +471,7 @@ export function initSignalingServer(_server?: Server) {
 
           case "call-answer": {
             console.log(`[AUDIT] call-answer clientId=${clientId} user=${authUser?.id ?? "anon"} morador=${client.moradorId ?? "-"} callId=${msg.callId}`);
+            if (msg.callId) pendingPushCalls.delete(msg.callId); // chamada resolvida: não re-entregar
             // Ensure this client has the callId set (for handoff scenarios)
             if (msg.callId && !client.callId) {
               client.callId = msg.callId;
@@ -470,6 +487,7 @@ export function initSignalingServer(_server?: Server) {
           case "call-handoff": {
             if (client.moradorId && client.callId) {
               dbg(`  [WS] Call handoff: moradorId=${client.moradorId} callId=${client.callId}`);
+              pendingPushCalls.delete(client.callId); // handoff = atendida: não re-entregar via pending
               pendingHandoffs.set(client.moradorId, { callId: client.callId, timestamp: Date.now() });
               client.callId = undefined; // prevent close handler from ending the call
             }
@@ -478,6 +496,7 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── Reject call (works for external AND internal calls) ───
           case "call-reject": {
+            if (msg.callId) pendingPushCalls.delete(msg.callId); // recusada: não re-entregar
             const rejectPeer = findPeerByCallId(msg.callId, clientId);
             if (rejectPeer) {
               rejectPeer.ws.send(JSON.stringify({ type: "call-rejected", callId: msg.callId }));
@@ -538,6 +557,7 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── End call (generic — finds peer by callId) ───
           case "call-end": {
+            if (msg.callId) pendingPushCalls.delete(msg.callId); // encerrada: não re-entregar
             const endPeer = findPeerByCallId(msg.callId, clientId);
             if (endPeer) {
               endPeer.ws.send(JSON.stringify({ type: "call-ended", callId: msg.callId }));
@@ -582,7 +602,17 @@ export function initSignalingServer(_server?: Server) {
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
                 channelId: "interfone_calls_v2",
                 sound: "ringtone",
+                fullScreen: true,
               }).catch(() => {});
+              // Rede de segurança (socket zumbi): re-entrega no retorno do app < 120s.
+              pendingPushCalls.set(iCallId, {
+                callId: iCallId, visitorClientId: clientId, moradorId: targetUserId,
+                visitanteNome: iCallerName || authUser.name || "Portaria",
+                visitanteEmpresa: null, visitanteFoto: null,
+                nivelSeguranca: 0, bloco: "", apartamento: "",
+                timestamp: Date.now(),
+                isInternal: true, callerRole: client.type,
+              });
             } else {
               // Morador offline — keep pending call for up to 30s
               dbg(`  [WS] Internal call: morador ${targetUserId} offline, sending push...`);
@@ -600,6 +630,7 @@ export function initSignalingServer(_server?: Server) {
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
                 channelId: "interfone_calls_v2",
                 sound: "ringtone",
+                fullScreen: true,
               }).then((sent) => {
                 dbg(`  [WS] Push sent to moradorId=${targetUserId}: ${sent} device(s)`);
                 if (ws.readyState === WebSocket.OPEN) {

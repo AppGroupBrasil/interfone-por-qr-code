@@ -52,6 +52,9 @@ export default function GlobalIncomingCall() {
         audio.play().catch(() => {});
         ringtoneRef.current = audio;
         vibrateIncomingCall();
+        // O painel assumiu a chamada: silenciar a notificação de push na bandeja
+        // (e seu som de 30s) para não tocar em dobro com o toque do painel.
+        globalThis.dispatchEvent(new Event("stop-push-ringtone"));
       }
     } catch {}
   }, []);

@@ -113,6 +113,7 @@ export default function FuncionarioInterfone() {
         v.srcObject = remoteStreamRef.current;
       }
       if (v.paused) v.play().catch(() => {});
+      if (!v.paused && v.videoWidth > 0) setRemoteVideoOn(true);
     }, 800);
     return () => clearInterval(timer);
   }, [callState, isInternalCall, remoteVideoOn]);
@@ -912,11 +913,10 @@ export default function FuncionarioInterfone() {
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted
                   onPlaying={() => setRemoteVideoOn(true)}
-                  onPause={() => setRemoteVideoOn(false)}
                   onEmptied={() => setRemoteVideoOn(false)}
                   className="w-full h-full object-cover"
-                  style={{ opacity: remoteVideoOn ? 1 : 0, transition: "opacity 0.4s ease" }}
                 />
                 {!remoteVideoOn && (
                   <div

@@ -31,7 +31,7 @@ router.get("/vapid-public-key", (_req: Request, res: Response) => {
 router.post("/", authenticate, async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const { token, platform, deviceInfo, webPushKeys } = req.body;
+    const { token, platform, deviceInfo, webPushKeys, appBuild } = req.body;
 
     if (!token || typeof token !== "string" || token.length < 10) {
       res.status(400).json({ error: "Token inválido." });
@@ -42,17 +42,21 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
       ? JSON.stringify(webPushKeys)
       : null;
 
+    // versionCode nativo do app (para rotear a chamada em tela cheia). 0 = desconhecido/web.
+    const build = Number.isFinite(Number(appBuild)) ? Math.trunc(Number(appBuild)) : 0;
+
     // Upsert: if token already exists for this user, update; otherwise insert
     db.prepare(`
-      INSERT INTO device_tokens (user_id, token, platform, device_info, web_push_keys, active, updated_at)
-      VALUES (?, ?, ?, ?, ?, 1, datetime('now'))
+      INSERT INTO device_tokens (user_id, token, platform, device_info, web_push_keys, app_build, active, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'))
       ON CONFLICT(user_id, token) DO UPDATE SET
         active = 1,
         platform = excluded.platform,
         device_info = excluded.device_info,
         web_push_keys = excluded.web_push_keys,
+        app_build = excluded.app_build,
         updated_at = datetime('now')
-    `).run(user.id, token, platform || "android", deviceInfo || null, webKeysJson);
+    `).run(user.id, token, platform || "android", deviceInfo || null, webKeysJson, build);
 
     // If this token was registered to another user, deactivate the old one
     db.prepare(
