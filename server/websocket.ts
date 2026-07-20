@@ -232,6 +232,17 @@ export function initSignalingServer(_server?: Server) {
             // "tela azul sem imagem". Derruba o anterior antes de assumir.
             const previous = moradorConnections.get(authUser.id);
             console.log(`[AUDIT] register-morador ${authUser.id} novo=${clientId} page=${msg.page ?? "-"} derrubando=${previous && previous !== client ? previous.id : "-"}`);
+
+            // O aviso global (overlay) NUNCA toma o lugar da tela do interfone que
+            // está em chamada: se ele reconectar por trás, o socket que negocia o
+            // WebRTC morre no meio e o visitante fica na tela azul.
+            if (msg.page === "overlay" && previous && previous !== client && previous.callId
+                && previous.ws.readyState === WebSocket.OPEN) {
+              console.log(`[AUDIT] overlay-ignorado morador=${authUser.id} chamada=${previous.callId}`);
+              ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+              break;
+            }
+
             if (previous && previous !== client) {
               previous.callId = undefined; // não deixar o close handler encerrar a chamada nova
               clients.delete(previous.id);
@@ -242,6 +253,14 @@ export function initSignalingServer(_server?: Server) {
 
             // Check for pending call handoff (GlobalIncomingCall → MoradorInterfone)
             const handoff = pendingHandoffs.get(authUser.id);
+            if (handoff && msg.page === "overlay") {
+              // Handoff é pra tela do interfone. Devolver call-resumed pro aviso
+              // global fazia ele reenviar call-handoff e fechar o socket — o par
+              // ficava trocando isso a cada 2s e a campainha nunca chegava.
+              console.log(`[AUDIT] handoff-aguardando morador=${authUser.id} callId=${handoff.callId} (overlay ignorado)`);
+              ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+              break;
+            }
             if (handoff && (Date.now() - handoff.timestamp < 15000)) {
               client.callId = handoff.callId;
               pendingHandoffs.delete(authUser.id);

@@ -54,8 +54,15 @@ export default function GlobalIncomingCall() {
 
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Consultado na hora em que o timer de reconexão dispara: sem isto, um timer
+  // agendado antes de navegar pra tela do interfone reconectava o aviso global
+  // lá dentro e derrubava o socket da chamada (tela azul + reconexão infinita).
+  const shouldConnectRef = useRef(false);
+  shouldConnectRef.current = !!user && isMorador && !isOnInterfonePage;
+
   const connectWs = useCallback(() => {
     if (!user || !isMorador || isOnInterfonePage) return;
+    if (!shouldConnectRef.current) return;
 
     const token = isNative ? getToken() : null;
     const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
@@ -134,6 +141,9 @@ export default function GlobalIncomingCall() {
               try {
                 ws.send(JSON.stringify({ type: "call-handoff", callId: msg.callId }));
               } catch {}
+              ws.onclose = null; // fechamento intencional: não reagendar reconexão
+              (globalThis as any).__interfoneWsOpen = false;
+              if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
               ws.close();
               wsRef.current = null;
               setIncomingCall(null);
@@ -153,6 +163,7 @@ export default function GlobalIncomingCall() {
       ws.onclose = () => {
         (globalThis as any).__interfoneWsOpen = false;
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+        if (!shouldConnectRef.current) return;
         console.log("[Global Interfone] Disconnected, reconnecting in 2s...");
         reconnectRef.current = setTimeout(connectWs, 2000);
       };
@@ -171,6 +182,7 @@ export default function GlobalIncomingCall() {
       // Close WS if user navigated to interfone page (it has its own WS)
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
+        wsRef.current.onclose = null; // fechamento nosso: não reagendar reconexão
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -205,6 +217,7 @@ export default function GlobalIncomingCall() {
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
+        wsRef.current.onclose = null; // fechamento nosso: não reagendar reconexão
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -243,9 +256,12 @@ export default function GlobalIncomingCall() {
     }
     // Close global WS — server won’t end the call because call-handoff cleared callId
     if (wsRef.current) {
+      wsRef.current.onclose = null; // intencional: quem fala WebRTC agora é a tela do interfone
       wsRef.current.close();
       wsRef.current = null;
     }
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+    (globalThis as any).__interfoneWsOpen = false;
     setIncomingCall(null);
     // Registra atendida no histórico (MoradorInterfone só faz isso no fluxo sem handoff)
     if (callData && !callData.isInternal) {
