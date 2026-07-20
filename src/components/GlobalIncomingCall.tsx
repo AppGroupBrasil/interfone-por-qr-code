@@ -71,6 +71,7 @@ export default function GlobalIncomingCall() {
           type: "register-morador",
           moradorId: user.id,
           condominioId: user.condominioId,
+          page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
         }));
         // Start application-level heartbeat to keep connection alive through proxies
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
@@ -118,6 +119,27 @@ export default function GlobalIncomingCall() {
               });
               playRingtone();
               break;
+
+            // O app recarregou depois de atender e voltou numa página qualquer:
+            // o servidor reata a chamada — levar pra tela do interfone, que é
+            // quem sabe falar WebRTC (mesmo caminho do handoff).
+            case "call-resumed": {
+              stopRingtone();
+              const resumed: IncomingCallData = {
+                callId: msg.callId,
+                callerName: msg.visitanteNome || "Visitante",
+                isInternal: !!msg.isInternal,
+                visitorClientId: msg.visitorClientId || "",
+              };
+              try {
+                ws.send(JSON.stringify({ type: "call-handoff", callId: msg.callId }));
+              } catch {}
+              ws.close();
+              wsRef.current = null;
+              setIncomingCall(null);
+              navigate("/morador/interfone", { state: { pendingCall: resumed } });
+              break;
+            }
 
             case "call-ended":
             case "call-cancelled":

@@ -113,6 +113,10 @@ const moradorConnections = new Map<number, WsClient>();
 const funcionarioConnections = new Map<number, WsClient[]>();
 // Pending call handoffs — morador switching from GlobalIncomingCall WS to MoradorInterfone WS
 const pendingHandoffs = new Map<number, { callId: string; timestamp: number }>();
+// Chamadas já atendidas por morador — se o app recarregar logo depois de atender
+// (tocar na notificação, OTA, troca de página), o socket novo reencontra a chamada
+// e pede a oferta de novo em vez de deixar o visitante na tela azul.
+const answeredCalls = new Map<number, { callId: string; timestamp: number; visitanteNome: string; visitorClientId: string; isInternal: boolean }>();
 // Pending push calls — visitor waiting for morador to come online after push notification
 const pendingPushCalls = new Map<string, { callId: string; visitorClientId: string; moradorId: number; visitanteNome: string; visitanteEmpresa: string | null; visitanteFoto: string | null; nivelSeguranca: number; bloco: string; apartamento: string; timestamp: number; isInternal?: boolean; callerRole?: string }>();
 
@@ -253,6 +257,29 @@ export function initSignalingServer(_server?: Server) {
             } else {
               pendingHandoffs.delete(authUser.id); // clean up expired
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+
+              // App recarregou depois de atender (notificação, OTA, troca de página):
+              // reata a chamada em vez de deixar o visitante sem destino pra oferta.
+              const answered = answeredCalls.get(authUser.id);
+              const answeredPeer = answered ? findPeerByCallId(answered.callId, clientId) : undefined;
+              if (answered && Date.now() - answered.timestamp < 60000 && answeredPeer) {
+                client.callId = answered.callId;
+                console.log(`[AUDIT] answered-resume morador=${authUser.id} callId=${answered.callId} peer=${answeredPeer.id}`);
+                ws.send(JSON.stringify({
+                  type: "call-resumed",
+                  callId: answered.callId,
+                  visitanteNome: answered.visitanteNome,
+                  visitorClientId: answered.visitorClientId,
+                  isInternal: answered.isInternal,
+                }));
+                // O aviso global não negocia WebRTC: ele faz handoff pra tela do
+                // interfone e a oferta sai lá (senão a primeira se perderia).
+                if (msg.page !== "overlay") {
+                  answeredPeer.ws.send(JSON.stringify({ type: "resend-offer", callId: answered.callId }));
+                }
+              } else if (answered && !answeredPeer) {
+                answeredCalls.delete(authUser.id);
+              }
             }
 
             // Chamada que chegou por push enquanto o morador estava offline.
@@ -504,10 +531,20 @@ export function initSignalingServer(_server?: Server) {
 
           case "call-answer": {
             console.log(`[AUDIT] call-answer clientId=${clientId} user=${authUser?.id ?? "anon"} morador=${client.moradorId ?? "-"} callId=${msg.callId}`);
+            const answeredInfo = msg.callId ? pendingPushCalls.get(msg.callId) : undefined;
             if (msg.callId) pendingPushCalls.delete(msg.callId); // chamada resolvida: não re-entregar
             // Ensure this client has the callId set (for handoff scenarios)
             if (msg.callId && !client.callId) {
               client.callId = msg.callId;
+            }
+            if (msg.callId && client.moradorId) {
+              answeredCalls.set(client.moradorId, {
+                callId: msg.callId,
+                timestamp: Date.now(),
+                visitanteNome: answeredInfo?.visitanteNome || "Visitante",
+                visitorClientId: answeredInfo?.visitorClientId || findPeerByCallId(msg.callId, clientId)?.id || "",
+                isInternal: !!answeredInfo?.isInternal,
+              });
             }
             const answerPeer = findPeerByCallId(msg.callId, clientId);
             if (answerPeer) {
@@ -533,6 +570,7 @@ export function initSignalingServer(_server?: Server) {
           // ─── Reject call (works for external AND internal calls) ───
           case "call-reject": {
             if (msg.callId) pendingPushCalls.delete(msg.callId); // recusada: não re-entregar
+            forgetAnsweredCall(msg.callId);
             const rejectPeer = findPeerByCallId(msg.callId, clientId);
             if (rejectPeer) {
               rejectPeer.ws.send(JSON.stringify({ type: "call-rejected", callId: msg.callId }));
@@ -596,6 +634,7 @@ export function initSignalingServer(_server?: Server) {
           // ─── End call (generic — finds peer by callId) ───
           case "call-end": {
             if (msg.callId) pendingPushCalls.delete(msg.callId); // encerrada: não re-entregar
+            forgetAnsweredCall(msg.callId);
             const endPeer = findPeerByCallId(msg.callId, clientId);
             if (endPeer) {
               endPeer.ws.send(JSON.stringify({ type: "call-ended", callId: msg.callId }));
@@ -748,16 +787,31 @@ export function initSignalingServer(_server?: Server) {
       }
       // Notify other party if in call
       if (client.callId) {
+        const closedCallId = client.callId;
         // Clean up any pending push call
-        pendingPushCalls.delete(client.callId);
-        const otherType = client.type === "visitor" ? "morador" : "visitor";
-        const other = findClientByCallId(client.callId, otherType);
-        if (!other) {
-          // Also try funcionario type
-          const other2 = findClientByCallId(client.callId, "funcionario");
-          if (other2) other2.ws.send(JSON.stringify({ type: "call-ended", callId: client.callId, reason: "disconnected" }));
+        pendingPushCalls.delete(closedCallId);
+        const notifyEnd = () => {
+          const otherType = client.type === "visitor" ? "morador" : "visitor";
+          const other = findClientByCallId(closedCallId, otherType);
+          if (!other) {
+            // Also try funcionario type
+            const other2 = findClientByCallId(closedCallId, "funcionario");
+            if (other2) other2.ws.send(JSON.stringify({ type: "call-ended", callId: closedCallId, reason: "disconnected" }));
+          } else {
+            other.ws.send(JSON.stringify({ type: "call-ended", callId: closedCallId, reason: "disconnected" }));
+          }
+        };
+        // Morador que atendeu e perdeu o socket (recarregou pela notificação, OTA,
+        // troca de página): dar 8s pra ele voltar antes de matar a chamada.
+        const answered = client.moradorId ? answeredCalls.get(client.moradorId) : undefined;
+        if (answered && answered.callId === closedCallId) {
+          setTimeout(() => {
+            if (findClientByCallId(closedCallId, "morador")) return; // voltou
+            answeredCalls.delete(client.moradorId!);
+            notifyEnd();
+          }, 8000);
         } else {
-          other.ws.send(JSON.stringify({ type: "call-ended", callId: client.callId, reason: "disconnected" }));
+          notifyEnd();
         }
       }
       clients.delete(clientId);
@@ -815,6 +869,14 @@ function findClientByCallId(callId: string, type: "visitor" | "morador" | "funci
     }
   }
   return found;
+}
+
+/** Chamada acabou: não reatar mais essa chamada em nenhum socket novo do morador */
+function forgetAnsweredCall(callId: string | undefined) {
+  if (!callId) return;
+  for (const [moradorId, a] of answeredCalls) {
+    if (a.callId === callId) answeredCalls.delete(moradorId);
+  }
 }
 
 /** Find the OTHER party in a call (by callId), excluding the sender — a mais recente */

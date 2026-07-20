@@ -253,9 +253,30 @@ export default function MoradorInterfone() {
 
           // Server confirms call handoff from GlobalIncomingCall — resume the active call
           case "call-resumed": {
-            console.log("[Morador] call-resumed from handoff, callId:", msg.callId);
-            // The call data was set from location.state in the useEffect below
-            // Now we're registered and the visitor's WebRTC offer will arrive on this WS
+            console.log("[Morador] call-resumed, callId:", msg.callId);
+            // Handoff: os dados vieram no location.state (useEffect abaixo).
+            // Recarregou depois de atender (notificação, OTA): o servidor manda os
+            // dados aqui e reata a chamada — a oferta chega logo em seguida.
+            if (msg.visitanteNome && !incomingCallRef.current) {
+              stopRingtone();
+              setIncomingCall({
+                callId: msg.callId,
+                visitanteNome: msg.visitanteNome,
+                visitanteEmpresa: null,
+                visitanteFoto: null,
+                nivelSeguranca: 0,
+                bloco: "",
+                apartamento: "",
+                visitorClientId: msg.visitorClientId || "",
+              });
+              setIsInternalCall(!!msg.isInternal);
+              peerTypeRef.current = msg.isInternal ? "funcionario" : "visitor";
+              setViewState("connected");
+              setCallDuration(0);
+              setGateOpened(false);
+              if (timerRef.current) clearInterval(timerRef.current);
+              timerRef.current = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
+            }
             break;
           }
 
