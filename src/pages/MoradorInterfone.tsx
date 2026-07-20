@@ -392,6 +392,7 @@ export default function MoradorInterfone() {
       apartamento: pending.apartamento || "",
       visitorClientId: pending.visitorClientId || "",
     };
+    stopRingtone(); // a campainha foi iniciada pela notificação/aviso global
     setIncomingCall(resumedCall);
     setIsInternalCall(!!pending.isInternal);
     peerTypeRef.current = pending.isInternal ? "funcionario" : "visitor";
@@ -450,9 +451,11 @@ export default function MoradorInterfone() {
       return;
     }
     try {
+      stopRingtone();
       // Close any existing PC first
       if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
       if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); }
+      pendingIceRef.current = []; // ICE da negociação anterior envenenava a nova
 
       // Morador only sends audio (no video) for privacy
       ensureMediaDevicesAvailable();

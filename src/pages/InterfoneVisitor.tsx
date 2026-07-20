@@ -120,6 +120,7 @@ export default function InterfoneVisitor() {
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const pendingIceRef = useRef<PendingIce[]>([]);
+  const webrtcGenRef = useRef(0);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -168,7 +169,10 @@ export default function InterfoneVisitor() {
           clearTimeout(timeoutRef.current!);
           stopRingtone();
           startCallTimer();
-          initWebRTC();
+          // Handoff (atendeu pelo aviso global): o morador ainda vai trocar de
+          // socket. Mandar a oferta agora seria descartada e a segunda oferta
+          // colidiria com esta — esperar o resend-offer da conexão definitiva.
+          if (!msg.handoff) initWebRTC();
           break;
         case "call-rejected":
           setCallState("rejected");
@@ -267,17 +271,30 @@ export default function InterfoneVisitor() {
 
   // Initialize WebRTC (visitor sends video + audio, receives only audio)
   const initWebRTC = async () => {
+    // Duas negociações ao mesmo tempo (atender + resend-offer) criavam duas
+    // PeerConnections: a resposta chegava para a errada e a chamada ficava
+    // muda/sem imagem. A geração invalida tudo que veio da tentativa anterior.
+    const gen = ++webrtcGenRef.current;
+    const stale = () => gen !== webrtcGenRef.current;
     try {
+      if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
+      pendingIceRef.current = [];
+
       ensureMediaDevicesAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (stale()) { stream.getTracks().forEach((t) => t.stop()); return; }
       localStreamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
 
-      const pc = new RTCPeerConnection({
-        iceServers: await getIceServers(),
-      });
+      const iceServers = await getIceServers();
+      if (stale()) { stream.getTracks().forEach((t) => t.stop()); return; }
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
 
       // Add local tracks
@@ -298,6 +315,7 @@ export default function InterfoneVisitor() {
 
       // ICE candidates
       pc.onicecandidate = (event) => {
+        if (stale()) return;
         if (event.candidate && wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({
             type: "ice-candidate",
@@ -311,6 +329,7 @@ export default function InterfoneVisitor() {
       // Create offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      if (stale()) return;
 
       wsRef.current?.send(JSON.stringify({
         type: "webrtc-offer",

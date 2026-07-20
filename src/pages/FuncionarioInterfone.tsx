@@ -325,7 +325,8 @@ export default function FuncionarioInterfone() {
               setCallState("connected");
               setCallDuration(0);
               timerRef.current = setInterval(() => setCallDuration((p) => p + 1), 1000);
-              startOutgoingWebRTC(incomingCallRef.current?.callId || "", "morador");
+              // handoff: o morador vai trocar de socket — a oferta sai no resend-offer
+              if (!msg.handoff) startOutgoingWebRTC(incomingCallRef.current?.callId || "", "morador");
             }
             break;
           case "resend-offer":

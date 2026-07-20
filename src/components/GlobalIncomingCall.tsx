@@ -211,6 +211,7 @@ export default function GlobalIncomingCall() {
       wsRef.current.send(JSON.stringify({
         type: "call-answer",
         callId: callData.callId,
+        handoff: true,
       }));
       // Tell server to preserve the call during WS handoff
       wsRef.current.send(JSON.stringify({

@@ -246,8 +246,8 @@ export function initSignalingServer(_server?: Server) {
 
               // Notify the peer (visitor/portaria) to resend WebRTC offer
               const peer = findPeerByCallId(handoff.callId, clientId);
+              console.log(`[AUDIT] handoff-resume morador=${authUser.id} callId=${handoff.callId} peer=${peer?.id ?? "NENHUM"}`);
               if (peer) {
-                dbg(`  [WS] Asking peer to resend offer for callId=${handoff.callId}`);
                 peer.ws.send(JSON.stringify({ type: "resend-offer", callId: handoff.callId }));
               }
             } else {
@@ -511,7 +511,10 @@ export function initSignalingServer(_server?: Server) {
             }
             const answerPeer = findPeerByCallId(msg.callId, clientId);
             if (answerPeer) {
-              answerPeer.ws.send(JSON.stringify({ type: "call-answered", callId: msg.callId }));
+              // handoff = quem atendeu foi o aviso global e vai trocar de socket:
+              // o peer NÃO deve mandar a oferta agora (ela se perderia e colidiria
+              // com a oferta do resend-offer) — espera a conexão definitiva.
+              answerPeer.ws.send(JSON.stringify({ type: "call-answered", callId: msg.callId, handoff: !!msg.handoff }));
             }
             break;
           }
@@ -548,6 +551,7 @@ export function initSignalingServer(_server?: Server) {
               target = findClientByCallId(msg.callId, "visitor");
             }
             if (!target) target = findPeerByCallId(msg.callId, clientId);
+            console.log(`[AUDIT] webrtc-offer de=${clientId} callId=${msg.callId} alvo=${target?.id ?? "PERDIDA"}`);
             if (target) {
               target.ws.send(JSON.stringify({ type: "webrtc-offer", callId: msg.callId, offer: msg.offer }));
             }
@@ -565,6 +569,7 @@ export function initSignalingServer(_server?: Server) {
               target2 = findClientByCallId(msg.callId, "morador");
             }
             if (!target2) target2 = findPeerByCallId(msg.callId, clientId);
+            console.log(`[AUDIT] webrtc-answer de=${clientId} callId=${msg.callId} alvo=${target2?.id ?? "PERDIDA"}`);
             if (target2) {
               target2.ws.send(JSON.stringify({ type: "webrtc-answer", callId: msg.callId, answer: msg.answer }));
             }
