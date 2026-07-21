@@ -132,7 +132,28 @@ export default function MoradorInterfone() {
   const pendingIceRef = useRef<PendingIce[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  // O <audio> ficava dentro do return da view "listening": ao atender, o React
+  // desmontava o elemento e o áudio do visitante ia para o vazio. Criado fora do
+  // React, ele sobrevive a qualquer troca de view.
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const remoteAudioStreamRef = useRef<MediaStream | null>(null);
+  const ensureRemoteAudioEl = () => {
+    const existing = remoteAudioRef.current;
+    if (existing && existing.isConnected) return existing;
+    const el = document.createElement("audio");
+    el.autoplay = true;
+    el.setAttribute("playsinline", "");
+    el.style.display = "none";
+    document.body.appendChild(el);
+    remoteAudioRef.current = el;
+    return el;
+  };
+  useEffect(() => () => {
+    const el = remoteAudioRef.current;
+    if (el) { try { el.pause(); el.srcObject = null; el.remove(); } catch {} }
+    remoteAudioRef.current = null;
+    remoteAudioStreamRef.current = null;
+  }, []);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const viewStateRef = useRef<ViewState>("listening");
@@ -455,14 +476,27 @@ export default function MoradorInterfone() {
 
   // Helper: assign remote audio stream to audio element
   const playRemoteAudio = (track: MediaStreamTrack, streams: readonly MediaStream[]) => {
-    const audioEl = remoteAudioRef.current;
-    if (!audioEl) { console.warn("[Morador] remoteAudioRef is null!"); return; }
+    const audioEl = ensureRemoteAudioEl();
     const stream = streams[0] || new MediaStream([track]);
+    remoteAudioStreamRef.current = stream;
     audioEl.srcObject = stream;
     audioEl.volume = 1.0;
     console.log("[Morador] Audio element set:", { paused: audioEl.paused, muted: audioEl.muted, volume: audioEl.volume, trackEnabled: track.enabled, trackMuted: track.muted, trackState: track.readyState });
     audioEl.play().then(() => console.log("[Morador] ✅ Audio playing")).catch((e) => console.error("[Morador] ❌ Audio play FAILED:", e));
   };
+
+  // WebView às vezes engole o autoplay: reanexa o stream e insiste no play()
+  useEffect(() => {
+    if (viewState !== "connected") return;
+    const timer = setInterval(() => {
+      const el = remoteAudioRef.current;
+      const stream = remoteAudioStreamRef.current;
+      if (!el || !stream) return;
+      if (el.srcObject !== stream) el.srcObject = stream;
+      if (el.paused) el.play().catch(() => {});
+    }, 800);
+    return () => clearInterval(timer);
+  }, [viewState]);
 
   // Handle WebRTC offer from visitor / portaria
   const handleWebRTCOffer = async (offer: RTCSessionDescriptionInit, callId: string) => {
@@ -650,7 +684,7 @@ export default function MoradorInterfone() {
     pcRef.current = null;
     localStreamRef.current = null;
     remoteStreamRef.current = null;
-    // Reset audio element but keep it in DOM (it's a JSX element)
+    remoteAudioStreamRef.current = null;
     if (remoteAudioRef.current) {
       remoteAudioRef.current.pause();
       remoteAudioRef.current.srcObject = null;
@@ -1059,9 +1093,6 @@ export default function MoradorInterfone() {
   // ─── LISTENING / MAIN VIEW ───
   return (
     <div className="min-h-dvh bg-background flex flex-col">
-      {/* Permanent audio element for remote audio playback — always in DOM */}
-      <audio ref={remoteAudioRef} autoPlay playsInline />
-
       {/* Header */}
       <header className="premium-header safe-area-top" style={{ padding: "18px 24px" }}>
         <div className="flex items-center gap-3">
