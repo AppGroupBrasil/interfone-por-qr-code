@@ -105,18 +105,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check session on mount
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch("/api/auth/me", { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+    let cancelled = false;
+
+    // Falha de rede no boot (o app abrindo pela campainha pega o Wi-Fi/4G ainda
+    // subindo) deixava user null e jogava o morador na landing no meio da
+    // chamada. 401 é resposta legítima e não é repetido.
+    const restore = async (attempt = 0) => {
+      try {
+        const res = await apiFetch("/api/auth/me", { signal: controller.signal });
+        if (cancelled) return;
+        if (!res.ok) {
+          if (res.status !== 401 && attempt === 0) {
+            setTimeout(() => restore(1), 1500);
+            return;
+          }
+          setIsLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
         if (data?.user) {
           setUser(data.user);
           // Register push on session restore
           initPushNotifications().catch(() => {});
         }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-    return () => controller.abort();
+        setIsLoading(false);
+      } catch {
+        if (cancelled) return;
+        if (attempt === 0) {
+          setTimeout(() => restore(1), 1500);
+          return;
+        }
+        setIsLoading(false);
+      }
+    };
+
+    void restore();
+    return () => { cancelled = true; controller.abort(); };
   }, []);
 
   // OTA: custom_id nas checagens de update — o servidor usa para decidir

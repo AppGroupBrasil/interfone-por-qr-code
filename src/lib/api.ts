@@ -11,19 +11,26 @@ import { API_BASE, isNative } from "./config";
 const TOKEN_KEY = "auth_token";
 
 let cachedToken: string | null = null;
-let tokenHydrated = false;
+// Preferences é assíncrono. Guardar a promise (em vez de um flag) faz todo caller
+// esperar a MESMA hidratação: sem isso, a primeira request do boot saía sem Bearer,
+// /api/auth/me voltava 401 e o app caía na landing como se estivesse deslogado.
+let hydrationPromise: Promise<void> | null = null;
 
-async function hydrateToken() {
-  if (tokenHydrated) return;
-  tokenHydrated = true;
-  if (isNativeRuntime()) {
-    try {
-      const { value } = await Preferences.get({ key: TOKEN_KEY });
-      if (value) cachedToken = value;
-    } catch {}
-  } else {
-    try { cachedToken = localStorage.getItem(TOKEN_KEY); } catch {}
+function hydrateToken(): Promise<void> {
+  if (!hydrationPromise) {
+    hydrationPromise = (async () => {
+      if (isNativeRuntime()) {
+        try {
+          const { value } = await Preferences.get({ key: TOKEN_KEY });
+          // Não sobrescreve token recém-gravado por um login que correu em paralelo
+          if (value && !cachedToken) cachedToken = value;
+        } catch {}
+      } else {
+        try { if (!cachedToken) cachedToken = localStorage.getItem(TOKEN_KEY); } catch {}
+      }
+    })();
   }
+  return hydrationPromise;
 }
 void hydrateToken();
 const DEMO_BLOCKED_EVENT = "appinterfone:demo-blocked";
@@ -233,6 +240,7 @@ export async function apiFetch(
 
   if (nativeMode) {
     // Capacitor: use Bearer token
+    await hydrateToken();
     const token = getToken();
     if (token && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${token}`);
