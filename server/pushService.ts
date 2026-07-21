@@ -136,9 +136,19 @@ const FULLSCREEN_MIN_BUILD = Number(process.env.PUSH_FULLSCREEN_MIN_BUILD) || 13
 export async function sendPushToUser(userId: number, payload: PushPayload): Promise<number> {
   if (!firebaseInitialized && !webPushInitialized) return 0;
 
-  const tokens = db.prepare(
+  let tokens = db.prepare(
     "SELECT token, platform, web_push_keys, app_build FROM device_tokens WHERE user_id = ? AND active = 1"
   ).all(userId) as TokenRow[];
+
+  // Sem token ativo o interfone diz "morador indisponível" sem nem tocar o
+  // celular. Antes de desistir, tenta os desativados recentemente (rejeição
+  // transitória do FCM); o que entregar volta a ficar ativo.
+  const fallback = tokens.length === 0;
+  if (fallback) {
+    tokens = db.prepare(
+      "SELECT token, platform, web_push_keys, app_build FROM device_tokens WHERE user_id = ? AND active = 0 AND updated_at >= datetime('now', '-7 days')"
+    ).all(userId) as TokenRow[];
+  }
 
   if (tokens.length === 0) return 0;
 
@@ -147,7 +157,13 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
 
   let sent = 0;
   if (fcmTokens.length > 0 && firebaseInitialized) {
-    sent += await sendPushToTokens(fcmTokens, payload);
+    const result = await sendPushToTokens(fcmTokens, payload);
+    sent += result.sent;
+    if (fallback && result.delivered.length > 0) {
+      const reactivate = db.prepare("UPDATE device_tokens SET active = 1 WHERE user_id = ? AND token = ?");
+      for (const token of result.delivered) reactivate.run(userId, token);
+      log.info("Push: token reativado após entrega em fallback", { userId, tokens: result.delivered.length });
+    }
   }
   if (webTokens.length > 0 && webPushInitialized) {
     sent += await sendWebPush(webTokens, payload);
@@ -180,7 +196,7 @@ export async function sendPushToCondominioRole(
 
   let sent = 0;
   if (fcmTokens.length > 0 && firebaseInitialized) {
-    sent += await sendPushToTokens(fcmTokens, payload);
+    sent += (await sendPushToTokens(fcmTokens, payload)).sent;
   }
   if (webTokens.length > 0 && webPushInitialized) {
     sent += await sendWebPush(webTokens, payload);
@@ -263,38 +279,53 @@ function buildFcmMessage(
 }
 
 // ─── Envia uma leva de tokens FCM com o formato escolhido ───
-async function sendMulticast(tokens: string[], payload: PushPayload, dataOnly: boolean): Promise<number> {
-  if (tokens.length === 0) return 0;
+async function sendMulticast(
+  tokens: string[],
+  payload: PushPayload,
+  dataOnly: boolean
+): Promise<{ sent: number; delivered: string[] }> {
+  if (tokens.length === 0) return { sent: 0, delivered: [] };
   const message = buildFcmMessage(tokens, payload, dataOnly);
 
   try {
     const response = await admin.messaging().sendEachForMulticast(message);
 
-    // Deactivate invalid tokens
-    if (response.failureCount > 0) {
-      response.responses.forEach((resp, idx) => {
-        if (resp.error) {
-          const code = resp.error.code;
-          if (
-            code === "messaging/invalid-registration-token" ||
-            code === "messaging/registration-token-not-registered"
-          ) {
-            db.prepare("UPDATE device_tokens SET active = 0 WHERE token = ?").run(tokens[idx]);
-          }
+    const delivered: string[] = [];
+    response.responses.forEach((resp, idx) => {
+      if (resp.success) {
+        delivered.push(tokens[idx]);
+        return;
+      }
+      const code = resp.error?.code;
+      if (
+        code === "messaging/invalid-registration-token" ||
+        code === "messaging/registration-token-not-registered"
+      ) {
+        // Logo depois de um force-stop o Android devolve token-not-registered
+        // para um token que continua válido. Desativar na primeira falha mata a
+        // campainha até o morador reabrir o app — só derruba token antigo.
+        const info = db.prepare(
+          "UPDATE device_tokens SET active = 0 WHERE token = ? AND updated_at <= datetime('now', '-24 hours')"
+        ).run(tokens[idx]);
+        if (info.changes === 0) {
+          log.warn("FCM rejeitou token registrado há pouco — mantendo ativo", { code });
         }
-      });
-    }
+      }
+    });
 
-    return response.successCount;
+    return { sent: response.successCount, delivered };
   } catch (err) {
     log.error("FCM send error:", err);
-    return 0;
+    return { sent: 0, delivered: [] };
   }
 }
 
 // ─── Core: send to FCM tokens ───
-async function sendPushToTokens(tokens: FcmToken[], payload: PushPayload): Promise<number> {
-  if (!firebaseInitialized || tokens.length === 0) return 0;
+async function sendPushToTokens(
+  tokens: FcmToken[],
+  payload: PushPayload
+): Promise<{ sent: number; delivered: string[] }> {
+  if (!firebaseInitialized || tokens.length === 0) return { sent: 0, delivered: [] };
 
   if (payload.fullScreen === true) {
     // Chamada do interfone: apps novos (>= FULLSCREEN_MIN_BUILD) recebem DATA-ONLY
@@ -306,7 +337,7 @@ async function sendPushToTokens(tokens: FcmToken[], payload: PushPayload): Promi
       sendMulticast(modern, payload, true),
       sendMulticast(legacy, payload, false),
     ]);
-    return a + b;
+    return { sent: a.sent + b.sent, delivered: [...a.delivered, ...b.delivered] };
   }
 
   return sendMulticast(tokens.map(t => t.token), payload, false);
