@@ -315,7 +315,7 @@ export default function LandingPage() {
           maxWidth: "800px", marginBottom: "24px",
           background: modeStyle(mode, "linear-gradient(135deg, #fff 0%, #c7d2fe 50%, #818cf8 100%)", "linear-gradient(135deg, #003580 0%, #0050b3 50%, #003580 100%)"),
         }}>
-          App Interfone<br />Interfone Digital por QR Code
+          App Interfone<br />Vídeo Interfone via QR Code
         </h1>
 
         <p className="fade-up fade-up-d2" style={{ fontSize: "clamp(1rem, 2vw, 1.25rem)", color: t.text3, maxWidth: "600px", lineHeight: 1.7, marginBottom: "40px" }}>
@@ -1254,6 +1254,9 @@ export default function LandingPage() {
           <div>
             <p style={{ fontWeight: 800, fontSize: "18px", color: "#003580", marginBottom: "4px" }}>
               App Interfone
+            </p>
+            <p style={{ fontSize: "13px", color: "#336699", marginBottom: "4px" }}>
+              Vídeo Interfone via QR Code
             </p>
             <p style={{ fontSize: "13px", color: "#336699" }}>
               © 2026 — www.appinterfone.com.br

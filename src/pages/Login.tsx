@@ -94,7 +94,7 @@ export default function Login() {
               App Interfone
             </h1>
             <p className="text-sm mt-1" style={{ color: "#fff" }}>
-              INTERFONE DIGITAL VIA QR CODE
+              VÍDEO INTERFONE VIA QR CODE
             </p>
           </div>
 
