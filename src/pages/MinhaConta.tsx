@@ -415,8 +415,8 @@ export default function MinhaConta() {
                   </h2>
                   <p style={{ fontSize: "12px", color: "#64748b", margin: "2px 0 0" }}>
                     {whatsappInterfone
-                      ? "Visitantes podem te contactar pelo WhatsApp"
-                      : "Permitir que visitantes enviem WhatsApp"}
+                      ? "Se você não atender o interfone, o visitante vê seu número e pode chamar no WhatsApp"
+                      : "Desligado: se você não atender, o visitante fica sem alternativa de contato"}
                   </p>
                   {whatsappInterfone && !phone && (
                     <p style={{ fontSize: "11px", color: "#dc2626", margin: "4px 0 0", fontWeight: 600 }}>

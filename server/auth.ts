@@ -12,7 +12,11 @@ import { log } from "./logger.js";
 const router = Router();
 const COOKIE_NAME = "session_token";
 const TOKEN_TTL = "24h";
-const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000; // 24h — alinhado ao TTL do JWT
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30d — o cookie sobrevive ao JWT
+// O JWT vale 24h, mas o /refresh aceita um token vencido há até 30 dias. Sem isso o
+// morador que fica um dia sem abrir o app perde a sessão — e sem sessão não há push,
+// ou seja, a campainha simplesmente para de tocar.
+const REFRESH_GRACE_SEC = 30 * 24 * 60 * 60;
 
 function signToken(userId: number): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
@@ -512,6 +516,63 @@ function trackCondominioAccess(condominioId: number) {
   `).run(condominioId);
 }
 
+// ─── BLOQUEIO POR CONTA ──────────────────────────────────
+// Com PIN de 6 dígitos numéricos (1 milhão de combinações), limitar por IP
+// não basta: trocando de IP o atacante ganha 5 tentativas novas. Este
+// contador mora na conta, então o alvo fica protegido venha de onde vier.
+const MAX_TENTATIVAS = 5;
+// Escalona a cada novo estouro de 5 falhas: 15min, 30min, 1h, 2h.
+const BLOQUEIO_MINUTOS = [15, 30, 60, 120];
+type TabelaLogin = "users" | "funcionarios";
+
+// Minutos restantes de bloqueio, ou null se a conta está liberada.
+function bloqueioRestante(tabela: TabelaLogin, id: number): number | null {
+  const row = db
+    .prepare(
+      `SELECT CAST((julianday(locked_until) - julianday('now')) * 1440 + 0.999 AS INTEGER) AS minutos
+         FROM ${tabela}
+        WHERE id = ? AND locked_until IS NOT NULL AND locked_until > datetime('now')`
+    )
+    .get(id) as { minutos: number } | undefined;
+  return row ? Math.max(1, row.minutos) : null;
+}
+
+function registrarFalha(tabela: TabelaLogin, id: number): void {
+  db.prepare(`UPDATE ${tabela} SET failed_attempts = failed_attempts + 1 WHERE id = ?`).run(id);
+  const row = db.prepare(`SELECT failed_attempts FROM ${tabela} WHERE id = ?`).get(id) as
+    | { failed_attempts: number }
+    | undefined;
+  const falhas = row?.failed_attempts ?? 0;
+  if (falhas > 0 && falhas % MAX_TENTATIVAS === 0) {
+    const nivel = Math.floor(falhas / MAX_TENTATIVAS) - 1;
+    const minutos = BLOQUEIO_MINUTOS[Math.min(nivel, BLOQUEIO_MINUTOS.length - 1)];
+    db.prepare(`UPDATE ${tabela} SET locked_until = datetime('now', ?) WHERE id = ?`).run(
+      `+${minutos} minutes`,
+      id
+    );
+    log.warn(`[LOGIN] ${tabela}#${id} bloqueada por ${minutos} min após ${falhas} falhas`);
+  }
+}
+
+// Acertou a senha (ou redefiniu): o histórico de falhas deixa de contar.
+export function limparFalhasLogin(tabela: TabelaLogin, id: number): void {
+  db.prepare(
+    `UPDATE ${tabela} SET failed_attempts = 0, locked_until = NULL
+      WHERE id = ? AND (failed_attempts != 0 OR locked_until IS NOT NULL)`
+  ).run(id);
+}
+
+// Responde 429 e corta o login se a conta estiver bloqueada.
+function barrarSeBloqueada(tabela: TabelaLogin, id: number, res: any): boolean {
+  const minutos = bloqueioRestante(tabela, id);
+  if (minutos === null) return false;
+  res.status(429).json({
+    error: `Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em ${minutos} minuto${minutos > 1 ? "s" : ""}.`,
+    lockedMinutes: minutos,
+  });
+  return true;
+}
+
 interface DbFuncionario {
   id: number;
   nome: string;
@@ -531,11 +592,15 @@ async function handleFuncionarioLogin(credential: string, password: string, res:
     return;
   }
 
+  if (barrarSeBloqueada("funcionarios", func.id, res)) return;
+
   const valid = await bcrypt.compare(password, func.password);
   if (!valid) {
+    registrarFalha("funcionarios", func.id);
     res.status(401).json({ error: "Login ou senha incorretos." });
     return;
   }
+  limparFalhasLogin("funcionarios", func.id);
 
   if (func.condominio_id && checkCondominioBlocked(func.condominio_id, res)) return;
 
@@ -578,11 +643,15 @@ async function handleUserLogin(credential: string, password: string, res: any) {
     return;
   }
 
+  if (barrarSeBloqueada("users", user.id, res)) return;
+
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
+    registrarFalha("users", user.id);
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
   }
+  limparFalhasLogin("users", user.id);
 
   if (user.condominio_id && user.role !== "master" && checkCondominioBlocked(user.condominio_id, res)) return;
 
@@ -644,15 +713,33 @@ router.post("/refresh", (req, res) => {
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number };
+    // ignoreExpiration: renovar token já expirado é justamente o caso de uso.
+    // A assinatura continua sendo validada; só a validade é conferida à mão.
+    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as {
+      userId?: number;
+      funcId?: number;
+      exp?: number;
+    };
+    const agora = Math.floor(Date.now() / 1000);
+    if (decoded.exp && agora - decoded.exp > REFRESH_GRACE_SEC) {
+      res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
+      return;
+    }
+    // O bloqueio comercial é conferido no login. Com a sessão longa (30 dias),
+    // sem esta checagem o condomínio bloqueado por inadimplência continuaria
+    // renovando o token e usando o sistema por semanas.
     let newToken: string;
     if (decoded.userId) {
-      const user = db.prepare("SELECT id FROM users WHERE id = ?").get(decoded.userId);
+      const user = db.prepare("SELECT id, role, condominio_id FROM users WHERE id = ?")
+        .get(decoded.userId) as { id: number; role: string; condominio_id: number | null } | undefined;
       if (!user) { res.status(401).json({ error: "Usuário não encontrado." }); return; }
+      if (user.condominio_id && user.role !== "master" && checkCondominioBlocked(user.condominio_id, res)) return;
       newToken = signToken(decoded.userId);
     } else if (decoded.funcId) {
-      const func = db.prepare("SELECT id FROM funcionarios WHERE id = ?").get(decoded.funcId);
+      const func = db.prepare("SELECT id, condominio_id FROM funcionarios WHERE id = ?")
+        .get(decoded.funcId) as { id: number; condominio_id: number | null } | undefined;
       if (!func) { res.status(401).json({ error: "Funcionário não encontrado." }); return; }
+      if (func.condominio_id && checkCondominioBlocked(func.condominio_id, res)) return;
       newToken = jwt.sign({ funcId: decoded.funcId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
     } else {
       res.status(401).json({ error: "Token inválido." });
@@ -749,6 +836,8 @@ router.put("/account/password", authenticate, async (req, res) => {
       return;
     }
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hash, user.id);
+    // Quem redefiniu a senha não deve continuar preso ao bloqueio anterior.
+    limparFalhasLogin("users", user.id);
 
     // 📧 Email: password changed notification
     if (user.email) {

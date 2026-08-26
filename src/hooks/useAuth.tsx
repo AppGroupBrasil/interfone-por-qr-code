@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { apiFetch, setToken, clearToken } from "@/lib/api";
+import { apiFetch, setToken, clearToken, refreshSession } from "@/lib/api";
 import { initPushNotifications, unregisterPushToken } from "@/lib/pushNotifications";
 import { isDemoMode, setDemoMode } from "@/hooks/useDemoGuard";
 import { isNative } from "@/lib/config";
@@ -143,6 +143,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restore();
     return () => { cancelled = true; controller.abort(); };
   }, []);
+
+  // A campainha depende de sessão viva: o JWT vale 24h e o morador pode passar
+  // dias sem abrir o app. Renova ao voltar do background e a cada 6h de app
+  // aberto — sem sessão válida o push chega e não vira chamada.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    let ultima = Date.now();
+    const renovar = (forcar = false) => {
+      if (cancelled) return;
+      // No resume só renova se já passou 1h; abrir/fechar o app não vira rajada.
+      if (!forcar && Date.now() - ultima < 60 * 60 * 1000) return;
+      ultima = Date.now();
+      void refreshSession();
+    };
+    const timer = setInterval(() => renovar(true), 6 * 60 * 60 * 1000);
+    let remover: (() => void) | undefined;
+    if (isNative) {
+      import("@capacitor/app")
+        .then(({ App }) =>
+          App.addListener("appStateChange", ({ isActive }) => {
+            if (isActive) renovar();
+          })
+        )
+        .then((handle) => {
+          if (cancelled) void handle.remove();
+          else remover = () => void handle.remove();
+        })
+        .catch(() => {});
+    } else {
+      const onVisible = () => {
+        if (document.visibilityState === "visible") renovar();
+      };
+      document.addEventListener("visibilitychange", onVisible);
+      remover = () => document.removeEventListener("visibilitychange", onVisible);
+    }
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      remover?.();
+    };
+  }, [user?.id]);
 
   // OTA: custom_id nas checagens de update — o servidor usa para decidir
   // o canal (beta/produção) por usuário via OTA_BETA_USERS

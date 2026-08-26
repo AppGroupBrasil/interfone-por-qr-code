@@ -13,9 +13,34 @@ import { stopIncomingCallVibration, vibrateIncomingCall } from "./mediaDiagnosti
 interface CallRingerPlugin {
   start(): Promise<void>;
   stop(): Promise<void>;
+  canUseFullScreenIntent(): Promise<{ value: boolean }>;
+  openFullScreenIntentSettings(): Promise<void>;
 }
 
 const CallRinger = registerPlugin<CallRingerPlugin>("CallRinger");
+
+/**
+ * Android 14+ pode bloquear a chamada em tela cheia. Quando bloqueada, a
+ * campainha ainda toca, mas o morador com o celular na mão não vê a tela de
+ * atender — por isso a tela do interfone avisa e leva às configurações.
+ * APK antigo sem os métodos no plugin responde erro: aí assume liberado.
+ */
+export async function podeUsarTelaCheia(): Promise<boolean> {
+  if (!isNative) return true;
+  try {
+    const r = await CallRinger.canUseFullScreenIntent();
+    return r?.value !== false;
+  } catch {
+    return true;
+  }
+}
+
+export async function abrirConfigTelaCheia(): Promise<void> {
+  if (!isNative) return;
+  try {
+    await CallRinger.openFullScreenIntentSettings();
+  } catch {}
+}
 
 let nativeRinging = false;
 let webAudio: HTMLAudioElement | null = null;

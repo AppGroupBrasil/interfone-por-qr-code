@@ -1,5 +1,6 @@
 import { useAuth, getRoleLabel, hasMinRole } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { EXTRAS_ENABLED } from "@/lib/config";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -320,7 +321,7 @@ export default function Dashboard() {
                   { icon: FileText, label: "Logs", description: "Histórico de atividades do sistema", route: "/master/logs" },
                   { icon: UserPlus, label: "Cadastro", description: "Gerenciar cadastros gerais", route: "/cadastros" },
                   { icon: BookOpen, label: "Guia Instalação", description: "Tutorial de instalação do sistema", route: "/master/guia-instalacao" },
-                  { icon: MessageCircle, label: "WhatsApp", description: "Controlar WhatsApp por condomínio", route: "/master/whatsapp" },
+                  ...(EXTRAS_ENABLED ? [{ icon: MessageCircle, label: "WhatsApp", description: "Controlar WhatsApp por condomínio", route: "/master/whatsapp" }] : []),
                 ].map((item) => (
                   <div key={item.label} onClick={() => navigate(item.route)} className="ui-card-mini rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform" style={{ padding: "1.25rem 0.75rem", minHeight: "120px", border: "1.5px solid transparent", backgroundImage: "linear-gradient(var(--background), var(--background)), linear-gradient(135deg, #2d3354, #10b981, #8b5cf6)", backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box", textAlign: "center" }}>
                     <item.icon className="w-7 h-7 mb-2" style={{ color: p.isDarkBase ? "#ffffff" : "#000000" }} />
@@ -355,7 +356,6 @@ export default function Dashboard() {
                 { icon: BarChart3, label: "Painel", route: "/master/painel", active: false },
                 { icon: UserPlus, label: "Cadastro", route: "/cadastros", active: false },
                 { icon: Users, label: "Usuários", route: "/master/usuarios", active: false },
-                { icon: DoorOpen, label: "Portão", route: "/master/portao", active: false },
                 { icon: BookOpen, label: "Instalar", route: "/master/guia-instalacao", active: false },
                 { icon: Settings, label: "Config", route: "/master/config", active: false },
               ]

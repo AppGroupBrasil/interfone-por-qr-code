@@ -29,20 +29,22 @@ import rondasRouter from "./rondas.js";
 import interfoneRouter from "./interfone.js";
 import deviceTokensRouter from "./deviceTokens.js";
 import visitorQRShareRouter from "./visitorQRShare.js";
-import faceRouter from "./faceRoutes.js";
-import gateRouter from "./gateRoutes.js";
 import whatsappRouter from "./whatsappRoutes.js";
 import otaRouter, { initOta } from "./ota.js";
-import { loadModels as loadFaceModels } from "./faceService.js";
-import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs, cleanupVisitorQRShares, cleanupOldVisitors } from "./db.js";
+import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs, cleanupVisitorQRShares, cleanupOldVisitors, checkDbHealth } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
-import { ALLOWED_ORIGINS, IS_PROD } from "./config.js";
+import { ALLOWED_ORIGINS, IS_PROD, DEMO_MODE } from "./config.js";
 import { log } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // JWT_SECRET validado em ./config.ts — falha-fast no import.
+
+// Escopo do produto v1 = interfonia sem fio. Tudo o mais fica no código,
+// desligado por padrão, e volta ligando a flag no .env.
+const EXTRA_MODULES_ENABLED = process.env.EXTRA_MODULES_ENABLED === "true";
+const GATE_ENABLED = process.env.GATE_ENABLED === "true";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -155,6 +157,7 @@ const interfoneCallLimiter = rateLimit({
   message: { error: "Muitas chamadas. Aguarde 1 minuto." },
 });
 app.use("/api/interfone/calls", writeOnly(interfoneCallLimiter));
+app.use("/api/interfone/whatsapp-fallback", writeOnly(interfoneCallLimiter));
 
 // Câmeras: upload de snapshot pode ser pesado (10MB body); limite mais agressivo
 const cameraUploadLimiter = rateLimit({
@@ -198,20 +201,53 @@ app.use("/api/moradores", moradoresRouter);
 app.use("/api/condominios", condominiosRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/master", masterRouter);
-app.use("/api/visitors", visitorsRouter);
-app.use("/api/pre-authorizations", preAuthRouter);
-app.use("/api/delivery-authorizations", deliveryRouter);
-app.use("/api/vehicle-authorizations", vehicleRouter);
 app.use("/api/condominio-config", condominioConfigRouter);
-app.use("/api/correspondencias", correspondenciasRouter);
-app.use("/api/livro-protocolo", livroProtocoloRouter);
-app.use("/api/cameras", camerasRouter);
-app.use("/api/rondas", rondasRouter);
 app.use("/api/interfone", interfoneRouter);
 app.use("/api/device-tokens", deviceTokensRouter);
-app.use("/api/visitor-qr", visitorQRShareRouter);
-app.use("/api/face", faceRouter);
-app.use("/api/gate", gateRouter);
+
+// ─── Módulos fora do escopo v1 — DESLIGADOS ───
+// O produto v1 é interfonia sem fio: visitante chama, morador (ou portaria)
+// atende. Controle de visitantes, pré-autorizações, entregas, veículos,
+// correspondências, livro de protocolo, câmeras, rondas, QR de visitante e
+// reconhecimento facial seguem inteiros no código, mas não sobem: cada rota
+// montada é superfície de ataque e mais um lugar onde um condomínio que só
+// comprou interfone poderia ver erro. Para reativar: EXTRA_MODULES_ENABLED=true.
+if (EXTRA_MODULES_ENABLED) {
+  app.use("/api/visitors", visitorsRouter);
+  app.use("/api/pre-authorizations", preAuthRouter);
+  app.use("/api/delivery-authorizations", deliveryRouter);
+  app.use("/api/vehicle-authorizations", vehicleRouter);
+  app.use("/api/correspondencias", correspondenciasRouter);
+  app.use("/api/livro-protocolo", livroProtocoloRouter);
+  app.use("/api/cameras", camerasRouter);
+  app.use("/api/rondas", rondasRouter);
+  app.use("/api/visitor-qr", visitorQRShareRouter);
+  // face-api/canvas só é carregado aqui. canvas é devDependency: a imagem de
+  // produção não o instala, então reativar face exige rebuild sem --omit=dev.
+  // Falhar o import não pode derrubar o interfone — só desliga /api/face.
+  try {
+    const { default: faceRouter } = await import("./faceRoutes.js");
+    app.use("/api/face", faceRouter);
+  } catch (err: any) {
+    console.warn("[extras] /api/face indisponível (canvas/face-api ausentes):", err?.message);
+  }
+  console.warn("[extras] módulos fora do escopo v1 habilitados via EXTRA_MODULES_ENABLED=true");
+}
+// ─── Portão (eWeLink/SONOFF) — DESLIGADO na v1 ───
+// Escopo v1 = interfonia sem fio. A abertura remota de portão está fora do produto
+// até existirem: sinalização WebSocket autenticada, autorização validada no servidor
+// por condomínio+unidade, pulso com teto em segundos (nunca estado "ligado"),
+// cooldown por unidade, log imutável e acionamento por controlador local.
+// Mapa completo e pré-condições de retomada em docs/portao-desativado.md
+if (GATE_ENABLED) {
+  try {
+    const { default: gateRouter } = await import("./gateRoutes.js");
+    app.use("/api/gate", gateRouter);
+    console.warn("[gate] rotas de portão habilitadas via GATE_ENABLED=true");
+  } catch (err: any) {
+    console.warn("[gate] rotas de portão indisponíveis (falha ao carregar gateRoutes):", err?.message);
+  }
+}
 app.use("/api/whatsapp", whatsappRouter);
 app.use("/api/app-update", otaRouter);
 
@@ -225,12 +261,21 @@ if (process.env.NODE_ENV !== "production") {
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  // demo: a landing usa para nao exibir botoes de demonstracao que o servidor
+  // recusaria com 404 (DEMO_MODE desligado e o padrao em producao).
+  res.json({ status: "ok", timestamp: new Date().toISOString(), demo: DEMO_MODE });
 });
 
 // Readiness — precisa vir ANTES do catch-all /api (senão devolve 404)
+// É este (não o /api/health) que o HEALTHCHECK do Docker consulta: 503 aqui
+// marca o container unhealthy, que é o sinal de que o banco parou de responder.
 app.get("/api/ready", (_req, res) => {
-  res.json({ status: "ready", uptime: process.uptime() });
+  const db = checkDbHealth();
+  if (!db.ok) {
+    log.error("Readiness falhou: banco inacessível", { message: db.error });
+    return res.status(503).json({ status: "degraded", db: "erro", uptime: process.uptime() });
+  }
+  res.json({ status: "ready", db: "ok", uptime: process.uptime() });
 });
 
 // Manual backup endpoint (master only)
@@ -296,11 +341,17 @@ server.listen(PORT, "0.0.0.0", () => {
 
   initOta();
 
-  loadFaceModels().then(() => {
-    log.info("Modelos de reconhecimento facial carregados");
-  }).catch((err) => {
-    log.warn("Falha ao carregar modelos de face", { message: err.message });
-  });
+  // Só faz sentido carregar os modelos de face se algum módulo que os usa subiu.
+  if (EXTRA_MODULES_ENABLED || GATE_ENABLED) {
+    import("./faceService.js")
+      .then((m) => m.loadModels())
+      .then(() => {
+        log.info("Modelos de reconhecimento facial carregados");
+      })
+      .catch((err) => {
+        log.warn("Falha ao carregar modelos de face", { message: err.message });
+      });
+  }
 
   // ─── Scheduled Tasks ───
   // Run cleanup + backup on startup

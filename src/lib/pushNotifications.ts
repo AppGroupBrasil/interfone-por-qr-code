@@ -16,6 +16,9 @@ let nativeListenersRegistered = false;
 
 const ANDROID_CALLS_CHANNEL_ID = "interfone_calls";
 
+// Espelha PUSH_FULLSCREEN_MIN_BUILD do servidor (server/pushService.ts).
+const FULLSCREEN_MIN_BUILD_FALLBACK = 13;
+
 type PushPermissionStatus = "prompt" | "blocked" | "enabled";
 
 function emitPushPermissionStatus(status: PushPermissionStatus) {
@@ -67,12 +70,16 @@ async function initNativePush(): Promise<void> {
         pushInitialized = true;
         emitPushPermissionStatus("enabled");
 
-        // versionCode nativo → servidor decide se manda a chamada em tela cheia (data-only)
+        // versionCode nativo → servidor decide se manda a chamada em tela cheia
+        // (data-only). Se a leitura falhar, 0 faria o servidor tratar o aparelho
+        // como APK antigo e a chamada perderia a tela cheia — por isso o fallback
+        // é "moderno": todo APK em campo já traz o IncomingCallService.
         let appBuild = 0;
         try {
           const { App } = await import("@capacitor/app");
           appBuild = parseInt((await App.getInfo()).build, 10) || 0;
         } catch {}
+        if (!appBuild) appBuild = FULLSCREEN_MIN_BUILD_FALLBACK;
 
         try {
           await apiFetch("/api/device-tokens", {
@@ -109,7 +116,9 @@ async function initNativePush(): Promise<void> {
         console.log("Push action:", action);
         const data = action.notification.data;
         if (data?.type === "interfone-call") {
-          globalThis.location.href = "/morador/interfone";
+          // destino=portaria: a chamada é para o porteiro, não para o morador.
+          globalThis.location.href =
+            data.destino === "portaria" ? "/portaria/interfone" : "/morador/interfone";
         } else if (data?.type === "correspondencia") {
           globalThis.location.href = "/portaria/correspondencias";
         } else if (data?.type === "visitor") {
@@ -129,46 +138,26 @@ async function initNativePush(): Promise<void> {
     try {
       // Canais Android são imutáveis após criados: o toque longo exige um canal novo (v2),
       // que só pode existir em builds que trazem res/raw/ringtone.wav (versionCode >= 12)
-      let nativeBuild = 0;
-      try {
-        const { App } = await import("@capacitor/app");
-        nativeBuild = parseInt((await App.getInfo()).build, 10) || 0;
-      } catch {}
-
-      if (nativeBuild >= 13) {
-        // A chamada é montada pelo IncomingCallService nativo (canal
-        // interfone_calls_v4, silencioso — quem toca é o CallRinger).
-        // Criar canal aqui só duplicaria a entrada nas configurações.
-        for (const id of [ANDROID_CALLS_CHANNEL_ID, "interfone_calls_v2", "interfone_calls_v3"]) {
-          try {
-            await PushNotifications.deleteChannel({ id });
-          } catch {}
-        }
-      } else if (nativeBuild >= 12) {
-        await PushNotifications.createChannel({
-          id: "interfone_calls_v2",
-          name: "Chamadas do Interfone",
-          description: "Chamadas e alertas importantes do interfone digital",
-          importance: 5,
-          visibility: 1,
-          vibration: true,
-          lights: true,
-          sound: "ringtone.wav",
-        });
+      // A chamada é montada pelo IncomingCallService nativo (canal
+      // interfone_calls_v4, criado no Java). Canais de versões antigas só
+      // duplicariam a entrada nas configurações do Android — some com eles.
+      for (const id of [ANDROID_CALLS_CHANNEL_ID, "interfone_calls_v2", "interfone_calls_v3"]) {
         try {
-          await PushNotifications.deleteChannel({ id: ANDROID_CALLS_CHANNEL_ID });
+          await PushNotifications.deleteChannel({ id });
         } catch {}
-      } else {
-        await PushNotifications.createChannel({
-          id: ANDROID_CALLS_CHANNEL_ID,
-          name: "Chamadas do Interfone",
-          description: "Chamadas e alertas importantes do interfone digital",
-          importance: 5,
-          visibility: 1,
-          vibration: true,
-          lights: true,
-        });
       }
+
+      // Avisos gerais (não-chamada): canal próprio, senão o FCM joga tudo no
+      // "Diversos" do sistema. É o mesmo id usado em server/pushService.ts e
+      // no default_notification_channel_id do AndroidManifest.
+      await PushNotifications.createChannel({
+        id: "appinterfone_default",
+        name: "Avisos do condomínio",
+        description: "Comunicados e avisos do AppInterfone",
+        importance: 4,
+        visibility: 1,
+        vibration: true,
+      });
     } catch (channelError) {
       console.warn("Failed to ensure Android notification channel:", channelError);
     }

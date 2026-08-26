@@ -1,5 +1,6 @@
 import { useAuth, getRoleLabel } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { EXTRAS_ENABLED } from "@/lib/config";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import CameraWidget from "@/components/CameraWidget";
@@ -203,8 +204,8 @@ export default function DashboardFuncionario() {
         </div>
       </nav>
 
-      {/* Floating Camera Widget */}
-      <CameraWidget />
+      {/* Floating Camera Widget — só com o módulo de câmeras ligado */}
+      {EXTRAS_ENABLED && <CameraWidget />}
     </div>
   );
 }

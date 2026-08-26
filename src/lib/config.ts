@@ -59,3 +59,23 @@ export function buildWsUrl(path: string): string {
   // Prod: same-origin
   return `${proto}//${window.location.host}${path}`;
 }
+
+/**
+ * Escopo do produto v1: interfonia sem fio (visitante ↔ morador/portaria).
+ * Visitantes, pré-autorizações, entregas, veículos, correspondências, livro de
+ * protocolo, câmeras, rondas, QR de visitante e reconhecimento facial continuam
+ * no código, mas ficam fora do ar — no servidor as rotas nem são montadas
+ * (EXTRA_MODULES_ENABLED), então exibi-los aqui só levaria a telas quebradas.
+ * Reativar: VITE_EXTRA_MODULES=true no build + EXTRA_MODULES_ENABLED=true no servidor.
+ */
+export const EXTRAS_ENABLED: boolean =
+  ((import.meta as any).env?.VITE_EXTRA_MODULES ?? "") === "true";
+
+/**
+ * Abertura remota de portao (IoT): fora da v1 por decisao de produto — o
+ * sistema so faz interfonia. O codigo continua no repositorio; a vitrine de
+ * dispositivos e as promessas de portao na landing so voltam com
+ * VITE_GATE_ENABLED=true no build e GATE_ENABLED=true no servidor.
+ */
+export const GATE_ENABLED: boolean =
+  ((import.meta as any).env?.VITE_GATE_ENABLED ?? "") === "true";

@@ -16,7 +16,10 @@ services:
     container_name: appinterfone
     restart: unless-stopped
     ports:
-      - "3002:3001"
+      # Só no loopback do host: quem serve o app na internet é o Traefik pela
+      # rede `coolify`. Publicado em 0.0.0.0 o container ficava acessível por
+      # http://IP:3002 — HTTP puro, sem TLS e fora dos middlewares do proxy.
+      - "127.0.0.1:3002:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -79,8 +82,16 @@ services:
       - "traefik.http.middlewares.appinterfone-redirect-www.redirectregex.regex=^https://www\\.appinterfone\\.com\\.br/(.*)"
       - "traefik.http.middlewares.appinterfone-redirect-www.redirectregex.replacement=https://appinterfone.com.br/$${1}"
       - "traefik.http.middlewares.appinterfone-redirect-www.redirectregex.permanent=true"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    mem_limit: 2g
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      # /api/ready faz SELECT no SQLite. /api/health só prova que o processo
+      # respondeu — aprovaria o container com o banco travado ou sem volume.
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,6 +104,21 @@ services:
     container_name: appinterfone-coturn
     restart: unless-stopped
     network_mode: host
+    environment:
+      - TURN_SECRET=${TURN_SECRET:-}
+    # Sem TURN_SECRET no .env, `--use-auth-secret` ficaria com segredo vazio e
+    # qualquer um poderia forjar credencial e usar o relay como proxy aberto.
+    # Nesse caso o coturn nem sobe: o app já cai no STUN sozinho.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ -z "$$TURN_SECRET" ]; then
+          echo "[coturn] TURN_SECRET ausente no .env - relay TURN desligado (chamadas usam STUN)."
+          while :; do sleep 3600; done
+        fi
+        exec turnserver "$$@"
+      - --
     command: >
       -n
       --listening-port=3478
@@ -100,13 +126,36 @@ services:
       --max-port=49400
       --realm=appinterfone.com.br
       --use-auth-secret
-      --static-auth-secret=${TURN_SECRET}
+      --static-auth-secret=${TURN_SECRET:-}
       --fingerprint
       --no-cli
       --no-tls
       --no-dtls
+      --no-multicast-peers
+      --denied-peer-ip=0.0.0.0-0.255.255.255
+      --denied-peer-ip=10.0.0.0-10.255.255.255
+      --denied-peer-ip=100.64.0.0-100.127.255.255
+      --denied-peer-ip=127.0.0.0-127.255.255.255
+      --denied-peer-ip=169.254.0.0-169.254.255.255
+      --denied-peer-ip=172.16.0.0-172.31.255.255
+      --denied-peer-ip=192.0.0.0-192.0.0.255
+      --denied-peer-ip=192.168.0.0-192.168.255.255
+      --denied-peer-ip=198.18.0.0-198.19.255.255
+      --denied-peer-ip=224.0.0.0-255.255.255.255
+      --denied-peer-ip=::1
+      --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+      --user-quota=6
+      --total-quota=2000
+      --stale-nonce=600
       --log-file=stdout
       --simple-log
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 512m
 
 networks:
   # ⚠️ OBRIGATÓRIA — rede do Coolify onde vive o `coolify-proxy` (Traefik) que

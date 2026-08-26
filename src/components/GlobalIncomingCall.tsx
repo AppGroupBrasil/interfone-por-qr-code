@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import { buildWsUrl, isNative } from "@/lib/config";
-import { getToken, apiFetch } from "@/lib/api";
+import { getToken, apiFetch, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
 import { startCallRing, stopCallRing } from "@/lib/callRing";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
@@ -35,12 +35,24 @@ export default function GlobalIncomingCall() {
   const navigate = useNavigate();
   const location = useLocation();
   const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
+  // Espelho para os handlers do WS, que rodam fora do ciclo de render.
+  const incomingCallRef = useRef<IncomingCallData | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<NodeJS.Timeout | null>(null);
+  const renovandoRef = useRef(false);
 
-  // Don't render if not a morador, or if already on the interfone page
+  // A ref so serve se acompanhar o estado; sem isto ela fica null e a guarda
+  // por callId nunca bloqueia nada.
+  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+
+  // Escuta chamadas fora da tela do interfone: morador e também a portaria.
+  // Sem isto o porteiro só recebia chamada com a tela do interfone aberta —
+  // com o app em outra página (ou aberto pelo push) a chamada não tocava.
   const isMorador = user?.role === "morador";
-  const isOnInterfonePage = location.pathname === "/morador/interfone";
+  const isPortaria = user?.role === "funcionario" || user?.role === "sindico";
+  const escutando = isMorador || isPortaria;
+  const rotaInterfone = isPortaria ? "/portaria/interfone" : "/morador/interfone";
+  const isOnInterfonePage = location.pathname === rotaInterfone;
 
   const playRingtone = useCallback(() => {
     startCallRing();
@@ -58,13 +70,28 @@ export default function GlobalIncomingCall() {
   // agendado antes de navegar pra tela do interfone reconectava o aviso global
   // lá dentro e derrubava o socket da chamada (tela azul + reconexão infinita).
   const shouldConnectRef = useRef(false);
-  shouldConnectRef.current = !!user && isMorador && !isOnInterfonePage;
+  shouldConnectRef.current = !!user && escutando && !isOnInterfonePage;
 
   const connectWs = useCallback(() => {
-    if (!user || !isMorador || isOnInterfonePage) return;
+    if (!user || !escutando || isOnInterfonePage) return;
     if (!shouldConnectRef.current) return;
 
     const token = isNative ? getToken() : null;
+
+    // Token vencido = handshake recusado = campainha muda. Renova antes de abrir.
+    if (isNative && tokenPertoDeExpirar(token)) {
+      if (!renovandoRef.current) {
+        renovandoRef.current = true;
+        void refreshSession().then((ok) => {
+          renovandoRef.current = false;
+          if (!shouldConnectRef.current) return;
+          if (reconnectRef.current) clearTimeout(reconnectRef.current);
+          reconnectRef.current = setTimeout(connectWs, ok ? 0 : 30_000);
+        });
+      }
+      return;
+    }
+
     const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
     
     try {
@@ -74,12 +101,18 @@ export default function GlobalIncomingCall() {
       ws.onopen = () => {
         console.log("[Global Interfone] Connected as morador listener");
         (globalThis as any).__interfoneWsOpen = true;
-        ws.send(JSON.stringify({
-          type: "register-morador",
-          moradorId: user.id,
-          condominioId: user.condominioId,
-          page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
-        }));
+        ws.send(JSON.stringify(isPortaria
+          ? {
+              type: "register-funcionario",
+              funcionarioId: user.id,
+              condominioId: user.condominioId,
+            }
+          : {
+              type: "register-morador",
+              moradorId: user.id,
+              condominioId: user.condominioId,
+              page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
+            }));
         // Start application-level heartbeat to keep connection alive through proxies
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
@@ -93,6 +126,7 @@ export default function GlobalIncomingCall() {
         try {
           const msg = JSON.parse(event.data);
           switch (msg.type) {
+            case "registered-funcionario":
             case "registered":
               console.log("[Global Interfone] Registered, listening for calls...");
               break;
@@ -123,6 +157,10 @@ export default function GlobalIncomingCall() {
                 callerName: msg.callerName || "Portaria",
                 callerRole: msg.callerRole,
                 isInternal: true,
+                // Portaria: a tela do interfone reata a chamada com estes dados.
+                bloco: msg.bloco || "",
+                apartamento: msg.apartamento || "",
+                visitorClientId: msg.callerClientId || "",
               });
               playRingtone();
               break;
@@ -147,12 +185,15 @@ export default function GlobalIncomingCall() {
               ws.close();
               wsRef.current = null;
               setIncomingCall(null);
-              navigate("/morador/interfone", { state: { pendingCall: resumed } });
+              navigate(rotaInterfone, { state: { pendingCall: resumed } });
               break;
             }
 
             case "call-ended":
             case "call-cancelled":
+              // Duas chamadas ao mesmo tempo na portaria: o fim de uma nao pode
+              // apagar o aviso da outra.
+              if (msg.callId && incomingCallRef.current && incomingCallRef.current.callId !== msg.callId) break;
               setIncomingCall(null);
               stopRingtone();
               break;
@@ -175,10 +216,10 @@ export default function GlobalIncomingCall() {
       console.error("[Global Interfone] WS error:", err);
       reconnectRef.current = setTimeout(connectWs, 2000);
     }
-  }, [user, isMorador, isOnInterfonePage, playRingtone, stopRingtone]);
+  }, [user, escutando, isPortaria, isOnInterfonePage, playRingtone, stopRingtone]);
 
   useEffect(() => {
-    if (!isMorador || isOnInterfonePage) {
+    if (!escutando || isOnInterfonePage) {
       // Close WS if user navigated to interfone page (it has its own WS)
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (wsRef.current) {
@@ -223,11 +264,28 @@ export default function GlobalIncomingCall() {
       }
       stopRingtone();
     };
-  }, [isMorador, isOnInterfonePage, connectWs, stopRingtone]);
+  }, [escutando, isOnInterfonePage, connectWs, stopRingtone]);
 
   const handleAnswer = (e?: React.MouseEvent) => {
     stopRingtone();
     const callData = incomingCall;
+
+    // Portaria: NÃO responde daqui. O handoff (call-answer + troca de socket)
+    // depende do resend-offer, que só existe para o morador; aqui a chamada
+    // segue tocando no servidor e quem atende de fato é a tela do interfone,
+    // que reata pelo state e manda o call-answer já no socket definitivo.
+    if (isPortaria) {
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+      (globalThis as any).__interfoneWsOpen = false;
+      setIncomingCall(null);
+      navigate(rotaInterfone, { state: { pendingCall: callData, autoAnswer: true } });
+      return;
+    }
     // Send call-answer so the visitor gets notified immediately
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && callData) {
       try {
@@ -272,7 +330,7 @@ export default function GlobalIncomingCall() {
       }).catch(() => {});
     }
     // Navigate with call data so MoradorInterfone can pick up the active call
-    navigate("/morador/interfone", { state: { pendingCall: callData } });
+    navigate(rotaInterfone, { state: { pendingCall: callData } });
   };
 
   const handleReject = (e?: React.MouseEvent) => {
@@ -296,8 +354,8 @@ export default function GlobalIncomingCall() {
     setIncomingCall(null);
   };
 
-  // Don't render anything if not morador, on interfone page, or no call
-  if (!isMorador || isOnInterfonePage || !incomingCall) return null;
+  // Nada a mostrar: papel sem interfone, já na tela do interfone, ou sem chamada
+  if (!escutando || isOnInterfonePage || !incomingCall) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -309,7 +367,7 @@ export default function GlobalIncomingCall() {
 
         {/* Caller info */}
         <h2 className="text-white text-xl font-bold mb-1">
-          {incomingCall.isInternal ? "Chamada da Portaria" : "Chamada do Interfone"}
+          {incomingCall.isInternal ? (isPortaria ? "Chamada do Morador" : "Chamada da Portaria") : "Chamada do Interfone"}
         </h2>
         <p className="text-gray-300 text-lg mb-6">{incomingCall.callerName}</p>
 

@@ -11,14 +11,21 @@
  */
 
 import { createRequire } from "module";
-import { Canvas, Image, createCanvas, loadImage } from "canvas";
 import path from "path";
 import { fileURLToPath } from "url";
 import { log } from "./logger.js";
 
 const require2 = createRequire(import.meta.url);
 
-// Importar a versão WASM do face-api (não requer tfjs-node)
+// canvas e face-api entram por require dinâmico, não por import estático: assim o
+// `tsc` compila este arquivo sem os pacotes instalados e o `npm ci` do build deixa
+// de compilar o canvas do fonte (gcc pesado, já falhou por recurso e derrubaria o
+// deploy inteiro por um módulo que a v1 nem usa). Fora do escopo v1 os dois pacotes
+// não são instalados — o require abaixo lança e o import() em index.ts cai no catch,
+// desligando só /api/face. Para reativar: npm i canvas @vladmandic/face-api.
+const { Canvas, Image, createCanvas, loadImage } = require2("canvas");
+
+// Versão WASM do face-api (não requer tfjs-node)
 const faceapi = require2("@vladmandic/face-api/dist/face-api.node-wasm.js");
 
 const __filename = fileURLToPath(import.meta.url);

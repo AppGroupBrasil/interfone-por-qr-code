@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "@/hooks/useAuth";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
@@ -21,7 +21,6 @@ import {
   Mic,
   MicOff,
   Volume2,
-  DoorOpen,
   User,
   Shield,
   X,
@@ -36,7 +35,7 @@ import {
   Building,
   Camera,
 } from "lucide-react";
-import { apiFetch, getToken } from "@/lib/api";
+import { apiFetch, getToken, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
 import { useTheme } from "@/hooks/useTheme";
 import ComoFunciona from "@/components/ComoFunciona";
 
@@ -81,6 +80,7 @@ export default function FuncionarioInterfone() {
   const { isDark, p } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [wsConnected, setWsConnected] = useState(false);
   const [callState, setCallState] = useState<CallState>("idle");
@@ -141,6 +141,14 @@ export default function FuncionarioInterfone() {
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const manualWsCloseRef = useRef(false);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const renovandoTokenRef = useRef(false);
+  // Chamada tocada no aviso global: quem fala WebRTC é esta tela, então o
+  // call-answer sai daqui, já no socket definitivo (sem handoff).
+  const retomadaRef = useRef<{ pendingCall?: any; autoAnswer?: boolean } | null>(
+    (location.state as { pendingCall?: any; autoAnswer?: boolean } | null) || null
+  );
+  // callId já atendido nesta tela: a re-entrega do servidor não pode fazer tocar de novo.
+  const jaAtendidaRef = useRef<string | null>(null);
 
   // Keep callStateRef in sync
   useEffect(() => { callStateRef.current = callState; }, [callState]);
@@ -223,6 +231,32 @@ export default function FuncionarioInterfone() {
       .catch(() => {});
   }, [callState]);
 
+  // ─── Chamada vinda do aviso global (GlobalIncomingCall) ───
+  // O overlay só toca; quem fala WebRTC é esta tela. Os dados vêm no state da
+  // navegação e o call-answer sai no onopen do socket definitivo.
+  useEffect(() => {
+    const pending = retomadaRef.current?.pendingCall;
+    if (!pending?.callId) return;
+    setIncomingCall({
+      callId: pending.callId,
+      visitanteNome: pending.callerName || pending.visitanteNome || "Chamada",
+      visitanteEmpresa: pending.visitanteEmpresa ?? null,
+      visitanteFoto: pending.visitanteFoto ?? null,
+      bloco: pending.bloco || "",
+      apartamento: pending.apartamento || "",
+      visitorClientId: pending.visitorClientId || "",
+      isPortariaCall: !pending.isInternal,
+    });
+    setIsInternalCall(!!pending.isInternal);
+    peerTypeRef.current = pending.isInternal ? "morador" : "visitor";
+    if (!retomadaRef.current?.autoAnswer) {
+      setCallState("ringing");
+      playRingtone();
+    }
+    // Recarregar a página não pode reviver uma chamada morta.
+    window.history.replaceState({}, "");
+  }, []);
+
   // Connect WebSocket and register as funcionario
   useEffect(() => {
     if (!user) return;
@@ -238,6 +272,20 @@ export default function FuncionarioInterfone() {
       }
 
       const token = isNative ? getToken() : null;
+
+      // Token vencido = handshake recusado = portaria muda. Renova antes de abrir.
+      if (isNative && tokenPertoDeExpirar(token)) {
+        if (!renovandoTokenRef.current) {
+          renovandoTokenRef.current = true;
+          void refreshSession().then((ok) => {
+            renovandoTokenRef.current = false;
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = setTimeout(connect, ok ? 0 : 30_000);
+          });
+        }
+        return;
+      }
+
       const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
       manualWsCloseRef.current = false;
       const ws = new WebSocket(wsUrl);
@@ -251,6 +299,20 @@ export default function FuncionarioInterfone() {
           funcionarioId: user.id,
           condominioId: user.condominioId,
         }));
+
+        // Veio do aviso global com o porteiro já tendo tocado em atender.
+        const retomada = retomadaRef.current;
+        const retomadaId = retomada?.pendingCall?.callId;
+        if (retomada?.autoAnswer && retomadaId) {
+          retomadaRef.current = { ...retomada, autoAnswer: false };
+          jaAtendidaRef.current = retomadaId;
+          stopRingtone();
+          ws.send(JSON.stringify({ type: "call-answer", callId: retomadaId }));
+          setCallState("connected");
+          setCallDuration(0);
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = setInterval(() => setCallDuration((p) => p + 1), 1000);
+        }
         // Start heartbeat to keep connection alive through proxies
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
@@ -269,6 +331,7 @@ export default function FuncionarioInterfone() {
           case "pong":
             break;
           case "incoming-call":
+            if (jaAtendidaRef.current === msg.callId) break;
             setIncomingCall({
               callId: msg.callId,
               visitanteNome: msg.visitanteNome || "Visitante",
@@ -303,6 +366,7 @@ export default function FuncionarioInterfone() {
             setTimeout(() => { setCallState("idle"); setIsOutgoingCall(false); setIsInternalCall(false); }, 3000);
             break;
           case "internal-incoming-call":
+            if (jaAtendidaRef.current === msg.callId) break;
             setIncomingCall({
               callId: msg.callId,
               visitanteNome: msg.callerName || "Morador",
@@ -333,6 +397,16 @@ export default function FuncionarioInterfone() {
             // Morador reconnected after handoff — resend WebRTC offer
             console.log("[Portaria] resend-offer received, callId:", msg.callId);
             startOutgoingWebRTC(msg.callId, "morador");
+            break;
+          case "call-cancelled":
+            // Outro porteiro atendeu, quem chamou desistiu ou o tempo esgotou.
+            // Só mexe na chamada que está tocando aqui: sem isso, o cancelamento
+            // de um toque alheio derrubava a tela de uma chamada de saída.
+            if (!incomingCallRef.current || incomingCallRef.current.callId !== msg.callId) break;
+            if (callStateRef.current === "connected") break;
+            stopRingtone();
+            setIncomingCall(null);
+            setCallState("idle");
             break;
           case "call-rejected":
             if (isOutgoingCallRef.current) {
@@ -534,12 +608,6 @@ export default function FuncionarioInterfone() {
     setCallState("ended");
     cleanup();
     setTimeout(() => setCallState("idle"), 3000);
-  };
-
-  // Open gate
-  const handleOpenGate = () => {
-    if (!incomingCall || !wsRef.current) return;
-    wsRef.current.send(JSON.stringify({ type: "open-gate", callId: incomingCall.callId }));
   };
 
   // Toggle mute
@@ -760,11 +828,10 @@ export default function FuncionarioInterfone() {
               <TStep n={3}>A chamada chega direto aqui — <strong>sem verificação, sem filtros</strong></TStep>
               <TStep n={4}>Você vê o <strong>vídeo do visitante</strong> em tempo real</TStep>
               <TStep n={5}>Fale com o visitante por <strong>áudio</strong> (ele não vê você)</TStep>
-              <TStep n={6}>Pode <strong>abrir o portão</strong> remotamente direto pela tela</TStep>
+              <TStep n={6}>Ao encerrar, a chamada fica <strong>registrada no histórico</strong> com data e hora</TStep>
             </TSection>
             <TSection icon={<span>🎮</span>} title="CONTROLES DURANTE A CHAMADA">
               <TBullet><strong>🔇 Mudo</strong> — Desliga seu microfone</TBullet>
-              <TBullet><strong>🚪 Abrir Portão</strong> — Envia comando para abrir o portão</TBullet>
               <TBullet><strong>📞 Encerrar</strong> — Finaliza a chamada</TBullet>
             </TSection>
             <TSection icon={<span>📡</span>} title="STATUS DA CONEXÃO">
@@ -981,15 +1048,6 @@ export default function FuncionarioInterfone() {
               >
                 {isMuted ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
               </button>
-              {!isInternalCall && (
-                <button
-                  onClick={handleOpenGate}
-                  className="w-14 h-14 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 16px rgba(16,185,129,0.4)" }}
-                >
-                  <DoorOpen className="w-6 h-6 text-white" />
-                </button>
-              )}
               <button
                 onClick={handleEndCall}
                 className="w-12 h-12 rounded-full flex items-center justify-center"

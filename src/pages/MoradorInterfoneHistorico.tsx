@@ -13,6 +13,7 @@ interface Call {
   visitante_nome: string | null;
   visitante_empresa: string | null;
   status: string;
+  resultado: string | null;
   duracao_segundos: number | null;
   created_at: string;
 }
@@ -102,7 +103,14 @@ export default function MoradorInterfoneHistorico() {
                   <span style={{ fontWeight: 700, color: "#003580", fontSize: 15 }}>
                     {c.visitante_nome || "Visitante"}
                   </span>
-                  {statusBadge(c.status)}
+                  <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {statusBadge(c.status)}
+                    {c.resultado === "encaminhado_whatsapp" && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+                        Seguiu p/ WhatsApp
+                      </span>
+                    )}
+                  </span>
                 </div>
                 {c.visitante_empresa && (
                   <div style={{ fontSize: 13, color: "#334155", marginBottom: 4 }}>

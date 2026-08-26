@@ -11,7 +11,7 @@ import {
   ensureMediaDevicesAvailable,
   explainMediaError,
 } from "@/lib/mediaDiagnostics";
-import { startCallRing, stopCallRing } from "@/lib/callRing";
+import { startCallRing, stopCallRing, podeUsarTelaCheia, abrirConfigTelaCheia } from "@/lib/callRing";
 import {
   Phone,
   PhoneOff,
@@ -20,7 +20,6 @@ import {
   Mic,
   MicOff,
   Volume2,
-  DoorOpen,
   User,
   Briefcase,
   Camera,
@@ -35,7 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { apiFetch, getToken } from "@/lib/api";
+import { apiFetch, getToken, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
 import { useTheme } from "@/hooks/useTheme";
 
 const API = "/api";
@@ -96,7 +95,6 @@ export default function MoradorInterfone() {
   const [history, setHistory] = useState<CallHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [gateOpened, setGateOpened] = useState(false);
 
   // Internal call states
   const [isOutgoingCall, setIsOutgoingCall] = useState(false);
@@ -159,6 +157,29 @@ export default function MoradorInterfone() {
   const viewStateRef = useRef<ViewState>("listening");
   const connectRef = useRef<(() => void) | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const renovandoTokenRef = useRef(false);
+
+  // Android 14+ pode bloquear a chamada em tela cheia: a campainha toca mas o
+  // morador com o celular bloqueado não vê a tela de atender. Reconfere ao
+  // voltar do background, porque o usuário pode ter liberado nas configurações.
+  const [semTelaCheia, setSemTelaCheia] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    const conferir = () => {
+      void podeUsarTelaCheia().then((ok) => {
+        if (vivo) setSemTelaCheia(!ok);
+      });
+    };
+    conferir();
+    const onVis = () => {
+      if (document.visibilityState === "visible") conferir();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      vivo = false;
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   // Keep viewStateRef in sync
   useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
@@ -243,6 +264,19 @@ export default function MoradorInterfone() {
       }
 
       const token = isNative ? getToken() : null;
+
+      // Token vencido = handshake recusado. Renova e reconecta em vez de insistir.
+      if (isNative && tokenPertoDeExpirar(token)) {
+        if (!renovandoTokenRef.current) {
+          renovandoTokenRef.current = true;
+          void refreshSession().then((ok) => {
+            renovandoTokenRef.current = false;
+            setTimeout(connect, ok ? 0 : 30_000);
+          });
+        }
+        return;
+      }
+
       const wsUrl = token ? `${WS_URL}?token=${token}` : WS_URL;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -294,7 +328,6 @@ export default function MoradorInterfone() {
               peerTypeRef.current = msg.isInternal ? "funcionario" : "visitor";
               setViewState("connected");
               setCallDuration(0);
-              setGateOpened(false);
               if (timerRef.current) clearInterval(timerRef.current);
               timerRef.current = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
             }
@@ -338,7 +371,6 @@ export default function MoradorInterfone() {
             if (isOutgoingCallRef.current && incomingCallRef.current) {
               setViewState("connected");
               setCallDuration(0);
-              setGateOpened(false);
               timerRef.current = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
               startOutgoingWebRTC(incomingCallRef.current.callId, "funcionario");
             }
@@ -440,7 +472,6 @@ export default function MoradorInterfone() {
     peerTypeRef.current = pending.isInternal ? "funcionario" : "visitor";
     setViewState("connected");
     setCallDuration(0);
-    setGateOpened(false);
     timerRef.current = setInterval(() => setCallDuration((prev) => prev + 1), 1000);
 
     // Clear navigation state so refreshing the page doesn't replay
@@ -590,7 +621,6 @@ export default function MoradorInterfone() {
     stopRingtone();
     setViewState("connected");
     setCallDuration(0);
-    setGateOpened(false);
 
     timerRef.current = setInterval(() => {
       setCallDuration((prev) => prev + 1);
@@ -655,14 +685,6 @@ export default function MoradorInterfone() {
     }
     setViewState("ended");
     cleanup();
-  };
-
-  // Open gate
-  const handleOpenGate = () => {
-    if (incomingCall) {
-      wsRef.current?.send(JSON.stringify({ type: "open-gate", callId: incomingCall.callId }));
-      setGateOpened(true);
-    }
   };
 
   // Toggle mute
@@ -1029,14 +1051,6 @@ export default function MoradorInterfone() {
               </div>
             </div>
           </div>
-
-          {/* Gate opened toast */}
-          {gateOpened && (
-            <div className="absolute top-16 left-4 right-4 p-3 rounded-xl flex items-center gap-2" style={{ background: "rgba(16,185,129,0.9)" }}>
-              <DoorOpen className="w-5 h-5 text-white" />
-              <span className="text-sm font-bold text-white">Portão Aberto!</span>
-            </div>
-          )}
         </div>
 
         {/* Controls bar */}
@@ -1047,15 +1061,6 @@ export default function MoradorInterfone() {
             style={{ background: isMuted ? "#ef4444" : "rgba(255,255,255,0.15)" }}
           >
             {isMuted ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
-          </button>
-
-          <button
-            onClick={handleOpenGate}
-            disabled={gateOpened}
-            className="w-14 h-14 rounded-full flex items-center justify-center"
-            style={{ background: gateOpened ? "#10b981" : "#003580", opacity: gateOpened ? 0.7 : 1 }}
-          >
-            <DoorOpen className="w-6 h-6 text-white" />
           </button>
 
           <button
@@ -1079,7 +1084,7 @@ export default function MoradorInterfone() {
           <h2 className="text-xl font-bold" style={{ marginTop: "0.5cm" }}>Chamada Encerrada</h2>
           {callDuration > 0 && <p className="text-sm text-blue-200" style={{ marginTop: "0.5cm" }}>Duração: {formatTime(callDuration)}</p>}
           <button
-            onClick={() => { setViewState("listening"); setIncomingCall(null); setCallDuration(0); setGateOpened(false); setIsOutgoingCall(false); setIsInternalCall(false); fetchHistory(); }}
+            onClick={() => { setViewState("listening"); setIncomingCall(null); setCallDuration(0); setIsOutgoingCall(false); setIsInternalCall(false); fetchHistory(); }}
             className="text-sm font-bold rounded-2xl"
             style={{ background: "#fff", color: "#003580", marginTop: "0.5cm", paddingLeft: "2cm", paddingRight: "2cm", paddingTop: "0.5cm", paddingBottom: "0.5cm" }}
           >
@@ -1128,7 +1133,6 @@ export default function MoradorInterfone() {
             </TSection>
             <TSection icon={<span>🎮</span>} title="CONTROLES DURANTE A CHAMADA">
               <TBullet><strong>🔇 Mudo</strong> — Desliga seu microfone (visitante não te ouve)</TBullet>
-              <TBullet><strong>🚪 Abrir Portão</strong> — Envia comando para abrir o portão remotamente</TBullet>
               <TBullet><strong>📞 Encerrar</strong> — Finaliza a chamada</TBullet>
               <TBullet>A chamada tem <strong>timeout de 60 segundos</strong> se ninguém atender</TBullet>
             </TSection>
@@ -1189,10 +1193,9 @@ export default function MoradorInterfone() {
                 ["&#128222;", "O interfone virtual substitui o interfone fisico do apartamento. Quando alguem chama no painel da portaria, a ligacao cai diretamente no seu celular pelo app."],
                 ["&#128276;", "Ao receber uma chamada, o app toca um som de interfone e exibe a tela de atendimento com nome e foto do visitante (se cadastrado)."],
                 ["&#127911;", "Voce pode atender a chamada e conversar com quem esta na portaria usando o microfone e alto-falante do celular, como uma ligacao normal."],
-                ["&#128682;", "Durante a chamada, voce pode autorizar a entrada tocando em 'Abrir Portao' — o sistema aciona a cancela automaticamente via SONOFF/eWeLink."],
                 ["&#128683;", "Voce tambem pode recusar a entrada ou encerrar a chamada sem atender, registrando a ocorrencia no historico."],
                 ["&#128247;", "Se o condominio tiver camera na portaria, voce ve a imagem ao vivo durante a chamada antes de decidir abrir ou nao."],
-                ["&#128203;", "Todas as chamadas ficam registradas no historico com data, hora, nome do visitante e acao tomada (atendida, recusada, porta aberta)."],
+                ["&#128203;", "Todas as chamadas ficam registradas no historico com data, hora, nome do visitante e acao tomada (atendida, recusada, nao atendida)."],
                 ["&#128100;", "Funciona para visitantes, entregadores, prestadores de servico e qualquer pessoa que se apresente na portaria."],
                 ["&#128241;", "Nao precisa estar em casa — funciona de qualquer lugar com internet, transformando seu celular no interfone do apartamento."],
               ] as [string, string][]).map(([icon, text], i) => (
@@ -1204,6 +1207,29 @@ export default function MoradorInterfone() {
             </div>
           )}
         </div>
+
+        {semTelaCheia && (
+          <button
+            type="button"
+            onClick={() => { void abrirConfigTelaCheia(); }}
+            style={{
+              width: "100%", textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start",
+              background: isDark ? "#422006" : "#fef3c7",
+              border: `1px solid ${isDark ? "#a16207" : "#fbbf24"}`,
+              borderRadius: 12, padding: "12px 14px", marginBottom: 12, cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>&#9888;</span>
+            <span>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 13, color: isDark ? "#fde68a" : "#92400e" }}>
+                A chamada não vai aparecer com a tela bloqueada
+              </span>
+              <span style={{ display: "block", fontSize: 12, color: isDark ? "#fcd34d" : "#a16207", marginTop: 2 }}>
+                Toque aqui e permita "Notificações em tela cheia" para o interfone abrir sozinho.
+              </span>
+            </span>
+          </button>
+        )}
 
         {/* Status */}
         <div className="text-center" style={{ paddingTop: "0.5cm", paddingBottom: "0.5cm" }}>

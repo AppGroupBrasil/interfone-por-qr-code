@@ -1,0 +1,49 @@
+# Contexto de build: só o que o Dockerfile realmente precisa (src, server,
+# public, scripts, configs). O resto pesa no envio ao daemon e pode levar dado
+# sensível (banco de desenvolvimento, .env, keystore) para dentro das camadas.
+node_modules
+android
+ios
+dist
+dist-server
+ota-build
+artifacts
+backups
+certs
+coverage
+.git
+.github
+.vscode
+.idea
+
+# Modelos de reconhecimento facial (13 MB): só server/faceService.ts os lê, e ele
+# só é importado com EXTRA_MODULES_ENABLED/GATE_ENABLED ligados — fora do escopo
+# v1. Reativar face exige tirar esta linha E rebuildar sem --omit=dev.
+public/models
+
+# Segredos e dados locais
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+*.jks
+*.keystore
+key.properties
+**/google-services.json
+server/firebase-service-account.json
+secrets
+
+# Pacotes gerados
+*.apk
+*.aab
+*.zip
+*.tgz
+
+# Ruído
+tmp-*
+*.log
+npm-debug.log*
+Thumbs.db
+.DS_Store

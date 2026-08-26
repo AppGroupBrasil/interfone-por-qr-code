@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
+import { EXTRAS_ENABLED } from "@/lib/config";
 import {
   ChevronDown,
   ChevronUp,
@@ -75,7 +76,9 @@ const ALL_FUNCOES: FuncaoGroup[] = [
       { icon: BarChart3, label: "Painel", description: "Painel de condomínios gerenciados", route: "/master/painel", minRole: "administradora" },
       { icon: Users2, label: "Usuários", description: "Gerenciar todos os usuários", route: "/master/usuarios", minRole: "administradora" },
       { icon: FileText, label: "Logs", description: "Histórico de atividades do sistema", route: "/master/logs", minRole: "administradora" },
-      { icon: Settings, label: "Config Admin", description: "Configurações da administradora", route: "/admin/features-config", minRole: "administradora" },
+      ...(EXTRAS_ENABLED
+        ? [{ icon: Settings, label: "Config Admin", description: "Configurações da administradora", route: "/admin/features-config", minRole: "administradora" }]
+        : []),
     ],
   },
   {

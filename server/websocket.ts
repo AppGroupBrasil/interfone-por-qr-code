@@ -15,7 +15,7 @@ import type { Server } from "http";
 import type { IncomingMessage } from "http";
 import jwt from "jsonwebtoken";
 import db, { type DbUser } from "./db.js";
-import { sendPushToUser } from "./pushService.js";
+import { sendPushToUser, sendPushToCondominioRole } from "./pushService.js";
 import { JWT_SECRET } from "./config.js";
 import { log } from "./logger.js";
 
@@ -32,13 +32,19 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | n
   return match ? match.slice(name.length + 1) : null;
 }
 
+/** users.id e funcionarios.id são sequências independentes: o mesmo número
+ *  identifica pessoas diferentes. A marca diz de qual tabela o id veio — sem
+ *  ela, o porteiro nº 3 tomava o lugar do morador nº 3 no mapa de conexões e
+ *  a campainha do morador parava de tocar. */
+type WsUser = DbUser & { fromFuncionariosTable?: boolean };
+
 /** Verify JWT from WebSocket upgrade request and return user or null.
  *  Checks: 1) ?token= query param (Capacitor), 2) Cookie header (web)
  *  Handles both regular user tokens ({ userId }) and funcionario tokens ({ funcId }) */
-function authenticateWs(req: IncomingMessage): DbUser | null {
+function authenticateWs(req: IncomingMessage): WsUser | null {
   const cookieToken = parseCookie(req.headers.cookie, COOKIE_NAME);
 
-  const resolveUserFromToken = (token: string | null): DbUser | null => {
+  const resolveUserFromToken = (token: string | null): WsUser | null => {
     if (!token) return null;
     const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number; funcId?: number };
 
@@ -66,7 +72,8 @@ function authenticateWs(req: IncomingMessage): DbUser | null {
         cpf: null,
         created_at: func.created_at || "",
         updated_at: func.updated_at || "",
-      } as DbUser;
+        fromFuncionariosTable: true,
+      } as WsUser;
     }
 
     return null;
@@ -100,25 +107,120 @@ interface WsClient {
   ws: WebSocket;
   type: "visitor" | "morador" | "funcionario";
   moradorId?: number;
+  /** Chave namespaced ("u:<id>" ou "f:<id>") — ver keyConn(). */
+  connKey?: string;
   callId?: string;
   condominioId?: number;
   userId?: number;
 }
 
+/** Alvo de chamada: moradorId/targetUserId vêm sempre da tabela users. */
+const keyMorador = (id: number) => `u:${id}`;
+/** Chave da própria conexão, separando as duas tabelas de identidade. */
+const keyConn = (u: WsUser) => (u.fromFuncionariosTable ? `f:${u.id}` : `u:${u.id}`);
+
 // Active connections indexed by a unique key
 const clients = new Map<string, WsClient>();
-// Morador connections indexed by moradorId for incoming calls
-const moradorConnections = new Map<number, WsClient>();
+// Morador connections indexed by connKey for incoming calls
+const moradorConnections = new Map<string, WsClient>();
 // Funcionario connections indexed by condominioId for portaria calls
 const funcionarioConnections = new Map<number, WsClient[]>();
 // Pending call handoffs — morador switching from GlobalIncomingCall WS to MoradorInterfone WS
-const pendingHandoffs = new Map<number, { callId: string; timestamp: number }>();
+const pendingHandoffs = new Map<string, { callId: string; timestamp: number }>();
 // Chamadas já atendidas por morador — se o app recarregar logo depois de atender
 // (tocar na notificação, OTA, troca de página), o socket novo reencontra a chamada
 // e pede a oferta de novo em vez de deixar o visitante na tela azul.
-const answeredCalls = new Map<number, { callId: string; timestamp: number; visitanteNome: string; visitorClientId: string; isInternal: boolean }>();
+const answeredCalls = new Map<string, { callId: string; timestamp: number; visitanteNome: string; visitorClientId: string; isInternal: boolean }>();
 // Pending push calls — visitor waiting for morador to come online after push notification
-const pendingPushCalls = new Map<string, { callId: string; visitorClientId: string; moradorId: number; visitanteNome: string; visitanteEmpresa: string | null; visitanteFoto: string | null; nivelSeguranca: number; bloco: string; apartamento: string; timestamp: number; isInternal?: boolean; callerRole?: string }>();
+type PendingPushCall = {
+  callId: string;
+  visitorClientId: string;
+  moradorId: number;
+  visitanteNome: string;
+  visitanteEmpresa: string | null;
+  visitanteFoto: string | null;
+  nivelSeguranca: number;
+  bloco: string;
+  apartamento: string;
+  timestamp: number;
+  isInternal?: boolean;
+  callerRole?: string;
+  // Chamada tocando na portaria: o alvo é o condomínio inteiro, não um morador.
+  portariaCondominioId?: number;
+  // true = veio de visitante (entrega como incoming-call); false/ausente = morador
+  isPortariaCall?: boolean;
+};
+const pendingPushCalls = new Map<string, PendingPushCall>();
+
+// Silencia a chamada nos demais porteiros quando um deles resolve (atendeu,
+// recusou) ou quando o tempo esgota — todos tocaram, só um fica com a chamada.
+function cancelarToquePortaria(condominioId: number, callId: string, exceto: string): void {
+  for (const f of funcionarioConnections.get(condominioId) || []) {
+    if (f.id === exceto || f.ws.readyState !== WebSocket.OPEN) continue;
+    f.ws.send(JSON.stringify({ type: "call-cancelled", callId }));
+  }
+}
+
+// Toca em TODA a portaria: cada funcionário online recebe a chamada pelo
+// WebSocket e o push acorda quem está com o app fechado. Antes só o primeiro
+// socket da lista era chamado — bastava aquele porteiro estar com o app
+// dormindo para a chamada morrer em silêncio, sem push e sem aviso.
+function ringPortaria(params: {
+  condominioId: number;
+  callId: string;
+  wsMessage: Record<string, unknown>;
+  pushTitle: string;
+  pushBody: string;
+  pending: PendingPushCall;
+  callerWs: WebSocket;
+  timeoutMs?: number;
+}): void {
+  const { condominioId, callId, wsMessage, pushTitle, pushBody, pending, callerWs } = params;
+  const online = (funcionarioConnections.get(condominioId) || []).filter(
+    (f) => f.ws.readyState === WebSocket.OPEN
+  );
+  const texto = JSON.stringify(wsMessage);
+  // O callId NÃO é gravado nos sockets aqui: quem atender primeiro é que fica
+  // com a chamada (call-answer grava), senão o roteamento WebRTC ficaria
+  // ambíguo entre vários porteiros com o mesmo callId.
+  for (const f of online) f.ws.send(texto);
+
+  // Rede de segurança: socket zumbi (app em 2º plano) não toca. O push acorda o
+  // aparelho e o pending re-entrega a chamada no register-funcionario.
+  pendingPushCalls.set(callId, pending);
+
+  sendPushToCondominioRole(condominioId, ["funcionario", "sindico"], {
+    title: pushTitle,
+    body: pushBody,
+    data: { type: "interfone-call", callId, destino: "portaria" },
+    channelId: "interfone_calls_v2",
+    sound: "ringtone",
+    fullScreen: true,
+  })
+    .then((enviados) => {
+      if (online.length > 0) return;
+      if (enviados === 0) {
+        // Nenhum porteiro online e nenhum aparelho registrado: portaria fechada.
+        pendingPushCalls.delete(callId);
+        if (callerWs.readyState === WebSocket.OPEN) {
+          callerWs.send(JSON.stringify({ type: "call-unavailable", callId, reason: "portaria_offline" }));
+        }
+      } else if (callerWs.readyState === WebSocket.OPEN) {
+        callerWs.send(JSON.stringify({ type: "call-waiting-push", callId }));
+      }
+    })
+    .catch(() => {});
+
+  // Ninguém atendeu: libera quem chamou em vez de deixá-lo esperando para sempre.
+  setTimeout(() => {
+    if (!pendingPushCalls.has(callId)) return;
+    pendingPushCalls.delete(callId);
+    cancelarToquePortaria(condominioId, callId, "");
+    if (callerWs.readyState === WebSocket.OPEN) {
+      callerWs.send(JSON.stringify({ type: "call-unavailable", callId, reason: "portaria_offline" }));
+    }
+  }, params.timeoutMs ?? 30_000);
+}
 
 export function initSignalingServer(_server?: Server) {
   const isProd = process.env.NODE_ENV === "production";
@@ -224,13 +326,15 @@ export function initSignalingServer(_server?: Server) {
             }
             client.type = "morador";
             client.moradorId = authUser.id;
+            client.connKey = keyConn(authUser);
             client.condominioId = authUser.condominio_id ?? undefined;
+            const connKey = client.connKey;
 
             // Um morador = uma conexão viva. Quando o WebView recarrega (abrir o app
             // pela notificação, cold start), o socket antigo fica ZUMBI no servidor
             // por minutos — e roubava o webrtc-offer/ICE da chamada nova, dando a
             // "tela azul sem imagem". Derruba o anterior antes de assumir.
-            const previous = moradorConnections.get(authUser.id);
+            const previous = moradorConnections.get(connKey);
             console.log(`[AUDIT] register-morador ${authUser.id} novo=${clientId} page=${msg.page ?? "-"} derrubando=${previous && previous !== client ? previous.id : "-"}`);
 
             // O aviso global (overlay) NUNCA toma o lugar da tela do interfone que
@@ -249,10 +353,10 @@ export function initSignalingServer(_server?: Server) {
               dbg(`  [WS] Conexão anterior do morador ${authUser.id} derrubada (${previous.id})`);
               try { previous.ws.close(4002, "replaced"); } catch {}
             }
-            moradorConnections.set(authUser.id, client);
+            moradorConnections.set(connKey, client);
 
             // Check for pending call handoff (GlobalIncomingCall → MoradorInterfone)
-            const handoff = pendingHandoffs.get(authUser.id);
+            const handoff = pendingHandoffs.get(connKey);
             if (handoff && msg.page === "overlay") {
               // Handoff é pra tela do interfone. Devolver call-resumed pro aviso
               // global fazia ele reenviar call-handoff e fechar o socket — o par
@@ -263,7 +367,7 @@ export function initSignalingServer(_server?: Server) {
             }
             if (handoff && (Date.now() - handoff.timestamp < 15000)) {
               client.callId = handoff.callId;
-              pendingHandoffs.delete(authUser.id);
+              pendingHandoffs.delete(connKey);
               dbg(`  [WS] Handoff resumed: moradorId=${authUser.id} callId=${handoff.callId}`);
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
               ws.send(JSON.stringify({ type: "call-resumed", callId: handoff.callId }));
@@ -275,12 +379,12 @@ export function initSignalingServer(_server?: Server) {
                 peer.ws.send(JSON.stringify({ type: "resend-offer", callId: handoff.callId }));
               }
             } else {
-              pendingHandoffs.delete(authUser.id); // clean up expired
+              pendingHandoffs.delete(connKey); // clean up expired
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
 
               // App recarregou depois de atender (notificação, OTA, troca de página):
               // reata a chamada em vez de deixar o visitante sem destino pra oferta.
-              const answered = answeredCalls.get(authUser.id);
+              const answered = answeredCalls.get(connKey);
               const answeredPeer = answered ? findPeerByCallId(answered.callId, clientId) : undefined;
               if (answered && Date.now() - answered.timestamp < 60000 && answeredPeer) {
                 client.callId = answered.callId;
@@ -298,7 +402,7 @@ export function initSignalingServer(_server?: Server) {
                   answeredPeer.ws.send(JSON.stringify({ type: "resend-offer", callId: answered.callId }));
                 }
               } else if (answered && !answeredPeer) {
-                answeredCalls.delete(authUser.id);
+                answeredCalls.delete(connKey);
               }
             }
 
@@ -365,16 +469,67 @@ export function initSignalingServer(_server?: Server) {
               ws.close(4001, "Unauthorized");
               return;
             }
+            // Só quem trabalha na portaria entra no pool: ringPortaria difunde a
+            // chamada do visitante para todos eles, e um morador autenticado que
+            // se registrasse aqui passaria a atender a portaria do condomínio.
+            if (authUser.role !== "funcionario" && authUser.role !== "sindico") {
+              ws.send(JSON.stringify({ type: "error", message: "Sem permissão." }));
+              ws.close(4003, "Forbidden");
+              return;
+            }
             client.type = "funcionario";
             client.moradorId = authUser.id;
+            client.connKey = keyConn(authUser);
             client.condominioId = authUser.condominio_id ?? undefined;
-            moradorConnections.set(authUser.id, client);
+            moradorConnections.set(client.connKey, client);
             // Also add to funcionario pool by condominio
             if (authUser.condominio_id && !funcionarioConnections.has(authUser.condominio_id)) {
               funcionarioConnections.set(authUser.condominio_id, []);
             }
             if (authUser.condominio_id) {
               funcionarioConnections.get(authUser.condominio_id)!.push(client);
+            }
+
+            // Chamada que chegou por push com o app fechado: re-entrega ao abrir.
+            // Mesma rede de segurança do morador — pega a mais recente e descarta
+            // as mortas (quem chamou já desistiu).
+            if (authUser.condominio_id) {
+              let pendPort: { callId: string; pc: PendingPushCall } | null = null;
+              for (const [pcId, pc] of pendingPushCalls) {
+                if (pc.portariaCondominioId !== authUser.condominio_id) continue;
+                const quemChamou = findClientById(pc.visitorClientId);
+                const viva = Date.now() - pc.timestamp < 120000
+                  && quemChamou !== undefined
+                  && quemChamou.ws.readyState === WebSocket.OPEN;
+                if (!viva) { pendingPushCalls.delete(pcId); continue; }
+                if (!pendPort || pc.timestamp > pendPort.pc.timestamp) pendPort = { callId: pcId, pc };
+              }
+              if (pendPort) {
+                const pc = pendPort.pc;
+                // Não apagar: se o app recarregar de novo, a chamada é re-entregue.
+                ws.send(JSON.stringify(pc.isPortariaCall
+                  ? {
+                      type: "incoming-call",
+                      callId: pendPort.callId,
+                      visitanteNome: pc.visitanteNome,
+                      visitanteEmpresa: null,
+                      visitanteFoto: null,
+                      nivelSeguranca: 0,
+                      bloco: pc.bloco,
+                      apartamento: pc.apartamento,
+                      visitorClientId: pc.visitorClientId,
+                      isPortariaCall: true,
+                    }
+                  : {
+                      type: "internal-incoming-call",
+                      callId: pendPort.callId,
+                      callerName: pc.visitanteNome,
+                      callerRole: pc.callerRole || "morador",
+                      callerClientId: pc.visitorClientId,
+                      bloco: pc.bloco,
+                      apartamento: pc.apartamento,
+                    }));
+              }
             }
             ws.send(JSON.stringify({ type: "registered-funcionario", funcionarioId: authUser.id }));
             break;
@@ -386,12 +541,11 @@ export function initSignalingServer(_server?: Server) {
             client.callId = pCallId;
             client.type = "visitor";
 
-            // Find any online funcionario for this condominium
-            const funcPool = funcionarioConnections.get(cId) || [];
-            const onlineFunc = funcPool.find(f => f.ws.readyState === WebSocket.OPEN);
-            if (onlineFunc) {
-              onlineFunc.callId = pCallId;
-              onlineFunc.ws.send(JSON.stringify({
+            // Toca em todos os porteiros online + push para os que estão fora do app.
+            ringPortaria({
+              condominioId: cId,
+              callId: pCallId,
+              wsMessage: {
                 type: "incoming-call",
                 callId: pCallId,
                 visitanteNome: pNome || "Visitante",
@@ -402,10 +556,20 @@ export function initSignalingServer(_server?: Server) {
                 apartamento: "PORTARIA",
                 visitorClientId: clientId,
                 isPortariaCall: true,
-              }));
-            } else {
-              ws.send(JSON.stringify({ type: "call-unavailable", callId: pCallId, reason: "portaria_offline" }));
-            }
+              },
+              pushTitle: "📞 Chamada na Portaria",
+              pushBody: `${pNome || "Visitante"} está chamando a portaria`,
+              pending: {
+                callId: pCallId, visitorClientId: clientId, moradorId: 0,
+                visitanteNome: pNome || "Visitante",
+                visitanteEmpresa: null, visitanteFoto: null,
+                nivelSeguranca: 0, bloco: pBloco || "", apartamento: "PORTARIA",
+                timestamp: Date.now(),
+                portariaCondominioId: cId, isPortariaCall: true,
+              },
+              callerWs: ws,
+              timeoutMs: 45_000,
+            });
             break;
           }
 
@@ -421,7 +585,7 @@ export function initSignalingServer(_server?: Server) {
               break;
             }
 
-            const moradorClient = moradorConnections.get(moradorId);
+            const moradorClient = moradorConnections.get(keyMorador(moradorId));
             if (moradorClient && moradorClient.ws.readyState === WebSocket.OPEN) {
               moradorClient.callId = callId;
               moradorClient.ws.send(JSON.stringify({
@@ -509,7 +673,7 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── Authorization request (Level 3) ───
           case "auth-request": {
-            const moradorClient2 = moradorConnections.get(msg.moradorId);
+            const moradorClient2 = moradorConnections.get(keyMorador(msg.moradorId));
             if (moradorClient2 && moradorClient2.ws.readyState === WebSocket.OPEN) {
               moradorClient2.ws.send(JSON.stringify({
                 type: "auth-request",
@@ -553,12 +717,18 @@ export function initSignalingServer(_server?: Server) {
             console.log(`[AUDIT] call-answer clientId=${clientId} user=${authUser?.id ?? "anon"} morador=${client.moradorId ?? "-"} callId=${msg.callId}`);
             const answeredInfo = msg.callId ? pendingPushCalls.get(msg.callId) : undefined;
             if (msg.callId) pendingPushCalls.delete(msg.callId); // chamada resolvida: não re-entregar
-            // Ensure this client has the callId set (for handoff scenarios)
-            if (msg.callId && !client.callId) {
+            // Chamada da portaria: quem atendeu primeiro fica com ela; os outros param de tocar.
+            if (answeredInfo?.portariaCondominioId) {
+              cancelarToquePortaria(answeredInfo.portariaCondominioId, msg.callId, clientId);
+            }
+            // O socket passa a ser o dono desta chamada. Sempre sobrescreve: o
+            // porteiro atende varias chamadas no mesmo socket e um callId antigo
+            // aqui faz o findPeerByCallId errar o alvo do webrtc-offer.
+            if (msg.callId) {
               client.callId = msg.callId;
             }
-            if (msg.callId && client.moradorId) {
-              answeredCalls.set(client.moradorId, {
+            if (msg.callId && client.connKey) {
+              answeredCalls.set(client.connKey, {
                 callId: msg.callId,
                 timestamp: Date.now(),
                 visitanteNome: answeredInfo?.visitanteNome || "Visitante",
@@ -578,10 +748,10 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── Call handoff (GlobalIncomingCall → MoradorInterfone page) ───
           case "call-handoff": {
-            if (client.moradorId && client.callId) {
+            if (client.connKey && client.callId) {
               dbg(`  [WS] Call handoff: moradorId=${client.moradorId} callId=${client.callId}`);
               pendingPushCalls.delete(client.callId); // handoff = atendida: não re-entregar via pending
-              pendingHandoffs.set(client.moradorId, { callId: client.callId, timestamp: Date.now() });
+              pendingHandoffs.set(client.connKey, { callId: client.callId, timestamp: Date.now() });
               client.callId = undefined; // prevent close handler from ending the call
             }
             break;
@@ -589,7 +759,11 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── Reject call (works for external AND internal calls) ───
           case "call-reject": {
+            const recusada = msg.callId ? pendingPushCalls.get(msg.callId) : undefined;
             if (msg.callId) pendingPushCalls.delete(msg.callId); // recusada: não re-entregar
+            if (recusada?.portariaCondominioId) {
+              cancelarToquePortaria(recusada.portariaCondominioId, msg.callId, clientId);
+            }
             forgetAnsweredCall(msg.callId);
             const rejectPeer = findPeerByCallId(msg.callId, clientId);
             if (rejectPeer) {
@@ -653,21 +827,19 @@ export function initSignalingServer(_server?: Server) {
 
           // ─── End call (generic — finds peer by callId) ───
           case "call-end": {
+            const encerrada = msg.callId ? pendingPushCalls.get(msg.callId) : undefined;
             if (msg.callId) pendingPushCalls.delete(msg.callId); // encerrada: não re-entregar
+            // Desistiu antes de atenderem: para o toque em toda a portaria.
+            if (encerrada?.portariaCondominioId) {
+              cancelarToquePortaria(encerrada.portariaCondominioId, msg.callId, clientId);
+            }
             forgetAnsweredCall(msg.callId);
             const endPeer = findPeerByCallId(msg.callId, clientId);
             if (endPeer) {
               endPeer.ws.send(JSON.stringify({ type: "call-ended", callId: msg.callId }));
             }
-            break;
-          }
-
-          // ─── Open gate command ───
-          case "open-gate": {
-            const visitorGate = findClientByCallId(msg.callId, "visitor");
-            if (visitorGate) {
-              visitorGate.ws.send(JSON.stringify({ type: "gate-opened", callId: msg.callId }));
-            }
+            // Chamada encerrada: o socket fica livre para a proxima.
+            if (msg.callId && client.callId === msg.callId) client.callId = undefined;
             break;
           }
 
@@ -682,7 +854,7 @@ export function initSignalingServer(_server?: Server) {
               break;
             }
             client.callId = iCallId;
-            const iTarget = moradorConnections.get(targetUserId);
+            const iTarget = moradorConnections.get(keyMorador(targetUserId));
             if (iTarget && iTarget.ws.readyState === WebSocket.OPEN) {
               iTarget.callId = iCallId;
               iTarget.ws.send(JSON.stringify({
@@ -764,22 +936,39 @@ export function initSignalingServer(_server?: Server) {
             if (!authUser) break;
             const { callId: ipCallId, callerName: ipCallerName } = msg;
             client.callId = ipCallId;
-            const funcPool2 = funcionarioConnections.get(authUser.condominio_id ?? 0) || [];
-            const onlineFunc2 = funcPool2.find(f => f.ws.readyState === WebSocket.OPEN);
-            if (onlineFunc2) {
-              onlineFunc2.callId = ipCallId;
-              onlineFunc2.ws.send(JSON.stringify({
+            const ipCondId = authUser.condominio_id ?? 0;
+            if (!ipCondId) {
+              ws.send(JSON.stringify({ type: "call-unavailable", callId: ipCallId, reason: "portaria_offline" }));
+              break;
+            }
+            const ipNome = ipCallerName || authUser.name || "Morador";
+            const ipBloco = (authUser as any).block || "";
+            const ipUnidade = (authUser as any).unit || "";
+            ringPortaria({
+              condominioId: ipCondId,
+              callId: ipCallId,
+              wsMessage: {
                 type: "internal-incoming-call",
                 callId: ipCallId,
-                callerName: ipCallerName || authUser.name,
+                callerName: ipNome,
                 callerRole: "morador",
                 callerClientId: clientId,
-                bloco: (authUser as any).block || "",
-                apartamento: (authUser as any).unit || "",
-              }));
-            } else {
-              ws.send(JSON.stringify({ type: "call-unavailable", callId: ipCallId, reason: "portaria_offline" }));
-            }
+                bloco: ipBloco,
+                apartamento: ipUnidade,
+              },
+              pushTitle: "📞 Chamada do Morador",
+              pushBody: ipUnidade ? `${ipNome} (${ipBloco} ${ipUnidade}) está chamando a portaria` : `${ipNome} está chamando a portaria`,
+              pending: {
+                callId: ipCallId, visitorClientId: clientId, moradorId: 0,
+                visitanteNome: ipNome,
+                visitanteEmpresa: null, visitanteFoto: null,
+                nivelSeguranca: 0, bloco: ipBloco, apartamento: ipUnidade,
+                timestamp: Date.now(),
+                isInternal: true, callerRole: "morador",
+                portariaCondominioId: ipCondId,
+              },
+              callerWs: ws,
+            });
             break;
           }
         }
@@ -793,10 +982,10 @@ export function initSignalingServer(_server?: Server) {
         console.log(`[AUDIT] close morador=${client.moradorId} client=${clientId} code=${code ?? "-"} reason=${reason?.toString() || "-"}`);
       }
       // Clean up — only delete from moradorConnections if this client is still the current entry
-      if (client.moradorId) {
-        const current = moradorConnections.get(client.moradorId);
+      if (client.connKey) {
+        const current = moradorConnections.get(client.connKey);
         if (current === client) {
-          moradorConnections.delete(client.moradorId);
+          moradorConnections.delete(client.connKey);
         }
       }
       // Clean up funcionario pool
@@ -812,7 +1001,12 @@ export function initSignalingServer(_server?: Server) {
       if (client.callId) {
         const closedCallId = client.callId;
         // Clean up any pending push call
+        const pendenteFechada = pendingPushCalls.get(closedCallId);
         pendingPushCalls.delete(closedCallId);
+        // Quem chamou a portaria caiu: silencia os porteiros que ainda tocam.
+        if (pendenteFechada?.portariaCondominioId) {
+          cancelarToquePortaria(pendenteFechada.portariaCondominioId, closedCallId, clientId);
+        }
         const notifyEnd = () => {
           const otherType = client.type === "visitor" ? "morador" : "visitor";
           const other = findClientByCallId(closedCallId, otherType);
@@ -826,11 +1020,11 @@ export function initSignalingServer(_server?: Server) {
         };
         // Morador que atendeu e perdeu o socket (recarregou pela notificação, OTA,
         // troca de página): dar 8s pra ele voltar antes de matar a chamada.
-        const answered = client.moradorId ? answeredCalls.get(client.moradorId) : undefined;
+        const answered = client.connKey ? answeredCalls.get(client.connKey) : undefined;
         if (answered && answered.callId === closedCallId) {
           setTimeout(() => {
             if (findClientByCallId(closedCallId, "morador")) return; // voltou
-            answeredCalls.delete(client.moradorId!);
+            answeredCalls.delete(client.connKey!);
             notifyEnd();
           }, 8000);
         } else {
@@ -842,10 +1036,10 @@ export function initSignalingServer(_server?: Server) {
 
     ws.on("error", () => {
       clients.delete(clientId);
-      if (client.moradorId) {
-        const current = moradorConnections.get(client.moradorId);
+      if (client.connKey) {
+        const current = moradorConnections.get(client.connKey);
         if (current === client) {
-          moradorConnections.delete(client.moradorId);
+          moradorConnections.delete(client.connKey);
         }
       }
       if (client.type === "funcionario" && client.condominioId) {
@@ -897,8 +1091,8 @@ function findClientByCallId(callId: string, type: "visitor" | "morador" | "funci
 /** Chamada acabou: não reatar mais essa chamada em nenhum socket novo do morador */
 function forgetAnsweredCall(callId: string | undefined) {
   if (!callId) return;
-  for (const [moradorId, a] of answeredCalls) {
-    if (a.callId === callId) answeredCalls.delete(moradorId);
+  for (const [conn, a] of answeredCalls) {
+    if (a.callId === callId) answeredCalls.delete(conn);
   }
 }
 

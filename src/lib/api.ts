@@ -196,6 +196,65 @@ export function clearToken() {
   setToken(null);
 }
 
+// ─── Sessão: renovação silenciosa ────────────────────────
+// O JWT vale 24h. Sem renovar, o app da campainha perde a sessão dormindo e o
+// morador só descobre quando o interfone não toca. Um 401 dispara UMA renovação
+// (compartilhada entre chamadas concorrentes) e a requisição é repetida.
+let refreshPromise: Promise<boolean> | null = null;
+
+function isAuthPath(url: string): boolean {
+  return /\/api\/auth\/(refresh|login|logout|register|demo)/.test(url);
+}
+
+// Lê o exp do JWT sem validar assinatura — serve só para decidir renovar antes
+// de abrir o WebSocket (o servidor continua sendo a autoridade).
+export function tokenPertoDeExpirar(token: string | null, margemSeg = 300): boolean {
+  if (!token) return true;
+  try {
+    const parte = token.split(".")[1];
+    if (!parte) return false;
+    const payload = JSON.parse(atob(parte.replace(/-/g, "+").replace(/_/g, "/")));
+    if (!payload?.exp) return false;
+    return payload.exp * 1000 - Date.now() < margemSeg * 1000;
+  } catch {
+    return false;
+  }
+}
+
+export function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const nativeMode = isNativeRuntime();
+        const url = resolveRequestUrl("/api/auth/refresh", nativeMode);
+        const headers = new Headers({ "Content-Type": "application/json" });
+        if (nativeMode) {
+          await hydrateToken();
+          const token = getToken();
+          if (!token) return false;
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+        const res = nativeMode
+          ? await executeNativeRequest(url, "POST", headers, null)
+          : await fetch(url, { method: "POST", headers, credentials: "include" });
+        // Condomínio bloqueado: o refresh responde 403 blocked. Encerrar aqui,
+        // senão o app segue usando o token válido até ele expirar sozinho.
+        if (res.status === 403) { await handleBlockedUserResponse(res); return false; }
+        if (!res.ok) return false;
+        const data = await res.json().catch(() => null);
+        if (data?.token) setToken(data.token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        // Libera no próximo tick: chamadas simultâneas reaproveitam esta renovação.
+        setTimeout(() => { refreshPromise = null; }, 0);
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
 // ─── Demo mode helpers ───────────────────────────────────
 const DEMO_KEY = "appinterfone_demo";
 function _isDemoMode(): boolean {
@@ -249,13 +308,28 @@ export async function apiFetch(
 
   const fetchInit = buildFetchInit(init, headers, nativeMode);
 
-  if (nativeMode) {
-    return executeNativeRequest(url, method, headers, fetchInit.body);
-  }
+  const executar = async (): Promise<Response> => {
+    if (nativeMode) {
+      return executeNativeRequest(url, method, headers, fetchInit.body);
+    }
+    return fetch(url, fetchInit).catch(() => {
+      throw new Error("Falha de conexão com o servidor. Verifique a internet do celular e tente novamente.");
+    });
+  };
 
-  const response = await fetch(url, fetchInit).catch(() => {
-    throw new Error("Falha de conexão com o servidor. Verifique a internet do celular e tente novamente.");
-  });
+  let response = await executar();
+
+  // Sessão expirada não pode derrubar a campainha: renova e repete uma vez.
+  if (response.status === 401 && !isAuthPath(url)) {
+    const renovada = await refreshSession();
+    if (renovada) {
+      if (nativeMode) {
+        const novoToken = getToken();
+        if (novoToken) headers.set("Authorization", `Bearer ${novoToken}`);
+      }
+      response = await executar();
+    }
+  }
 
   await handleBlockedUserResponse(response);
   return response;

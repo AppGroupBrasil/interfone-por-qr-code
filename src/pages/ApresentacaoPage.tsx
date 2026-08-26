@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
+import { EXTRAS_ENABLED, GATE_ENABLED } from "@/lib/config";
 
 const WHATSAPP_NUMBER = "5511933284364";
 const SITE_URL = "https://www.appinterfone.com.br";
@@ -23,7 +24,8 @@ const PROFILES = {
 type ProfileKey = keyof typeof PROFILES;
 
 /* ─── Feature data ─── */
-const allFeatures = [
+/* Catalogo completo: so entra no ar com os modulos extras ligados. */
+const featuresCompletas = [
   { icon: UserPlus, title: "Cadastro de Visitantes", desc: "Registre visitantes com foto, documento e reconhecimento facial. QR Code de acesso enviado por WhatsApp.", profiles: ["portaria"] as ProfileKey[] },
   { icon: ShieldCheck, title: "Autorizações Prévias", desc: "Moradores pré-autorizam visitantes pelo app. Porteiro já sabe quem pode entrar antes de chegar.", profiles: ["portaria", "morador"] as ProfileKey[] },
   { icon: Car, title: "Controle de Veículos", desc: "Cadastro com leitura automática de placas (OCR). Entrada e saída registradas. Morador acompanha pelo app.", profiles: ["portaria", "morador"] as ProfileKey[] },
@@ -43,7 +45,27 @@ const allFeatures = [
   { icon: Fingerprint, title: "Biometria Facial por Câmera IP", desc: "Reconhecimento facial via câmera IP na entrada do condomínio. Identificação automática sem contato. Pelo celular já incluso no plano.", profiles: ["portaria", "sindico"] as ProfileKey[], badge: "+R$200/mês" },
 ];
 
-const planFeatures = [
+/* Escopo v1: interfonia sem fio. Esta é a apresentação que vai para o cliente
+   enquanto os demais módulos estiverem fora do ar — prometer o que não está
+   entregue é o que não pode acontecer em condomínio de alto padrão. */
+const featuresInterfonia = [
+  { icon: Phone, title: "Interfone Digital", desc: "QR Code por bloco. O visitante escaneia e liga direto para o morador, com vídeo. Substitui o interfone físico.", profiles: ["portaria", "morador", "sindico"] as ProfileKey[] },
+  { icon: QrCode, title: "QR Code por Bloco ou Unidade", desc: "Cada entrada recebe o seu QR Code. Sem obra, sem cabo e sem instalar aplicativo para o visitante.", profiles: ["portaria", "sindico"] as ProfileKey[] },
+  { icon: Camera, title: "Videochamada em Tempo Real", desc: "O morador vê e ouve o visitante de onde estiver e responde por áudio. Nada é gravado.", profiles: ["morador"] as ProfileKey[] },
+  { icon: Shield, title: "3 Níveis de Segurança", desc: "Cada morador escolhe: chamada direta, com nome do visitante ou com nome, empresa e foto.", profiles: ["morador", "sindico"] as ProfileKey[] },
+  { icon: MessageCircle, title: "Plano B por WhatsApp", desc: "Se o morador não atender, o visitante é direcionado ao WhatsApp dele — quando o morador autoriza. A visita nunca fica sem contato.", profiles: ["morador"] as ProfileKey[] },
+  { icon: Building2, title: "Gestão de Blocos e Unidades", desc: "Cadastre blocos, unidades, moradores e funcionários. Multi-perfil e multi-condomínio, tudo centralizado.", profiles: ["sindico"] as ProfileKey[] },
+  { icon: BarChart3, title: "Histórico de Chamadas", desc: "Data, hora, unidade e resultado de cada chamada — atendida, perdida ou encaminhada ao WhatsApp. Exporta em PDF.", profiles: ["morador", "sindico"] as ProfileKey[] },
+];
+
+type FeatureCard = {
+  icon: React.ComponentType<{ style?: React.CSSProperties }>;
+  title: string; desc: string; profiles: ProfileKey[]; badge?: string;
+};
+
+const allFeatures: FeatureCard[] = EXTRAS_ENABLED ? featuresCompletas : featuresInterfonia;
+
+const planFeaturesCompletas = [
   "Cadastro de Visitantes com QR Code", "Autorizações Prévias", "Controle de Veículos + OCR",
   "Correspondências com Notificação", "Delivery", "Interfone Digital com QR Code",
   "Livro de Protocolo Digital", "Espelho de Portaria",
@@ -52,22 +74,35 @@ const planFeatures = [
   "Integração com WhatsApp", "Suporte por WhatsApp",
 ];
 
-const plans = [
-  { name: "Plano", subtitle: "Até 199 unidades", price: "199" },
-  { name: "Plano", subtitle: "200 a 300 unidades", price: "249" },
-  { name: "Plano", subtitle: "Acima de 300 unidades", price: "299" },
+const planFeaturesInterfonia = [
+  "Interfone Digital com QR Code", "QR Code por Bloco / Unidade",
+  "Videochamada em Tempo Real", "3 Níveis de Segurança",
+  "Notificação de chamada com o app fechado", "Horário silencioso",
+  "Plano B por WhatsApp quando o morador não atende",
+  "Histórico de Chamadas com PDF", "Gestão de Blocos e Unidades",
+  "App do Morador completo", "Multi-perfil (5 níveis)", "Suporte por WhatsApp",
 ];
 
-const addons = [
+const planFeatures = EXTRAS_ENABLED ? planFeaturesCompletas : planFeaturesInterfonia;
+
+const plans = [
+  { name: "Plano", subtitle: "Até 299 unidades", price: "199" },
+  { name: "Plano", subtitle: "A partir de 300 unidades", price: "299" },
+];
+
+const addonsCompletos = [
   { icon: DoorOpen, title: "Portaria Virtual (IoT)", price: "R$200" },
   { icon: Eye, title: "Leitura de Placa por Câmera IP", price: "R$200" },
   { icon: Fingerprint, title: "Biometria Facial por Câmera IP", price: "R$200" },
 ];
 
+const addons = EXTRAS_ENABLED ? addonsCompletos : [];
+
 const faqs = [
   { q: "Preciso instalar algo no celular?", a: "Não! O sistema funciona 100% no navegador — basta acessar o link. Funciona em qualquer celular, tablet ou computador." },
   { q: "Quanto tempo leva para implantar?", a: "O cadastro leva 5 minutos. Os moradores se cadastram via link ou QR Code. Em 24h o condomínio já está operando." },
-  { q: "A Portaria Virtual precisa de obra?", a: "Não. O módulo IoT usa ESP32 + relé, instalação simples sem fio. Funciona com qualquer portão elétrico." },
+  { q: "E se o morador não atender?", a: "A chamada fica registrada e, se o morador autorizar, o visitante é direcionado ao WhatsApp dele para deixar recado, áudio ou ligar. O visitante nunca fica sem contato." },
+  { q: "O condomínio precisa de obra ou de interfone físico?", a: "Não. É interfonia sem fio: uma placa com QR Code na entrada e o celular de cada morador. Sem cabo, sem central e sem quebra-quebra." },
   { q: "Posso cancelar quando quiser?", a: "Sim, sem fidelidade e sem multa. Cancele a qualquer momento pelo painel." },
   { q: "Preciso de uma função específica?", a: "Desenvolvemos para você sem nenhum custo adicional! Fale conosco pelo WhatsApp." },
 ];
@@ -185,7 +220,7 @@ export default function ApresentacaoPage() {
       ═══════════════════════════════════ */}
       <section style={sectionWrap}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h2 style={sectionTitle}>Funcionalidades Completas</h2>
+          <h2 style={sectionTitle}>{EXTRAS_ENABLED ? "Funcionalidades Completas" : "O que está incluído"}</h2>
           <p style={sectionSub}>Cada funcionalidade atende portaria, morador e síndico. Veja quem usa cada recurso.</p>
           <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
             {(["portaria", "morador", "sindico"] as ProfileKey[]).map((k) => {
@@ -249,6 +284,7 @@ export default function ApresentacaoPage() {
       {/* ═══════════════════════════════════
           INTEGRAÇÕES
       ═══════════════════════════════════ */}
+      {GATE_ENABLED && (
       <section style={sectionWrap}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <h2 style={sectionTitle}>Biblioteca de Integrações IoT</h2>
@@ -297,6 +333,7 @@ export default function ApresentacaoPage() {
           })}
         </div>
       </section>
+      )}
 
       <hr style={divider} />
 
@@ -333,6 +370,7 @@ export default function ApresentacaoPage() {
         </div>
 
         {/* Addons */}
+        {addons.length > 0 && (
         <div style={{ maxWidth: "700px", margin: "32px auto 0", display: "flex", flexDirection: "column", gap: "12px" }}>
           <h3 style={{ textAlign: "center", fontWeight: 800, fontSize: "18px", color: "#003580", marginBottom: "8px" }}>Módulos Adicionais</h3>
           {addons.map((a, i) => (
@@ -348,6 +386,7 @@ export default function ApresentacaoPage() {
             </div>
           ))}
         </div>
+        )}
       </section>
 
       <hr style={divider} />

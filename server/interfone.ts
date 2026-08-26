@@ -16,7 +16,12 @@ router.get("/turn-credentials", (_req: Request, res: Response) => {
     return;
   }
   const ttlSeconds = 6 * 3600;
-  const username = String(Math.floor(Date.now() / 1000) + ttlSeconds);
+  // Formato da TURN REST API: "<expiração>:<qualquer coisa>". O sufixo aleatório
+  // não é enfeite: o coturn conta a quota (--user-quota) por username, e sem ele
+  // todas as chamadas abertas no mesmo segundo dividiriam a mesma cota — em
+  // horário de pico o relay começaria a recusar alocação e o morador em 5G
+  // (CGNAT) ficaria sem áudio.
+  const username = `${Math.floor(Date.now() / 1000) + ttlSeconds}:${crypto.randomBytes(4).toString("hex")}`;
   const credential = crypto.createHmac("sha1", secret).update(username).digest("base64");
   res.json({
     urls: [
@@ -231,9 +236,10 @@ router.get("/public/:token", (req: Request, res: Response) => {
             apartments.set(unit, { unit, moradores: [] });
           }
           const moradorEntry: any = { id: m.id, name: m.name };
-          // Backup do interfone: WhatsApp ligado por padrão (opt-out = "0")
+          // Plano B (WhatsApp): aqui so sinaliza disponibilidade. O numero real sai
+          // apenas em POST /whatsapp-fallback, depois de uma chamada nao atendida.
           if (m.phone && m.whatsapp_interfone !== "0") {
-            moradorEntry.whatsapp = m.phone;
+            moradorEntry.whatsapp_disponivel = true;
           }
           apartments.get(unit)!.moradores.push(moradorEntry);
         }
@@ -270,9 +276,10 @@ router.get("/public/:token", (req: Request, res: Response) => {
         apartments.set(unit, { unit, moradores: [] });
       }
       const moradorEntry: any = { id: m.id, name: m.name };
-      // Backup do interfone: WhatsApp ligado por padrão (opt-out = "0")
+      // Plano B (WhatsApp): aqui so sinaliza disponibilidade. O numero real sai
+      // apenas em POST /whatsapp-fallback, depois de uma chamada nao atendida.
       if (m.phone && m.whatsapp_interfone !== "0") {
-        moradorEntry.whatsapp = m.phone;
+        moradorEntry.whatsapp_disponivel = true;
       }
       apartments.get(unit)!.moradores.push(moradorEntry);
     }
@@ -541,6 +548,91 @@ router.put("/calls/:id", (req: Request, res: Response) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// PLANO B — Visitante não atendido segue para o WhatsApp do morador
+// ═══════════════════════════════════════════════════════════
+// O telefone NUNCA vai no diretório público (/public/:token). Ele só é revelado
+// aqui e apenas quando: o token do QR é válido, existe uma chamada recente para
+// aquele morador naquele condomínio, e o morador manteve o WhatsApp autorizado.
+// Cada encaminhamento fica registrado em interfone_calls — é o comprovante de
+// que o visitante tentou falar com o morador.
+router.post("/whatsapp-fallback", (req: Request, res: Response) => {
+  try {
+    const { token, call_id } = req.body || {};
+    if (typeof token !== "string" || typeof call_id !== "string" ||
+        !token || !call_id || token.length > 128 || call_id.length > 64) {
+      return res.status(400).json({ error: "Requisição inválida." });
+    }
+
+    const tokenRow = db.prepare(
+      "SELECT condominio_id FROM interfone_tokens WHERE token = ? AND ativo = 1"
+    ).get(token) as any;
+    if (!tokenRow) {
+      return res.status(404).json({ error: "QR Code inválido ou desativado." });
+    }
+
+    // A chamada precisa existir, ser do mesmo condomínio do QR e ser recente.
+    const call = db.prepare(
+      `SELECT id, condominio_id, morador_id, status, bloco, apartamento, atendido_at,
+              (julianday('now') - julianday(created_at)) * 86400 AS idade_seg
+         FROM interfone_calls WHERE call_id = ?`
+    ).get(call_id) as any;
+
+    if (!call || call.condominio_id !== tokenRow.condominio_id) {
+      return res.status(404).json({ error: "Chamada não encontrada." });
+    }
+    if (call.idade_seg > 900) {
+      return res.status(410).json({ error: "Chamada expirada." });
+    }
+    // Destino: o morador chamado. Se a chamada foi só por bloco/apto, cai para o
+    // primeiro morador daquela unidade que mantém o WhatsApp autorizado.
+    let morador: any = null;
+    if (call.morador_id) {
+      morador = db.prepare(
+        `SELECT u.name, u.phone, ic.whatsapp_interfone FROM users u
+           LEFT JOIN interfone_config ic ON ic.user_id = u.id
+          WHERE u.id = ? AND u.condominio_id = ? AND u.role = 'morador'`
+      ).get(call.morador_id, call.condominio_id);
+    }
+    // O morador chamado pode não ter telefone ou ter desligado o WhatsApp: a
+    // unidade ainda pode ter outro morador autorizado. O visitante não pode
+    // ficar sem canal — é justamente o plano B.
+    if (!morador?.phone || morador.whatsapp_interfone === "0") {
+      morador = db.prepare(
+        `SELECT u.name, u.phone, ic.whatsapp_interfone FROM users u
+           LEFT JOIN interfone_config ic ON ic.user_id = u.id
+          WHERE u.condominio_id = ? AND u.role = 'morador' AND u.unit = ?
+            AND (? IS NULL OR ? = '' OR u.block = ?)
+            AND u.phone IS NOT NULL AND u.phone != ''
+            AND (ic.whatsapp_interfone IS NULL OR ic.whatsapp_interfone != '0')
+          ORDER BY u.id LIMIT 1`
+      ).get(call.condominio_id, call.apartamento, call.bloco, call.bloco, call.bloco);
+    }
+
+    if (!morador?.phone || morador.whatsapp_interfone === "0") {
+      return res.status(404).json({ error: "WhatsApp indisponível." });
+    }
+
+    // Só marca encaminhamento em chamada NÃO atendida. Se o morador atendeu e o
+    // visitante abriu o WhatsApp depois, sobrescrever o resultado apagaria do
+    // histórico do síndico o fato de a chamada ter sido atendida.
+    if (!call.atendido_at) {
+      db.prepare(
+        `UPDATE interfone_calls
+            SET resultado = 'encaminhado_whatsapp',
+                encerrado_at = COALESCE(encerrado_at, datetime('now'))
+          WHERE id = ? AND atendido_at IS NULL`
+      ).run(call.id);
+    }
+
+    // Normalizado aqui: o cliente so monta o link wa.me.
+    res.json({ whatsapp: normalizePhoneForWaMe(morador.phone), morador_nome: morador.name });
+  } catch (err: any) {
+    log.error("Erro no fallback WhatsApp:", err);
+    res.status(500).json({ error: "Erro ao obter WhatsApp" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // MORADORES — List moradores for internal call (porteiro → morador)
 // ═══════════════════════════════════════════════════════════
 router.get("/moradores-call", authenticate, (req: Request, res: Response) => {
@@ -565,8 +657,11 @@ router.get("/moradores-call", authenticate, (req: Request, res: Response) => {
 // Helper: normalize phone to 55XXXXXXXXXXX format for wa.me
 function normalizePhoneForWaMe(phone: string): string {
   let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
   if (digits.startsWith("0")) digits = digits.slice(1);
-  if (!digits.startsWith("55")) digits = "55" + digits;
+  // 10 ou 11 digitos = numero nacional (DDD + 8/9). So ai entra o 55: testar
+  // "comeca com 55" quebrava numeros de DDD 55 (Santa Maria/RS).
+  if (digits.length <= 11) digits = "55" + digits;
   return digits;
 }
 

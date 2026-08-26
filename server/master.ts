@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db, { deleteUserCascade, type DbUser, type DbCondominio } from "./db.js";
-import { authenticate, authorize } from "./middleware.js";
+import { authenticate, authorize, getAccessibleCondominioIds } from "./middleware.js";
 import bcrypt from "bcryptjs";
 import { emailCondominioBloqueado, emailCondominioDesbloqueado } from "./emailService.js";
 import { log } from "./logger.js";
@@ -19,17 +19,61 @@ function logAction(userId: number, action: string, entityType: string, entityId:
   ).run(userId, action, entityType, entityId, details);
 }
 
+// ─── ESCOPO DO GERENCIADOR ───────────────────────────────
+// A administradora é revendedora: enxerga e opera SOMENTE os condomínios do
+// próprio grupo. Nunca os de outra administradora. master = sistema inteiro.
+function escopoCondominios(user: DbUser): number[] | null {
+  if (user.role === "master") return null;
+  return getAccessibleCondominioIds(user) || [];
+}
+
+// Cláusula pronta para o WHERE. Sem nenhum condomínio no grupo → 1=0.
+function escopoSql(user: DbUser, coluna: string): { clause: string; params: number[] } {
+  const ids = escopoCondominios(user);
+  if (ids === null) return { clause: "1=1", params: [] };
+  if (ids.length === 0) return { clause: "1=0", params: [] };
+  return { clause: `${coluna} IN (${ids.map(() => "?").join(",")})`, params: ids };
+}
+
+// 404 (e não 403) para condomínio de terceiros: não confirmar que ele existe.
+function podeGerirCondominio(user: DbUser, condominioId: number): boolean {
+  const ids = escopoCondominios(user);
+  return ids === null || ids.includes(condominioId);
+}
+
+// Todos os usuários da própria administradora (titular + sub-usuários).
+function idsGrupoAdministradora(user: DbUser): number[] {
+  const adminId = user.parent_administradora_id || user.id;
+  const rows = db
+    .prepare(
+      "SELECT id FROM users WHERE (id = ? OR parent_administradora_id = ?) AND role = 'administradora'"
+    )
+    .all(adminId, adminId) as { id: number }[];
+  const ids = rows.map((r) => r.id);
+  return ids.length > 0 ? ids : [adminId];
+}
+
 // ─── ESTATÍSTICAS GERAIS ─────────────────────────────────
 router.get("/stats", (req, res) => {
   try {
-    const totalCondominios = db.prepare("SELECT COUNT(*) as count FROM condominios").get() as { count: number };
-    const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
-    const totalBlocos = db.prepare("SELECT COUNT(*) as count FROM blocks").get() as { count: number };
-    const totalFuncionarios = db.prepare("SELECT COUNT(*) as count FROM funcionarios").get() as { count: number };
+    const sCondo = escopoSql(req.user!, "id");
+    const sUsers = escopoSql(req.user!, "condominio_id");
+    const totalCondominios = db
+      .prepare(`SELECT COUNT(*) as count FROM condominios WHERE ${sCondo.clause}`)
+      .get(...sCondo.params) as { count: number };
+    const totalUsers = db
+      .prepare(`SELECT COUNT(*) as count FROM users WHERE ${sUsers.clause}`)
+      .get(...sUsers.params) as { count: number };
+    const totalBlocos = db
+      .prepare(`SELECT COUNT(*) as count FROM blocks WHERE ${sUsers.clause}`)
+      .get(...sUsers.params) as { count: number };
+    const totalFuncionarios = db
+      .prepare(`SELECT COUNT(*) as count FROM funcionarios WHERE ${sUsers.clause}`)
+      .get(...sUsers.params) as { count: number };
 
     // Users by role
     const usersByRole = db.prepare(
-      `SELECT role, COUNT(*) as count FROM users GROUP BY role ORDER BY
+      `SELECT role, COUNT(*) as count FROM users WHERE ${sUsers.clause} GROUP BY role ORDER BY
        CASE role
          WHEN 'master' THEN 1
          WHEN 'administradora' THEN 2
@@ -37,22 +81,26 @@ router.get("/stats", (req, res) => {
          WHEN 'funcionario' THEN 4
          WHEN 'morador' THEN 5
        END`
-    ).all() as { role: string; count: number }[];
+    ).all(...sUsers.params) as { role: string; count: number }[];
 
     // Total moradores (role='morador' in users)
-    const totalMoradores = db.prepare(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'morador'"
-    ).get() as { count: number };
+    const totalMoradores = db
+      .prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'morador' AND ${sUsers.clause}`)
+      .get(...sUsers.params) as { count: number };
 
     // Recent condominios (last 5)
-    const recentCondominios = db.prepare(
-      "SELECT id, name, cnpj, created_at FROM condominios ORDER BY created_at DESC LIMIT 5"
-    ).all();
+    const recentCondominios = db
+      .prepare(
+        `SELECT id, name, cnpj, created_at FROM condominios WHERE ${sCondo.clause} ORDER BY created_at DESC LIMIT 5`
+      )
+      .all(...sCondo.params);
 
     // Recent users (last 5)
-    const recentUsers = db.prepare(
-      "SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5"
-    ).all();
+    const recentUsers = db
+      .prepare(
+        `SELECT id, name, email, role, created_at FROM users WHERE ${sUsers.clause} ORDER BY created_at DESC LIMIT 5`
+      )
+      .all(...sUsers.params);
 
     res.json({
       totals: {
@@ -79,8 +127,9 @@ router.get("/condominios-dashboard", (req, res) => {
   try {
     const { search, status_pagamento, bloqueado, sort = "created_at", order = "desc" } = req.query;
 
-    let where = "1=1";
-    const params: any[] = [];
+    const escopo = escopoSql(req.user!, "c.id");
+    let where = escopo.clause;
+    const params: any[] = [...escopo.params];
 
     if (search) {
       where += " AND (c.name LIKE ? OR c.cnpj LIKE ? OR c.city LIKE ?)";
@@ -172,7 +221,7 @@ router.put("/condominios/:id/status-pagamento", (req, res) => {
     }
 
     const condo = db.prepare("SELECT id, name FROM condominios WHERE id = ?").get(parseInt(id)) as any;
-    if (!condo) {
+    if (!condo || !podeGerirCondominio(req.user!, parseInt(id))) {
       res.status(404).json({ error: "Condomínio não encontrado." });
       return;
     }
@@ -197,7 +246,7 @@ router.put("/condominios/:id/bloquear", (req, res) => {
     const { bloqueado, motivo } = req.body;
 
     const condo = db.prepare("SELECT id, name, bloqueado FROM condominios WHERE id = ?").get(parseInt(id)) as any;
-    if (!condo) {
+    if (!condo || !podeGerirCondominio(req.user!, parseInt(id))) {
       res.status(404).json({ error: "Condomínio não encontrado." });
       return;
     }
@@ -351,6 +400,22 @@ router.put("/users/:id", async (req, res) => {
       return;
     }
 
+    // O usuário precisa morar num condomínio do grupo — e não pode ser movido
+    // para fora dele. Sem isto uma administradora editaria (e trocaria a senha
+    // de) síndicos e moradores de condomínios de outra administradora.
+    if (!podeGerirCondominio(req.user!, user.condominio_id ?? 0)) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+    if (
+      condominio_id !== undefined &&
+      condominio_id !== null &&
+      !podeGerirCondominio(req.user!, parseInt(String(condominio_id)))
+    ) {
+      res.status(403).json({ error: "Condomínio de destino fora do seu escopo." });
+      return;
+    }
+
     const updates: string[] = [];
     const params: any[] = [];
 
@@ -417,6 +482,12 @@ router.delete("/users/:id", (req, res) => {
     // Administradora cannot delete other administradoras
     if (req.user!.role === "administradora" && user.role === "administradora") {
       res.status(403).json({ error: "Sem permissão para excluir Administradoras." });
+      return;
+    }
+
+    // Excluir só dentro dos próprios condomínios.
+    if (!podeGerirCondominio(req.user!, user.condominio_id ?? 0)) {
+      res.status(404).json({ error: "Usuário não encontrado." });
       return;
     }
 
@@ -488,6 +559,23 @@ router.get("/logs", (req, res) => {
 
     let where = "1=1";
     const params: any[] = [];
+
+    // Auditoria da administradora: só as ações dela mesma e de quem está nos
+    // seus condomínios. O histórico do master e o de outras administradoras
+    // não aparecem.
+    if (req.user!.role !== "master") {
+      const grupo = idsGrupoAdministradora(req.user!);
+      const gph = grupo.map(() => "?").join(",");
+      const cIds = escopoCondominios(req.user!) || [];
+      if (cIds.length > 0) {
+        const cph = cIds.map(() => "?").join(",");
+        where += ` AND (a.user_id IN (${gph}) OR a.user_id IN (SELECT id FROM users WHERE condominio_id IN (${cph})))`;
+        params.push(...grupo, ...cIds);
+      } else {
+        where += ` AND a.user_id IN (${gph})`;
+        params.push(...grupo);
+      }
+    }
 
     if (action) {
       where += " AND a.action = ?";

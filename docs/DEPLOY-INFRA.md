@@ -14,7 +14,7 @@
 
 - **Host:** Hetzner `46.225.191.114` (root). SSH alias: `simples-manutencao-hetzner` (chave `~/.ssh/hetzner_key`).
 - **Path do app:** `/opt/appinterfone/` (`docker-compose.yml`, `.env`, backups `.env.bak.*`).
-- **Container:** `appinterfone` — porta interna `3001`, exposta no host `3002`. Healthcheck: `GET /api/health` → `{status:"ok"}`.
+- **Container:** `appinterfone` — porta interna `3001`, publicada apenas em `127.0.0.1:3002` (acesso externo só pelo Traefik/HTTPS). Healthcheck: `GET /api/health` → `{status:"ok"}`.
 - **Volume SQLite:** `appinterfone_appinterfone_data` → `/app/data` no container.
 
 ## Fluxo de deploy (GitHub Actions)

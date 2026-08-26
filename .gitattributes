@@ -1,0 +1,11 @@
+# Arquivos que são interpretados dentro do Linux (Docker, runner do CI).
+# Um CR no fim da linha quebra o shell embutido no entrypoint do coturn
+# (`if [ -z "$TURN_SECRET" ]` vira comando inexistente) e os steps do workflow.
+* text=auto
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.mjs text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+.env.example text eol=lf

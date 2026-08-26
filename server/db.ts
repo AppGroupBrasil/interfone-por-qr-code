@@ -236,6 +236,31 @@ db.exec(`
   );
 `);
 
+// Migration: contador de tentativas de login (bloqueio por conta).
+// Vive no banco porque o rate limit por IP não segura ataque distribuído
+// contra um PIN de 6 dígitos numéricos.
+for (const tabela of ["users", "funcionarios"]) {
+  try {
+    db.exec(`ALTER TABLE ${tabela} ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE ${tabela} ADD COLUMN locked_until TEXT`);
+  } catch {}
+  // Troca de senha (do proprio usuario, do sindico, do master ou do "esqueci a
+  // senha") libera a conta bloqueada. No banco porque sao muitos caminhos de
+  // UPDATE e esquecer um deixaria o dono da conta trancado do lado de fora.
+  try {
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS trg_${tabela}_senha_limpa_bloqueio
+      AFTER UPDATE OF password ON ${tabela}
+      WHEN NEW.password <> OLD.password
+      BEGIN
+        UPDATE ${tabela} SET failed_attempts = 0, locked_until = NULL WHERE id = NEW.id;
+      END;
+    `);
+  } catch {}
+}
+
 // Migration: add ocorrencia columns if missing
 try {
   db.exec(`ALTER TABLE livro_protocolo ADD COLUMN titulo TEXT`);
@@ -534,6 +559,9 @@ try {
 } catch (_) {
   // Column already exists
 }
+
+// ─── Interfone: index em call_id (PUT /calls/:id e whatsapp-fallback casam por ele) ───
+db.exec(`CREATE INDEX IF NOT EXISTS idx_interfone_calls_call_id ON interfone_calls(call_id)`);
 
 // ─── Interfone: add 'tipo' column for condominium-wide tokens ───
 try {
@@ -1037,6 +1065,19 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_reset_codes_email ON password_reset_codes(email, used);
 `);
+
+// ─── Readiness ───
+// Um SELECT real no arquivo: só assim o /api/ready percebe banco travado (lock
+// de outro processo), volume desmontado ou arquivo corrompido. Sem isto o
+// healthcheck do Docker aprova o container mesmo com o SQLite inacessível.
+export function checkDbHealth(): { ok: boolean; error?: string } {
+  try {
+    db.prepare("SELECT 1 FROM users LIMIT 1").get();
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message ?? "erro desconhecido" };
+  }
+}
 
 export default db;
 

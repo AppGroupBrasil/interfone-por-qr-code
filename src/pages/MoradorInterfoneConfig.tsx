@@ -186,7 +186,7 @@ export default function MoradorInterfoneConfig() {
               <TStep n={3}>Passa pelo <strong>nível de segurança</strong> que você configurou</TStep>
               <TStep n={4}>Você recebe a <strong>chamada no app</strong> com toque sonoro</TStep>
               <TStep n={5}>Você vê o <strong>vídeo do visitante</strong> (ele só ouve sua voz)</TStep>
-              <TStep n={6}>Pode <strong>atender</strong>, <strong>recusar</strong> ou <strong>abrir o portão</strong></TStep>
+              <TStep n={6}>Pode <strong>atender</strong> ou <strong>recusar</strong> a chamada</TStep>
             </TSection>
             <TSection icon={<span>⭐</span>} title="DICAS IMPORTANTES">
               <TBullet>Mantenha o <strong>app aberto</strong> ou em segundo plano para receber chamadas</TBullet>

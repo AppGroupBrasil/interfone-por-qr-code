@@ -101,7 +101,14 @@ export default function SindicoInterfoneHistorico() {
                   <span style={{ fontWeight: 700, color: "#003580", fontSize: 15 }}>
                     {c.bloco} • Apto {c.apartamento}
                   </span>
-                  {statusBadge(c.status)}
+                  <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {statusBadge(c.status)}
+                    {c.resultado === "encaminhado_whatsapp" && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+                        Seguiu p/ WhatsApp
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div style={{ fontSize: 13, color: "#334155", marginBottom: 4 }}>
                   <strong>Morador:</strong> {c.morador_nome || "—"}

@@ -1,20 +1,60 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Printer, Share2, FileText, Copy, MessageCircle, ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
+import { EXTRAS_ENABLED } from "@/lib/config";
 
 const WHATSAPP_NUMBER = "5511933284364";
 
 const PLANS = [
-  { id: "plan199", label: "Até 199 unidades", price: 199 },
-  { id: "plan249", label: "200 a 300 unidades", price: 249 },
-  { id: "plan299", label: "Acima de 300 unidades", price: 299 },
+  { id: "plan199", label: "Até 299 unidades", price: 199 },
+  { id: "plan299", label: "A partir de 300 unidades", price: 299 },
 ];
 
-const ADDONS = [
+const ADDONS_COMPLETOS = [
   { id: "iot", label: "Portaria Virtual (IoT)", desc: "Abertura de portões pelo app com ESP32 + relé", price: 200 },
   { id: "placa", label: "Leitura de Placa por Câmera IP", desc: "Câmera IP lê a placa na entrada e saída", price: 200 },
   { id: "bio", label: "Biometria Facial por Câmera IP", desc: "Reconhecimento facial via câmera IP", price: 200 },
 ];
+
+/* Contrato so pode listar o que esta no ar. Com os modulos extras desligados o
+   objeto e os add-ons ficam restritos a interfonia. */
+const ADDONS = EXTRAS_ENABLED ? ADDONS_COMPLETOS : [];
+
+const OBJETO_COMPLETO = [
+  "Cadastro de Visitantes com QR Code",
+  "Autorizações Prévias de Visitantes",
+  "Controle de Veículos com OCR (leitura de placa)",
+  "Correspondências com Notificação Push",
+  "Gestão de Delivery",
+  "Interfone Digital com QR Code por Bloco",
+  "Livro de Protocolo Digital com assinatura na tela",
+  "Espelho de Portaria (monitoramento remoto)",
+  "Monitoramento de Câmeras CFTV (RTSP)",
+  "Controle de Rondas com QR Code e geolocalização",
+  "Relatórios em PDF e Dashboards com gráficos",
+  "Configuração de Features por condomínio",
+  "App do Morador completo",
+  "Multi-perfil com 5 níveis de acesso",
+  "Integração com WhatsApp",
+  "Suporte técnico por WhatsApp",
+];
+
+const OBJETO_INTERFONIA = [
+  "Interfone Digital com QR Code por Bloco ou Unidade",
+  "Chamada de vídeo do visitante para o morador, pelo navegador",
+  "Notificação de chamada no celular do morador, com o aplicativo fechado",
+  "Três níveis de segurança configuráveis por unidade",
+  "Horário silencioso configurável pelo morador",
+  "Encaminhamento ao WhatsApp do morador quando a chamada não é atendida, mediante autorização do próprio morador",
+  "Chamada do visitante para a portaria, quando o condomínio tiver portaria",
+  "Histórico de chamadas com exportação em PDF",
+  "Gestão de blocos, unidades, moradores e funcionários",
+  "App do Morador completo",
+  "Multi-perfil com 5 níveis de acesso",
+  "Suporte técnico por WhatsApp",
+];
+
+const OBJETO = EXTRAS_ENABLED ? OBJETO_COMPLETO : OBJETO_INTERFONIA;
 
 const INPUT_STYLE: React.CSSProperties = {
   border: "none", borderBottom: "2px solid #003580", background: "transparent",
@@ -225,22 +265,7 @@ export default function ContratoPage() {
             dispositivos móveis, compreendendo:
           </p>
           <ul style={{ paddingLeft: "24px", marginTop: "12px" }}>
-            <li>Cadastro de Visitantes com QR Code</li>
-            <li>Autorizações Prévias de Visitantes</li>
-            <li>Controle de Veículos com OCR (leitura de placa)</li>
-            <li>Correspondências com Notificação Push</li>
-            <li>Gestão de Delivery</li>
-            <li>Interfone Digital com QR Code por Bloco</li>
-            <li>Livro de Protocolo Digital com assinatura na tela</li>
-            <li>Espelho de Portaria (monitoramento remoto)</li>
-            <li>Monitoramento de Câmeras CFTV (RTSP)</li>
-            <li>Controle de Rondas com QR Code e geolocalização</li>
-            <li>Relatórios em PDF e Dashboards com gráficos</li>
-            <li>Configuração de Features por condomínio</li>
-            <li>App do Morador completo</li>
-            <li>Multi-perfil com 5 níveis de acesso</li>
-            <li>Integração com WhatsApp</li>
-            <li>Suporte técnico por WhatsApp</li>
+            {OBJETO.map(item => (<li key={item}>{item}</li>))}
           </ul>
         </Section>
 
@@ -298,11 +323,19 @@ export default function ContratoPage() {
 
         {/* Cláusula 4 */}
         <Section n="4" title="DOS MÓDULOS ADICIONAIS (ADD-ONS)">
+          {ADDONS.length === 0 ? (
+            <p>
+              A presente versão do sistema contempla exclusivamente os serviços descritos na
+              Cláusula 2. Módulos adicionais lançados posteriormente poderão ser contratados
+              mediante <strong>termo aditivo</strong>, com acréscimo ao valor mensal então vigente.
+            </p>
+          ) : (
           <p>
             A CONTRATANTE poderá contratar módulos adicionais, independentemente do plano escolhido,
             mediante acréscimo ao valor mensal:
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", margin: "20px 0" }}>
+          )}
+          <div style={{ display: ADDONS.length ? "grid" : "none", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", margin: "20px 0" }}>
             {ADDONS.map(addon => (
               <div
                 key={addon.id}

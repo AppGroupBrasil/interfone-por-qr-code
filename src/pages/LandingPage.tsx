@@ -13,6 +13,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import LandingTutorialModal from "@/components/LandingTutorialModal";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
+import { GATE_ENABLED } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 /* ═══════════════════════════════════════════════
@@ -112,23 +114,24 @@ const allFeatures = [
   },
   {
     icon: Camera, title: "Videochamada em Tempo Real",
-    desc: "O morador vê e ouve o visitante pelo celular antes de autorizar a entrada. Funciona no navegador, sem app.",
+    desc: "O morador vê e ouve o visitante pelo celular, de onde estiver. Funciona no navegador, sem instalar nada.",
     profiles: ["morador"] as ProfileKey[],
   },
-  {
+  // Abertura de portão sai da vitrine enquanto o produto for só interfonia.
+  ...(GATE_ENABLED ? [{
     icon: DoorOpen, title: "Abertura Remota (IoT)",
     desc: "Abra portões e portas dos blocos pelo app com ESP32 + relé. Multi-portão. Sem fio. Instalação simples.",
     profiles: ["morador", "sindico"] as ProfileKey[],
     badge: "R$200 instalação",
-  },
+  }] : []),
   {
     icon: Bell, title: "Notificações Instantâneas",
-    desc: "Receba notificação push e por WhatsApp sempre que alguém tocar seu interfone. Nunca perca uma visita.",
+    desc: "A chamada toca no celular como uma ligação, mesmo com o app fechado. Se você não atender e tiver autorizado, o visitante é direcionado ao seu WhatsApp.",
     profiles: ["morador"] as ProfileKey[],
   },
   {
     icon: Shield, title: "3 Níveis de Segurança",
-    desc: "Configure o nível de segurança: chamada direta, chamada com aprovação, ou bloqueio total. Flexibilidade por unidade.",
+    desc: "Cada morador escolhe o seu: ligação direta, com o nome do visitante, ou com nome, empresa e foto para aprovar antes de atender.",
     profiles: ["morador", "sindico"] as ProfileKey[],
   },
   {
@@ -138,7 +141,7 @@ const allFeatures = [
   },
   {
     icon: BarChart3, title: "Histórico de Chamadas",
-    desc: "Registro completo de todas as chamadas recebidas com data, hora e status. Relatórios em PDF.",
+    desc: "Data, hora, unidade e resultado de cada chamada — atendida, perdida ou encaminhada ao WhatsApp. Exporta em PDF.",
     profiles: ["morador", "sindico"] as ProfileKey[],
   },
 ];
@@ -149,11 +152,11 @@ const baseFeatures = [
   "Videochamada em Tempo Real",
   "QR Code por Bloco / Unidade",
   "3 Níveis de Segurança",
-  "Notificações Push e WhatsApp",
+  "Notificação de chamada com o app fechado",
   "Histórico de Chamadas",
   "Gestão de Blocos e Unidades",
   "App do Morador completo",
-  "Integração com WhatsApp",
+  "Plano B por WhatsApp quando o morador não atende",
   "Suporte por WhatsApp",
 ];
 
@@ -167,8 +170,8 @@ const plans = [
     popular: false,
   },
   {
-    name: "Plano",
-    subtitle: "Acima de 300 unidades",
+    name: "Plano App Interfone",
+    subtitle: "A partir de 300 unidades",
     price: "299",
     color: "#f59e0b",
     features: ["Blocos ilimitados", ...baseFeatures],
@@ -180,6 +183,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { loginDemo } = useAuth();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [demoDisponivel, setDemoDisponivel] = useState(true);
+  const [demoErro, setDemoErro] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeTutorial, setActiveTutorial] = useState<string | null>(null);
   const [mode, setMode] = useState<"dark" | "light">(() => {
@@ -191,10 +196,21 @@ export default function LandingPage() {
     try { localStorage.setItem("landing_theme", mode); } catch {}
   }, [mode]);
 
+  useEffect(() => {
+    let vivo = true;
+    apiFetch("/api/health")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (vivo && d && d.demo === false) setDemoDisponivel(false); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
   const faqs = [
-    { q: "Preciso instalar algo no celular?", a: "Não! O sistema funciona 100% no navegador — basta acessar o link. Funciona em qualquer celular, tablet ou computador." },
+    { q: "Preciso instalar algo no celular?", a: "O painel do morador funciona no navegador, em qualquer celular, tablet ou computador. Para a chamada tocar como uma ligação mesmo com o aplicativo fechado, o morador instala o App Interfone, disponível na Google Play." },
+    { q: "O condomínio precisa de obra ou de interfone físico?", a: "Não. É interfonia sem fio: uma placa com QR Code na entrada e o celular de cada morador. Sem cabo, sem central e sem quebra-quebra." },
     { q: "Quanto tempo leva para implantar?", a: "O cadastro leva 5 minutos. Os moradores se cadastram via link ou QR Code. Em 24h o condomínio já está operando." },
     { q: "O visitante precisa instalar algum app?", a: "Não! O visitante escaneia o QR Code e a chamada é feita direto no navegador. Zero instalação." },
+    { q: "E se o morador não atender?", a: "A chamada fica registrada e, se o morador autorizar, o visitante é direcionado ao WhatsApp dele para deixar recado, áudio ou ligar. A visita nunca fica sem contato." },
     { q: "Posso cancelar quando quiser?", a: "Sim, sem fidelidade e sem multa. Cancele a qualquer momento pelo painel." },
     { q: "Preciso de uma função específica?", a: "Desenvolvemos para você sem nenhum custo adicional! Fale conosco pelo WhatsApp." },
   ];
@@ -420,6 +436,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════
           NAVEGUE PELO SISTEMA
       ═══════════════════════════════════ */}
+      {demoDisponivel && (
       <section style={{ background: "linear-gradient(135deg, #0a1628 0%, #0d2847 50%, #0a1628 100%)", padding: "80px 24px" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: "999px", padding: "6px 16px", marginBottom: "16px", fontSize: "13px", color: "#ffffff" }}>
@@ -438,7 +455,14 @@ export default function LandingPage() {
               disabled={!!demoLoading}
               onClick={async () => {
                 setDemoLoading("sindico");
-                try { await loginDemo("sindico"); navigate("/dashboard"); } catch { setDemoLoading(null); }
+                setDemoErro(null);
+                try {
+                  await loginDemo("sindico");
+                  navigate("/dashboard");
+                } catch (err) {
+                  setDemoLoading(null);
+                  setDemoErro(err instanceof Error ? err.message : "Não foi possível abrir a demonstração agora.");
+                }
               }}
               style={{
                 background: "linear-gradient(135deg, #7c3aed, #5b21b6)", border: "2px solid rgba(255,255,255,0.2)",
@@ -464,7 +488,14 @@ export default function LandingPage() {
               disabled={!!demoLoading}
               onClick={async () => {
                 setDemoLoading("portaria");
-                try { await loginDemo("portaria"); navigate("/dashboard"); } catch { setDemoLoading(null); }
+                setDemoErro(null);
+                try {
+                  await loginDemo("portaria");
+                  navigate("/dashboard");
+                } catch (err) {
+                  setDemoLoading(null);
+                  setDemoErro(err instanceof Error ? err.message : "Não foi possível abrir a demonstração agora.");
+                }
               }}
               style={{
                 background: "linear-gradient(135deg, #2563eb, #1d4ed8)", border: "2px solid rgba(255,255,255,0.2)",
@@ -490,7 +521,14 @@ export default function LandingPage() {
               disabled={!!demoLoading}
               onClick={async () => {
                 setDemoLoading("morador");
-                try { await loginDemo("morador"); navigate("/dashboard"); } catch { setDemoLoading(null); }
+                setDemoErro(null);
+                try {
+                  await loginDemo("morador");
+                  navigate("/dashboard");
+                } catch (err) {
+                  setDemoLoading(null);
+                  setDemoErro(err instanceof Error ? err.message : "Não foi possível abrir a demonstração agora.");
+                }
               }}
               style={{
                 background: "linear-gradient(135deg, #059669, #047857)", border: "2px solid rgba(255,255,255,0.2)",
@@ -505,18 +543,25 @@ export default function LandingPage() {
                 <Users style={{ width: "32px", height: "32px", color: "#ffffff" }} />
               </div>
               <span style={{ fontSize: "18px", fontWeight: 800, color: "#ffffff" }}>{demoLoading === "morador" ? "Carregando..." : "Morador"}</span>
-              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>Receba chamadas no celular, veja quem está na portaria e abra o portão</span>
+              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>Receba a chamada no celular, veja e fale com quem está na entrada</span>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px", color: "#ffffff", fontWeight: 700, fontSize: "13px" }}>
                 Explorar <ArrowRight style={{ width: "14px", height: "14px" }} />
               </div>
             </button>
           </div>
 
+          {demoErro && (
+            <p role="alert" style={{ fontSize: "14px", color: "#fecaca", background: "rgba(220,38,38,0.15)", border: "1px solid rgba(248,113,113,0.4)", borderRadius: "12px", padding: "12px 16px", marginTop: "24px" }}>
+              {demoErro} Fale com a gente pelo WhatsApp que agendamos uma demonstração ao vivo.
+            </p>
+          )}
+
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginTop: "24px" }}>
             * Dados fictícios para demonstração. Nenhuma ação real será executada.
           </p>
         </div>
       </section>
+      )}
 
       {/* ═══════════════════════════════════
           FUNCIONALIDADES COMPLETAS
@@ -798,6 +843,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════
           INTEGRAÇÕES / DISPOSITIVOS
       ═══════════════════════════════════ */}
+      {GATE_ENABLED && (
       <section id="integracoes" style={{ background: t.sectionGrad1, transition: "background 0.4s" }}>
         <div className="landing-section">
           <div style={{ textAlign: "center", marginBottom: "60px" }}>
@@ -946,6 +992,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ═══════════════════════════════════
           PRICING
@@ -1060,7 +1107,8 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Addons – valor adicional */}
+          {/* Addons – valor adicional (fora do ar enquanto o produto for so interfonia) */}
+          {GATE_ENABLED && (
           <div style={{ marginTop: "40px", maxWidth: "700px", margin: "40px auto 0", display: "flex", flexDirection: "column", gap: "16px" }}>
             {[
               { icon: DoorOpen, title: "Abertura Remota (IoT)", desc: "Abra portões e portas pelo app com ESP32 + relé. Taxa única de configuração:", price: "R$200", label: "na configuração", link: "/portaria-virtual-tutorial" },
@@ -1108,6 +1156,7 @@ export default function LandingPage() {
               </button>
             ))}
           </div>
+          )}
         </div>
       </section>
 
@@ -1123,7 +1172,7 @@ export default function LandingPage() {
             VOCÊ É INSTALADOR OU TRABALHA COM CFTV?
           </h2>
           <p style={{ fontSize: "clamp(1.1rem, 2vw, 1.4rem)", color: "#003580", fontWeight: 700, marginBottom: "32px" }}>
-            Seja nosso parceiro e faça as instalações da abertura de portão remota.
+            Seja nosso parceiro e leve a interfonia sem fio para os condomínios que você atende.
           </p>
           <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
             <a

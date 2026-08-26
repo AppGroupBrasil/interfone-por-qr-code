@@ -400,11 +400,10 @@ const tutorials: Record<string, ReactNode> = {
         <B><strong>Nível 2</strong> — Visitante digita o nome</B>
         <B><strong>Nível 3</strong> — Nome, empresa e foto</B>
         <St n={4}>Morador recebe a chamada com <strong>vídeo do visitante</strong></St>
-        <St n={5}>Morador pode atender, recusar ou <strong>abrir o portão remotamente</strong></St>
+        <St n={5}>Morador pode atender ou recusar a chamada</St>
       </S>
       <S icon={<span>🎮</span>} title="CONTROLES">
         <B><strong>🔇 Mudo</strong> — Desliga microfone</B>
-        <B><strong>🚪 Abrir Portão</strong> — Comando remoto para abrir</B>
         <B><strong>📞 Encerrar</strong> — Finaliza a chamada</B>
         <B><strong>🏢 PORTARIA</strong> — Visitante liga direto para o porteiro</B>
       </S>
@@ -670,6 +669,125 @@ const tutorials: Record<string, ReactNode> = {
       </S>
     </>
   ),
+
+  /* ── VITRINE DA LANDING (interfonia v1) ── */
+  "QR Code Inteligente": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>Cada bloco — ou o condomínio inteiro — recebe um <strong>QR Code exclusivo</strong>. O visitante aponta a câmera, escolhe o apartamento e a chamada sai na hora. <strong>Sem instalar aplicativo</strong> e sem interfone físico na parede.</p>
+      </S>
+      <S icon={<span>🏗️</span>} title="COMO COLOCAR NO AR">
+        <St n={1}>O síndico cadastra os <strong>blocos e unidades</strong> no painel</St>
+        <St n={2}>O sistema gera o <strong>QR Code de cada bloco</strong></St>
+        <St n={3}>Imprima a placa e fixe na <strong>entrada correspondente</strong></St>
+        <St n={4}>Pronto: o visitante já consegue chamar o morador</St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>Se uma placa for adulterada ou o link vazar, <strong>regenere o QR Code</strong> — o antigo para de funcionar</B>
+        <B>O visitante usa <strong>o próprio celular</strong>, no navegador</B>
+        <B>Também funciona por <strong>link direto</strong>, sem a placa</B>
+      </S>
+    </>
+  ),
+
+  "Videochamada em Tempo Real": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>A chamada do interfone é uma <strong>videochamada de verdade</strong>: o morador vê e ouve o visitante ao vivo, esteja em casa, no trabalho ou viajando.</p>
+      </S>
+      <S icon={<span>📱</span>} title="COMO FUNCIONA">
+        <St n={1}>O visitante aparece com <strong>vídeo e áudio</strong> para o morador</St>
+        <St n={2}>O morador responde <strong>por áudio</strong> — a câmera dele não é exposta</St>
+        <St n={3}>A conversa é <strong>direta entre os dois aparelhos</strong>, sem passar por gravação</St>
+        <St n={4}>Se o morador não atender, a chamada segue para o <strong>plano B</strong></St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>Funciona em <strong>Wi-Fi ou dados móveis</strong></B>
+        <B>Nada é gravado: fica registrado <strong>quem chamou e quando</strong></B>
+        <B>Na primeira chamada o navegador pede permissão de <strong>câmera e microfone</strong></B>
+      </S>
+    </>
+  ),
+
+  "Notificações Instantâneas": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>O celular do morador <strong>toca como uma ligação</strong> quando alguém chama no interfone — mesmo com o aplicativo fechado e a tela bloqueada.</p>
+      </S>
+      <S icon={<span>📱</span>} title="COMO FUNCIONA">
+        <St n={1}>A chamada chega como <strong>notificação de campainha</strong>, com toque e vibração</St>
+        <St n={2}>A tela mostra <strong>atender</strong> ou <strong>recusar</strong>, como numa chamada telefônica</St>
+        <St n={3}>Ao atender, a videochamada abre <strong>direto na tela</strong></St>
+        <St n={4}>Se ninguém atender, o visitante é direcionado ao <strong>WhatsApp do morador</strong> — se o morador tiver autorizado</St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>Mantenha o app instalado e <strong>logado</strong> para receber a campainha</B>
+        <B>O <strong>horário silencioso</strong> bloqueia chamadas nos períodos que o morador definir</B>
+        <B>Toda tentativa fica registrada no <strong>histórico</strong>, atendida ou não</B>
+      </S>
+    </>
+  ),
+
+  "3 Níveis de Segurança": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>Cada morador escolhe <strong>quanta informação o visitante precisa dar</strong> antes de tocar o interfone. A configuração é por unidade — o síndico não decide pelo morador.</p>
+      </S>
+      <S icon={<span>🏗️</span>} title="OS TRÊS NÍVEIS">
+        <St n={1}><strong>Nível 1 — Chamada direta</strong>: o visitante liga na hora</St>
+        <St n={2}><strong>Nível 2 — Identificação</strong>: o visitante informa o nome antes de chamar</St>
+        <St n={3}><strong>Nível 3 — Identificação completa</strong>: nome, empresa e foto</St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>O morador troca de nível <strong>quando quiser</strong>, pelo próprio app</B>
+        <B>Nos níveis 2 e 3 os dados informados aparecem <strong>antes de atender</strong></B>
+        <B>Some-se a isso o <strong>horário silencioso</strong> para as madrugadas</B>
+      </S>
+    </>
+  ),
+
+  "Gestão de Blocos e Unidades": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>É no painel do síndico que o condomínio ganha forma: <strong>blocos, unidades, moradores e funcionários</strong>. Cada bloco cadastrado gera o seu QR Code automaticamente.</p>
+      </S>
+      <S icon={<span>🏗️</span>} title="ORDEM DE CADASTRO">
+        <St n={1}>Cadastre os <strong>blocos</strong> (ou apenas a entrada principal)</St>
+        <St n={2}>Cadastre as <strong>unidades</strong> de cada bloco</St>
+        <St n={3}>Cadastre os <strong>moradores</strong> e envie o acesso</St>
+        <St n={4}>Cadastre os <strong>funcionários da portaria</strong>, se houver</St>
+        <St n={5}>Imprima e fixe os <strong>QR Codes</strong> nas entradas</St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>Cada pessoa entra com <strong>PIN de 6 dígitos</strong></B>
+        <B>Uma unidade pode ter <strong>mais de um morador</strong> recebendo a chamada</B>
+        <B>Morador desligado <strong>para de receber</strong> chamadas na hora</B>
+      </S>
+    </>
+  ),
+
+  "Histórico de Chamadas": (
+    <>
+      <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
+        <p>Toda chamada fica registrada: <strong>data, hora, unidade, quem chamou e o que aconteceu</strong> — atendida, recusada, perdida ou encaminhada para o WhatsApp.</p>
+      </S>
+      <S icon={<span>🏗️</span>} title="O QUE VOCÊ CONSULTA">
+        <St n={1}>O <strong>morador</strong> vê as chamadas da própria unidade</St>
+        <St n={2}>O <strong>síndico</strong> vê o movimento do condomínio inteiro</St>
+        <St n={3}>Filtre por <strong>período</strong> e exporte em <strong>PDF</strong></St>
+      </S>
+      <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
+        <B>Serve de <strong>prova de tentativa de contato</strong> em caso de discussão</B>
+        <B>Chamada não atendida aparece como <strong>perdida</strong>, não some</B>
+        <B>Nenhum áudio ou vídeo é gravado — <strong>só o registro</strong></B>
+      </S>
+    </>
+  ),
+};
+
+/* Titulos da vitrine que reaproveitam um tutorial ja escrito. */
+const aliases: Record<string, string> = {
+  "Interfone Digital por QR Code": "Interfone Digital",
 };
 
 /* ═══════════════════════════════════════════════════════
@@ -681,7 +799,7 @@ interface Props {
 }
 
 export default function LandingTutorialModal({ featureTitle, onClose }: Props) {
-  const content = tutorials[featureTitle];
+  const content = tutorials[featureTitle] ?? tutorials[aliases[featureTitle] ?? ""];
   if (!content) return null;
 
   return (

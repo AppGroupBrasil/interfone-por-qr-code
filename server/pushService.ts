@@ -121,7 +121,10 @@ interface FcmToken {
 }
 
 function toFcmToken(t: TokenRow): FcmToken {
-  return { token: t.token, appBuild: Number(t.app_build) || 0 };
+  // app_build ausente = aparelho que registrou antes deste campo existir ou que
+  // não conseguiu ler o versionCode. Tratar como antigo tirava a tela cheia da
+  // chamada; hoje não há mais APK sem IncomingCallService em campo.
+  return { token: t.token, appBuild: Number(t.app_build) || FULLSCREEN_MIN_BUILD };
 }
 
 /**

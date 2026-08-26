@@ -1,5 +1,6 @@
 import { useAuth, getRoleLabel } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { EXTRAS_ENABLED } from "@/lib/config";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
@@ -276,8 +277,7 @@ export default function DashboardAdmin() {
             { icon: BarChart3, label: "Painel", route: "/master/painel", active: false },
             { icon: UserPlus, label: "Cadastro", route: "/cadastros", active: false },
             { icon: Users, label: "Usuários", route: "/master/usuarios", active: false },
-            ...(user?.role === "master" ? [] : []),
-            { icon: Settings, label: "Config", route: "/admin/features-config", active: false },
+            ...(EXTRAS_ENABLED ? [{ icon: Settings, label: "Config", route: "/admin/features-config", active: false }] : []),
           ].map((item) => (
             <button
               key={item.label}

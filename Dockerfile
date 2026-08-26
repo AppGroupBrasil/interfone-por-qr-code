@@ -5,14 +5,18 @@ FROM node:20.18-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies for canvas (needed for face recognition)
-RUN apk add --no-cache python3 make g++ pkgconfig pixman-dev cairo-dev pango-dev jpeg-dev giflib-dev
+# Toolchain só para o better-sqlite3 (não há prebuild musl). cairo/pango/pixman
+# saíram junto com o canvas: reconhecimento facial está fora do escopo v1 e sua
+# compilação nativa não pode ficar no caminho crítico do deploy.
+RUN apk add --no-cache python3 make g++
 
 # Copy package files
 COPY package.json package-lock.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+# JOBS=1: node-gyp compila serialmente. Em paralelo o pico de RAM do gcc derruba
+# o build por OOM em host carregado — e um npm ci que falha aborta o deploy.
+RUN JOBS=1 npm ci
 
 # Copy source code
 COPY . .
@@ -31,21 +35,24 @@ RUN npm run build:server
 # =====================================
 FROM node:20.18-alpine AS production
 
-# Install runtime dependencies for canvas and create non-root user
-# tzdata: fuso horário IANA (America/Sao_Paulo) para new Date() usar horário local do Brasil
-RUN apk add --no-cache pixman cairo pango jpeg giflib tzdata && \
+# tzdata: fuso horário IANA (America/Sao_Paulo) para new Date() usar horário local do Brasil.
+# cairo/pango/pixman/jpeg/giflib saíram: o escopo v1 é interfonia, o módulo de face
+# não sobe e canvas virou devDependency — a imagem final fica sem toolchain nem
+# libs nativas (menos superfície de CVE, imagem menor, build mais rápido).
+RUN apk add --no-cache tzdata && \
     addgroup -g 1001 -S appinterfone && \
     adduser -S appinterfone -u 1001
 
 WORKDIR /app
 
-# Copy package files and install production deps only
+# Copy package files and install production deps only.
+# better-sqlite3 não publica prebuild para musl (só linux-x64/glibc), então em
+# Alpine o prebuild-install falha e o install cai no node-gyp. Sem esta toolchain
+# o `npm ci` quebra o build. Ela é virtual e sai no mesmo RUN — a imagem final
+# continua sem compilador. (canvas saiu: era quem exigia cairo/pango/pixman.)
 COPY package.json package-lock.json ./
-RUN apk add --no-cache --virtual .build-deps \
-    python3 make g++ pkgconfig \
-    pixman-dev cairo-dev pango-dev \
-    jpeg-dev giflib-dev \
-    && npm ci --omit=dev \
+RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+    && JOBS=1 npm ci --omit=dev \
     && apk del .build-deps
 
 # Copy built frontend from builder
@@ -60,11 +67,9 @@ COPY --from=builder /app/ota-build ./ota-build
 # Firebase service account: NÃO copiada aqui — montar via secret/volume em runtime.
 # Caminho lido de FIREBASE_SERVICE_ACCOUNT_PATH (default ./server/firebase-service-account.json).
 
-# Copy public assets (logo, etc.)
+# Copy public assets (logo, ícones, manifest). public/models fica fora pelo
+# .dockerignore — o escopo v1 não carrega face.
 COPY public ./public
-
-# Copy face recognition models
-COPY public/models ./public/models
 
 # Create data + backup directories for SQLite and set ownership
 RUN mkdir -p /app/data /app/backups && \
@@ -82,9 +87,10 @@ ENV TZ=America/Sao_Paulo
 # Expose port
 EXPOSE 3001
 
-# Health check (longer start-period for face model loading)
+# Health check — /api/ready faz SELECT no SQLite; /api/health só diz que o
+# processo respondeu e aprovaria o container com o banco fora do ar.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
+    CMD node -e "require('http').get('http://localhost:3001/api/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" || exit 1
 
 # Start compiled server directly with Node
 CMD ["node", "dist-server/index.js"]

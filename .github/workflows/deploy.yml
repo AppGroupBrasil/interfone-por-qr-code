@@ -38,9 +38,23 @@ jobs:
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "cd ${{ env.APP_PATH }} && docker compose up -d --build --remove-orphans"
 
+      # Espera o app responder de verdade. Antes este passo só imprimia o status
+      # do container: um deploy quebrado passava com o job verde. /api/ready faz
+      # SELECT no SQLite, então 200 aqui significa app no ar E banco acessível.
       - name: Health check
         run: |
-          sleep 10
           ssh -o ServerAliveInterval=30 \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "docker ps --filter name=appinterfone --format '{{.Names}}: {{.Status}}'"
+            'for i in $(seq 1 30); do
+               code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://127.0.0.1:3002/api/ready || true)
+               if [ "$code" = "200" ]; then
+                 echo "OK: /api/ready respondeu 200 (tentativa $i)"
+                 docker ps --filter name=appinterfone --format "{{.Names}}: {{.Status}}"
+                 exit 0
+               fi
+               sleep 5
+             done
+             echo "FALHA: /api/ready nao respondeu 200 em ~150s (ultimo codigo: $code)"
+             docker ps --filter name=appinterfone --format "{{.Names}}: {{.Status}}"
+             docker logs --tail 60 appinterfone
+             exit 1'
