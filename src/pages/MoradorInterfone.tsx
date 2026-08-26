@@ -7,6 +7,7 @@ import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialB
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getIceServers } from "@/lib/iceServers";
 import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIce";
+import { getDeviceId, reconnectOnUse, WS_REPLACED, WS_BUSY_OTHER_DEVICE } from "@/lib/wsSession";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -287,6 +288,7 @@ export default function MoradorInterfone() {
           type: "register-morador",
           moradorId: user.id,
           condominioId: user.condominioId,
+          deviceId: getDeviceId(),
         }));
         // Start heartbeat to keep connection alive through proxies
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
@@ -414,11 +416,18 @@ export default function MoradorInterfone() {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         (globalThis as any).__interfoneWsOpen = false;
         // Only reconnect if this is still the active WS
         if (wsRef.current !== ws) return;
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+        // Perdemos a vez para outra tela/aparelho do mesmo morador: reconectar em
+        // 2s aqui era o que fazia os dois se derrubarem em loop e a chamada
+        // renegociar sem parar. Volta só quando esta tela for usada de novo.
+        if (ev.code === WS_REPLACED || ev.code === WS_BUSY_OTHER_DEVICE) {
+          reconnectOnUse(() => { if (wsRef.current === ws) connect(); });
+          return;
+        }
         // Auto-reconnect after 2s (even if hidden — keep alive during calls)
         setTimeout(() => {
           if (wsRef.current !== ws) return; // another connect already happened

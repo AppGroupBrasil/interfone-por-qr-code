@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getToken, apiFetch, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
 import { startCallRing, stopCallRing } from "@/lib/callRing";
+import { getDeviceId, reconnectOnUse, WS_REPLACED, WS_BUSY_OTHER_DEVICE } from "@/lib/wsSession";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
 const WS_URL = buildWsUrl("/ws/interfone");
@@ -111,6 +112,7 @@ export default function GlobalIncomingCall() {
               type: "register-morador",
               moradorId: user.id,
               condominioId: user.condominioId,
+              deviceId: getDeviceId(),
               page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
             }));
         // Start application-level heartbeat to keep connection alive through proxies
@@ -201,10 +203,17 @@ export default function GlobalIncomingCall() {
         } catch {}
       };
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         (globalThis as any).__interfoneWsOpen = false;
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
         if (!shouldConnectRef.current) return;
+        // Outro contexto do mesmo morador assumiu: insistir de 2 em 2s punha os
+        // dois em loop de troca de socket. Volta só quando esta tela for usada.
+        if (ev.code === WS_REPLACED || ev.code === WS_BUSY_OTHER_DEVICE) {
+          console.log("[Global Interfone] Substituído por outra tela/aparelho — aguardando uso");
+          reconnectOnUse(() => { if (shouldConnectRef.current) connectWs(); });
+          return;
+        }
         console.log("[Global Interfone] Disconnected, reconnecting in 2s...");
         reconnectRef.current = setTimeout(connectWs, 2000);
       };

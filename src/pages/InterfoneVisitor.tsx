@@ -102,6 +102,12 @@ export default function InterfoneVisitor() {
 
   // Portaria direct call
   const [isPortariaCall, setIsPortariaCall] = useState(false);
+  // Lido dentro dos callbacks do WebRTC: a sinalização precisa saber se o outro
+  // lado é morador ou porteiro (sem isto ia sempre marcada como "morador" e só
+  // chegava na portaria pelo desempate por callId no servidor).
+  const isPortariaCallRef = useRef(false);
+  const marcarPortariaCall = (v: boolean) => { isPortariaCallRef.current = v; setIsPortariaCall(v); };
+  const alvoSinalizacao = () => (isPortariaCallRef.current ? "funcionario" : "morador");
   const [pushSent, setPushSent] = useState(false);
 
   // Call state
@@ -317,7 +323,7 @@ export default function InterfoneVisitor() {
             type: "ice-candidate",
             callId: callIdRef.current,
             candidate: event.candidate,
-            targetType: "morador",
+            targetType: alvoSinalizacao(),
           }));
         }
       };
@@ -331,7 +337,7 @@ export default function InterfoneVisitor() {
         type: "webrtc-offer",
         callId: callIdRef.current,
         offer,
-        targetType: "morador",
+        targetType: alvoSinalizacao(),
       }));
     } catch (err) {
       console.error("WebRTC error:", err);
@@ -351,7 +357,7 @@ export default function InterfoneVisitor() {
       type: "webrtc-answer",
       callId: callIdRef.current,
       answer,
-      targetType: "morador",
+      targetType: alvoSinalizacao(),
     }));
   };
 
@@ -450,7 +456,7 @@ export default function InterfoneVisitor() {
 
   // Start the actual call
   const startCall = (morador: { id: number; name: string }, apto: Apartamento) => {
-    setIsPortariaCall(false);
+    marcarPortariaCall(false);
     const ws = connectWS();
     const newCallId = `CALL-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setCallId(newCallId);
@@ -508,7 +514,7 @@ export default function InterfoneVisitor() {
   const startPortariaCall = () => {
     const condominioId = tokenData?.condominio_id;
     if (!condominioId) return;
-    setIsPortariaCall(true);
+    marcarPortariaCall(true);
     setCallState("calling");
     callStateRef.current = "calling";
     startRingtone();
@@ -701,7 +707,7 @@ export default function InterfoneVisitor() {
     setNameError("");
     setAuthForm({ nome: "", empresa: "", foto: "" });
     setError("");
-    setIsPortariaCall(false);
+    marcarPortariaCall(false);
     setPushSent(false);
     setSearchQuery("");
     cleanup();

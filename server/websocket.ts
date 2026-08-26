@@ -112,6 +112,8 @@ interface WsClient {
   callId?: string;
   condominioId?: number;
   userId?: number;
+  /** Identidade do aparelho/navegador (localStorage) — ver register-morador. */
+  deviceId?: string;
 }
 
 /** Alvo de chamada: moradorId/targetUserId vêm sempre da tabela users. */
@@ -328,6 +330,7 @@ export function initSignalingServer(_server?: Server) {
             client.moradorId = authUser.id;
             client.connKey = keyConn(authUser);
             client.condominioId = authUser.condominio_id ?? undefined;
+            client.deviceId = typeof msg.deviceId === "string" ? msg.deviceId.slice(0, 64) : undefined;
             const connKey = client.connKey;
 
             // Um morador = uma conexão viva. Quando o WebView recarrega (abrir o app
@@ -335,7 +338,7 @@ export function initSignalingServer(_server?: Server) {
             // por minutos — e roubava o webrtc-offer/ICE da chamada nova, dando a
             // "tela azul sem imagem". Derruba o anterior antes de assumir.
             const previous = moradorConnections.get(connKey);
-            console.log(`[AUDIT] register-morador ${authUser.id} novo=${clientId} page=${msg.page ?? "-"} derrubando=${previous && previous !== client ? previous.id : "-"}`);
+            console.log(`[AUDIT] register-morador ${authUser.id} novo=${clientId} page=${msg.page ?? "-"} device=${client.deviceId ?? "-"} derrubando=${previous && previous !== client ? previous.id : "-"}`);
 
             // O aviso global (overlay) NUNCA toma o lugar da tela do interfone que
             // está em chamada: se ele reconectar por trás, o socket que negocia o
@@ -344,6 +347,21 @@ export function initSignalingServer(_server?: Server) {
                 && previous.ws.readyState === WebSocket.OPEN) {
               console.log(`[AUDIT] overlay-ignorado morador=${authUser.id} chamada=${previous.callId}`);
               ws.send(JSON.stringify({ type: "registered", moradorId: authUser.id }));
+              break;
+            }
+
+            // Segundo aparelho do mesmo morador não rouba o socket de uma chamada
+            // em andamento: os dois ficavam se derrubando a cada 2s (4002 → reconecta
+            // → 4002) e cada troca mandava reenviar a oferta, então a PeerConnection
+            // recomeçava do zero sem parar — imagem piscava e caía, áudio nunca abria.
+            // Mesmo aparelho recarregando (cold start pelo push, OTA) continua podendo
+            // assumir: é o caso que o socket zumbi acima resolve.
+            if (previous && previous !== client && previous.callId
+                && previous.ws.readyState === WebSocket.OPEN
+                && client.deviceId && previous.deviceId && client.deviceId !== previous.deviceId) {
+              console.log(`[AUDIT] outro-aparelho-recusado morador=${authUser.id} chamada=${previous.callId} device=${client.deviceId}`);
+              ws.send(JSON.stringify({ type: "busy-other-device", callId: previous.callId }));
+              try { ws.close(4003, "busy-other-device"); } catch {}
               break;
             }
 

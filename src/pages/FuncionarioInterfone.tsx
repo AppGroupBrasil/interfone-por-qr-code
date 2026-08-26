@@ -6,6 +6,7 @@ import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialB
 import { buildWsUrl, isNative } from "@/lib/config";
 import { getIceServers } from "@/lib/iceServers";
 import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIce";
+import { reconnectOnUse, WS_REPLACED, WS_BUSY_OTHER_DEVICE } from "@/lib/wsSession";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -428,13 +429,18 @@ export default function FuncionarioInterfone() {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         // Only reconnect if this is still the active WS
         if (wsRef.current !== ws) return;
         wsRef.current = null;
         setWsConnected(false);
         if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
         if (manualWsCloseRef.current) return;
+        // Servidor deu a vez a outra tela/aparelho: reconectar em 2s vira loop.
+        if (ev.code === WS_REPLACED || ev.code === WS_BUSY_OTHER_DEVICE) {
+          reconnectOnUse(() => { if (!wsRef.current) connect(); });
+          return;
+        }
         // Auto-reconnect after 2 seconds (even if hidden — keep alive during calls)
         reconnectTimerRef.current = setTimeout(() => {
           const cs = callStateRef.current;
