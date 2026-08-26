@@ -337,6 +337,9 @@ export default function MoradorInterfone() {
           }
 
           case "incoming-call":
+            // Re-entrega da chamada que já está atendida: não tocar de novo nem
+            // voltar pra tela de "chamada recebida" (o vídeo some).
+            if (jaEstaNessaChamada(msg.callId)) break;
             setIncomingCall(msg);
             setIsInternalCall(false);
             peerTypeRef.current = "visitor";
@@ -351,6 +354,7 @@ export default function MoradorInterfone() {
             break;
 
           case "internal-incoming-call":
+            if (jaEstaNessaChamada(msg.callId)) break;
             setIncomingCall({
               callId: msg.callId,
               visitanteNome: msg.callerName || "Portaria",
@@ -505,6 +509,11 @@ export default function MoradorInterfone() {
       if (res.ok) setHistory(await res.json());
     } catch {}
   };
+
+  /** Chamada que já está em andamento nesta tela — re-entrega deve ser ignorada. */
+  const jaEstaNessaChamada = (callId?: string) =>
+    !!callId && incomingCallRef.current?.callId === callId
+    && (viewStateRef.current === "connected" || viewStateRef.current === "incoming");
 
   const playRingtone = () => {
     startCallRing();

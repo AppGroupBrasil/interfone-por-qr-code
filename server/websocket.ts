@@ -114,6 +114,10 @@ interface WsClient {
   userId?: number;
   /** Identidade do aparelho/navegador (localStorage) — ver register-morador. */
   deviceId?: string;
+  /** "overlay" = aviso global (não negocia WebRTC); ausente = tela do interfone. */
+  page?: string;
+  /** Última mensagem recebida deste cliente — distingue socket vivo de zumbi. */
+  lastSeen?: number;
 }
 
 /** Alvo de chamada: moradorId/targetUserId vêm sempre da tabela users. */
@@ -304,6 +308,7 @@ export function initSignalingServer(_server?: Server) {
     ws.on("message", (raw: Buffer) => {
       try {
         const msg = JSON.parse(raw.toString());
+        client.lastSeen = Date.now();
 
         // Throttle de ORIGEM para mensagens que iniciam/disparam chamada (anti-spam de push).
         if (["call-request", "portaria-call", "internal-call", "internal-call-portaria", "auth-request"].includes(msg.type) && !allowCallInit()) {
@@ -331,6 +336,7 @@ export function initSignalingServer(_server?: Server) {
             client.connKey = keyConn(authUser);
             client.condominioId = authUser.condominio_id ?? undefined;
             client.deviceId = typeof msg.deviceId === "string" ? msg.deviceId.slice(0, 64) : undefined;
+            client.page = typeof msg.page === "string" ? msg.page.slice(0, 32) : undefined;
             const connKey = client.connKey;
 
             // Um morador = uma conexão viva. Quando o WebView recarrega (abrir o app
@@ -350,16 +356,26 @@ export function initSignalingServer(_server?: Server) {
               break;
             }
 
-            // Segundo aparelho do mesmo morador não rouba o socket de uma chamada
-            // em andamento: os dois ficavam se derrubando a cada 2s (4002 → reconecta
-            // → 4002) e cada troca mandava reenviar a oferta, então a PeerConnection
-            // recomeçava do zero sem parar — imagem piscava e caía, áudio nunca abria.
-            // Mesmo aparelho recarregando (cold start pelo push, OTA) continua podendo
-            // assumir: é o caso que o socket zumbi acima resolve.
+            // Ninguém rouba o socket de uma chamada que está EM ANDAMENTO num socket
+            // vivo: os contextos ficavam se derrubando a cada 2s (4002 → reconecta →
+            // 4002) e cada troca mandava reenviar a oferta, então a PeerConnection
+            // recomeçava do zero sem parar — imagem piscava e caía, áudio nunca abria
+            // e a chamada era re-entregue (o toque voltava depois de atendida).
+            // "Vivo" = mandou alguma mensagem há pouco (o heartbeat é de 20s). O socket
+            // ZUMBI do cold start pelo push/OTA tem o TCP aberto mas o JS suspenso: não
+            // pinga, então continua podendo ser substituído.
+            // Exceções: handoff pendente (o aviso global passou a chamada para a tela do
+            // interfone) e a tela do interfone assumindo o lugar do aviso global.
+            const handoffPendente = pendingHandoffs.get(connKey);
+            const daTelaDoInterfone = msg.page !== "overlay";
+            const trocaLegitima =
+              (handoffPendente && daTelaDoInterfone) ||
+              (previous?.page === "overlay" && daTelaDoInterfone);
             if (previous && previous !== client && previous.callId
                 && previous.ws.readyState === WebSocket.OPEN
-                && client.deviceId && previous.deviceId && client.deviceId !== previous.deviceId) {
-              console.log(`[AUDIT] outro-aparelho-recusado morador=${authUser.id} chamada=${previous.callId} device=${client.deviceId}`);
+                && Date.now() - (previous.lastSeen ?? 0) < 30_000
+                && !trocaLegitima) {
+              console.log(`[AUDIT] chamada-em-andamento-recusado morador=${authUser.id} chamada=${previous.callId} novo=${clientId} page=${msg.page ?? "-"} device=${client.deviceId ?? "-"}`);
               ws.send(JSON.stringify({ type: "busy-other-device", callId: previous.callId }));
               try { ws.close(4003, "busy-other-device"); } catch {}
               break;
@@ -442,7 +458,13 @@ export function initSignalingServer(_server?: Server) {
               if (!pending || pc.timestamp > pending.pc.timestamp) pending = { callId: pcCallId, pc };
             }
 
-            if (pending) {
+            // client.callId setado acima = a chamada já foi reatada (handoff ou
+            // answered-resume). Re-entregar a mesma chamada como "incoming-call"
+            // fazia o toque voltar depois de atendida e jogava a tela de volta pra
+            // "chamada recebida", sem a imagem do visitante.
+            if (pending && client.callId) {
+              dbg(`  [WS] Push call ignorada (chamada ${client.callId} já reatada)`);
+            } else if (pending) {
               const pcCallId = pending.callId;
               const pc = pending.pc;
               {
