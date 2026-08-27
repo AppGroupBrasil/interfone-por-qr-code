@@ -93,3 +93,29 @@ export function finalizarChamada(
     log.error("[HISTORICO] Erro ao finalizar chamada:", err);
   }
 }
+
+/**
+ * Fecha no boot as chamadas que ficaram abertas.
+ *
+ * Nenhuma chamada sobrevive a um restart (as conexões WS caem todas), então
+ * linha com encerrado_at nulo aqui é resíduo — de um restart no meio da
+ * chamada ou de antes deste desfecho existir. Fica marcada como interrompida,
+ * sem duração (o servidor estava fora, não dá para saber quanto durou) e sem
+ * e-mail de chamada perdida, que seria atrasado e inútil.
+ */
+export function encerrarChamadasOrfas(): void {
+  try {
+    const r = db
+      .prepare(
+        `UPDATE interfone_calls
+            SET status = CASE WHEN atendido_at IS NULL THEN 'timeout' ELSE 'encerrada' END,
+                encerrado_at = datetime('now'),
+                resultado = COALESCE(resultado, 'interrompido')
+          WHERE encerrado_at IS NULL`
+      )
+      .run();
+    if (r.changes > 0) log.info(`[HISTORICO] ${r.changes} chamada(s) órfã(s) encerrada(s) no boot`);
+  } catch (err) {
+    log.error("[HISTORICO] Erro ao encerrar chamadas órfãs:", err);
+  }
+}

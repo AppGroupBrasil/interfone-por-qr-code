@@ -31,6 +31,7 @@ import deviceTokensRouter from "./deviceTokens.js";
 import visitorQRShareRouter from "./visitorQRShare.js";
 import whatsappRouter from "./whatsappRoutes.js";
 import otaRouter, { initOta } from "./ota.js";
+import { encerrarChamadasOrfas } from "./callLog.js";
 import { performBackup, cleanupDemoAccounts, cleanupExpiredAuthorizations, cleanupOldAuditLogs, cleanupVisitorQRShares, cleanupOldVisitors, checkDbHealth } from "./db.js";
 import { authenticate, authorize } from "./middleware.js";
 import { ALLOWED_ORIGINS, IS_PROD, DEMO_MODE } from "./config.js";
@@ -340,6 +341,7 @@ server.listen(PORT, "0.0.0.0", () => {
   log.info(`HTTP escutando em 0.0.0.0:${PORT}`, { env: process.env.NODE_ENV });
 
   initOta();
+  encerrarChamadasOrfas();
 
   // Só faz sentido carregar os modelos de face se algum módulo que os usa subiu.
   if (EXTRA_MODULES_ENABLED || GATE_ENABLED) {

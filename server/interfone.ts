@@ -521,13 +521,16 @@ router.put("/calls/:id", (req: Request, res: Response) => {
     // Chamada ja finalizada (o desfecho vem do servidor, em callLog.ts) nao
     // volta atras por um PUT atrasado do app.
     sql += " WHERE call_id = ? AND encerrado_at IS NULL";
+    // Reatender (handoff manda o PUT de novo) nao reinicia o cronometro.
+    if (status === "atendida") sql += " AND atendido_at IS NULL";
     const idParam = String(req.params.id);
     params.push(idParam);
 
-    db.prepare(sql).run(...params);
+    const alterou = db.prepare(sql).run(...params).changes > 0;
 
-    // 📧 Email: send missed call notification on timeout
-    if (status === "timeout") {
+    // 📧 Email: chamada perdida — só se este PUT foi quem fechou a chamada
+    // (senão o servidor já mandou o e-mail em callLog.ts).
+    if (status === "timeout" && alterou) {
       const call = db.prepare("SELECT * FROM interfone_calls WHERE call_id = ?").get(idParam) as any;
       if (call?.morador_id) {
         emailChamadaPerdida({

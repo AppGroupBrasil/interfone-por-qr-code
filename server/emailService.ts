@@ -644,6 +644,13 @@ export async function emailPreAuthAutoCadastro(data: {
 // 7. INTERFONE — Chamada perdida
 // ──────────────────────────────────────────
 
+// Agora que o desfecho da chamada vem do servidor (callLog.ts), este e-mail
+// dispara de verdade. Visitante que insiste no botao geraria um e-mail por
+// tentativa: um aviso por morador a cada 3 min basta para avisar que ele
+// perdeu a chamada.
+const JANELA_CHAMADA_PERDIDA_MS = 3 * 60 * 1000;
+const ultimaChamadaPerdida = new Map<number, number>();
+
 /** Notify morador: missed intercom call */
 export async function emailChamadaPerdida(data: {
   condominioId: number;
@@ -654,8 +661,16 @@ export async function emailChamadaPerdida(data: {
   apartamento: string;
   horario: string;
 }): Promise<void> {
+  const agora = Date.now();
+  const anterior = ultimaChamadaPerdida.get(data.moradorId);
+  if (anterior && agora - anterior < JANELA_CHAMADA_PERDIDA_MS) return;
+
   const email = getMoradorEmail(data.moradorId);
   if (!email) return;
+  ultimaChamadaPerdida.set(data.moradorId, agora);
+  for (const [id, ts] of ultimaChamadaPerdida) {
+    if (agora - ts > JANELA_CHAMADA_PERDIDA_MS) ultimaChamadaPerdida.delete(id);
+  }
 
   const condo = getCondominioName(data.condominioId);
 
