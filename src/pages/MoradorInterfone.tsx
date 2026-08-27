@@ -278,8 +278,21 @@ export default function MoradorInterfone() {
         connectRef.current();
       }
     };
+    // Abrir pela notificação nem sempre passa pelo listener de push (o
+    // full-screen intent traz o app direto), então o resume também revalida.
+    const onVisivel = () => { if (document.visibilityState === "visible") revalidar(); };
     globalThis.addEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
-    return () => globalThis.removeEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+    document.addEventListener("visibilitychange", onVisivel);
+    const appStateListener = isNative
+      ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
+          if (isActive) revalidar();
+        })
+      : null;
+    return () => {
+      globalThis.removeEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+      document.removeEventListener("visibilitychange", onVisivel);
+      appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
+    };
   }, [user]);
 
   // Connect WebSocket and listen for calls

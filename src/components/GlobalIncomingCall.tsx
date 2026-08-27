@@ -254,38 +254,31 @@ export default function GlobalIncomingCall() {
 
     connectWs();
 
-    // Reconnect immediately when tab becomes visible (browser may have killed WS in background)
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
-        console.log("[Global Interfone] Tab visible, reconnecting...");
-        if (reconnectRef.current) clearTimeout(reconnectRef.current);
-        connectWs();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    // Notificação de chamada tocada com o app em 2º plano: o socket pode estar
-    // ZUMBI (TCP aberto, JS suspenso), e aí nada chega e o aviso nunca aparece.
-    // Re-registrar no mesmo socket faz o servidor reentregar a chamada pendente
-    // (pendingPushCalls); se ele já morreu de verdade, reconecta.
+    // Volta do 2º plano (inclusive abrindo pela notificação de chamada): o
+    // socket pode estar morto OU ZUMBI (TCP aberto, JS suspenso), e no zumbi
+    // nada chega e o aviso nunca aparece. Re-registrar no mesmo socket faz o
+    // servidor reentregar a chamada pendente (pendingPushCalls); se ele morreu
+    // de verdade, reconecta.
     const revalidar = () => {
       const atual = wsRef.current;
       if (atual && atual.readyState === WebSocket.OPEN) {
         try { enviarRegistro(atual); } catch {}
       } else {
+        console.log("[Global Interfone] Socket caído, reconectando...");
         if (reconnectRef.current) clearTimeout(reconnectRef.current);
         connectWs();
       }
     };
     globalThis.addEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
 
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") revalidar();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     const appStateListener = isNative
       ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
-          if (isActive && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
-            console.log("[Global Interfone] App resumed, reconnecting...");
-            if (reconnectRef.current) clearTimeout(reconnectRef.current);
-            connectWs();
-          }
+          if (isActive) revalidar();
         })
       : null;
 
