@@ -33,8 +33,19 @@ backups/
 dist-server/
 tsconfig.tsbuildinfo
 
-# Android native build
-android/
+# Android nativo: as fontes ficam versionadas — o plugin da campainha
+# (CallRinger, IncomingCallService) só existe aqui. Ignoramos o que o
+# gradle e o `cap sync` geram. A assinatura vem de env, não de arquivo.
+android/build/
+android/app/build/
+android/app/release/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
 .claude/settings.local.json
 
 # OTA bundles (gerados no build)

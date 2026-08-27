@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ringtone.wav é referenciado só em runtime (canal de notificação) — sem isto o shrinkResources remove o arquivo -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/ringtone" />

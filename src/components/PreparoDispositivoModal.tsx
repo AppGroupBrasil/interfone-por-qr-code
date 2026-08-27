@@ -52,7 +52,15 @@ async function pedirCameraEMicrofone(): Promise<void> {
   if (atual && (!atual.camera || !atual.microfone)) await abrirConfigApp();
 }
 
-const ITENS: { id: ItemId; icone: typeof BellRing; titulo: string; texto: string; botao: string }[] = [
+const ITENS: {
+  id: ItemId;
+  icone: typeof BellRing;
+  titulo: string;
+  texto: string;
+  botao: string;
+  /** Caminho dentro da tela do sistema: sem isso o morador abre e não sabe onde tocar. */
+  dica?: string;
+}[] = [
   {
     id: "notificacoes",
     icone: BellRing,
@@ -80,6 +88,7 @@ const ITENS: { id: ItemId; icone: typeof BellRing; titulo: string; texto: string
     titulo: "Sem economia de bateria",
     texto: "Impede o Android de segurar a chamada com o celular parado.",
     botao: "Abrir ajuste",
+    dica: "Na tela do sistema: Bateria → Sem restrições.",
   },
 ];
 
@@ -187,9 +196,11 @@ export default function PreparoDispositivoModal() {
         background: "rgba(0,0,0,0.6)",
         backdropFilter: "blur(6px)",
         display: "flex",
-        alignItems: "center",
+        // flex-start + margin auto no cartão: centraliza quando cabe e, com
+        // fonte grande do sistema, ainda deixa rolar até o topo em vez de cortar.
+        alignItems: "flex-start",
         justifyContent: "center",
-        padding: "20px",
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom))",
         overflowY: "auto",
       }}
     >
@@ -200,6 +211,7 @@ export default function PreparoDispositivoModal() {
           padding: "28px 24px",
           maxWidth: "460px",
           width: "100%",
+          margin: "auto",
           boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
         }}
       >
@@ -228,7 +240,7 @@ export default function PreparoDispositivoModal() {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "18px" }}>
-          {ITENS.map(({ id, icone: Icone, titulo, texto, botao }) => {
+          {ITENS.map(({ id, icone: Icone, titulo, texto, botao, dica }) => {
             const ok = estado[id];
             return (
               <div
@@ -237,6 +249,9 @@ export default function PreparoDispositivoModal() {
                   display: "flex",
                   gap: "12px",
                   alignItems: "center",
+                  // Fonte grande do sistema: o botão desce para a linha de baixo
+                  // em vez de espremer o texto numa coluna de duas palavras.
+                  flexWrap: "wrap",
                   background: ok ? "#f0fdf4" : "#f8fafc",
                   border: `1px solid ${ok ? "#bbf7d0" : "#e2e8f0"}`,
                   borderRadius: "14px",
@@ -262,9 +277,12 @@ export default function PreparoDispositivoModal() {
                   )}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: "1 1 150px", minWidth: 0 }}>
                   <p style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{titulo}</p>
                   <p style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.5 }}>{texto}</p>
+                  {ok || !dica ? null : (
+                    <p style={{ fontSize: "12px", color: "#003580", fontWeight: 600, marginTop: "4px" }}>{dica}</p>
+                  )}
                 </div>
 
                 {ok ? null : (
@@ -273,6 +291,7 @@ export default function PreparoDispositivoModal() {
                     disabled={ocupado !== null}
                     style={{
                       flexShrink: 0,
+                      marginLeft: "auto",
                       padding: "9px 14px",
                       borderRadius: "10px",
                       background: "#003580",
