@@ -208,6 +208,12 @@ router.get("/public/:token", (req: Request, res: Response) => {
     // Get condominium info
     const condo = db.prepare("SELECT id, name FROM condominios WHERE id = ?").get(tokenRow.condominio_id) as any;
 
+    // Condomínio sem portaria some com o botão PORTARIA. Ausência da chave = tem portaria.
+    const portariaRow = db.prepare(
+      "SELECT value FROM condominio_config WHERE condominio_id = ? AND key = 'feature_portaria'"
+    ).get(tokenRow.condominio_id) as { value: string } | undefined;
+    const temPortaria = portariaRow?.value !== "false";
+
     // ═══ CONDOMINIUM-WIDE TOKEN — Return ALL blocks ═══
     if (tokenRow.tipo === "condominio") {
       // Get all blocks for this condominium
@@ -255,6 +261,7 @@ router.get("/public/:token", (req: Request, res: Response) => {
         tipo: "condominio",
         condominio: condo?.name || "Condomínio",
         condominio_id: tokenRow.condominio_id,
+        tem_portaria: temPortaria,
         blocos,
       });
       return;
@@ -288,6 +295,7 @@ router.get("/public/:token", (req: Request, res: Response) => {
       tipo: "bloco",
       condominio: condo?.name || "Condomínio",
       condominio_id: tokenRow.condominio_id,
+      tem_portaria: temPortaria,
       bloco: tokenRow.bloco_nome,
       apartamentos: Array.from(apartments.values()),
     });

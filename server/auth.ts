@@ -344,7 +344,7 @@ router.post("/register/morador", async (req, res) => {
 // ─── REGISTER CONDOMÍNIO ─────────────────────────────────
 router.post("/register/condominio", async (req, res) => {
   try {
-    const { condominioName, cnpj, address, city, state, zipCode, unitsCount, adminName, email, phone, password } = req.body;
+    const { condominioName, cnpj, address, city, state, zipCode, unitsCount, hasPortaria, adminName, email, phone, password } = req.body;
 
     if (!condominioName || !adminName || !email || !password) {
       res.status(400).json({ error: "Nome do condomínio, responsável, e-mail e senha são obrigatórios." });
@@ -397,6 +397,16 @@ router.post("/register/condominio", async (req, res) => {
       userResult.lastInsertRowid,
       condoResult.lastInsertRowid
     );
+
+    // Condomínio sem portaria: esconde o botão PORTARIA na tela do visitante.
+    // Só grava quando é false — a ausência da chave já significa "tem portaria".
+    if (hasPortaria === false) {
+      db.prepare(
+        `INSERT INTO condominio_config (condominio_id, key, value, updated_at)
+         VALUES (?, 'feature_portaria', 'false', datetime('now'))
+         ON CONFLICT(condominio_id, key) DO UPDATE SET value = 'false', updated_at = datetime('now')`
+      ).run(condoResult.lastInsertRowid);
+    }
 
     // ─── CREATE SAMPLE MORADOR ───────────────────────────
     // Gate atrás de SAMPLE_ACCOUNTS_ON_REGISTER (off em prod por padrão).

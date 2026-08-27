@@ -150,3 +150,58 @@ describe("PUT /calls/:id", () => {
     expect((db.prepare("SELECT COUNT(*) c FROM interfone_calls").get() as any).c).toBe(antes.c);
   });
 });
+
+describe("GET /public/:token — condomínio sem portaria", () => {
+  const TOKEN_CONDO = "QR-ROTAS-CONDO";
+  const TOKEN_BLOCO = "QR-ROTAS-BLOCO";
+
+  const criarTokens = () => {
+    db.prepare(
+      `INSERT OR IGNORE INTO interfone_tokens (condominio_id, bloco_nome, token, tipo)
+       VALUES (?, 'Todos', ?, 'condominio')`
+    ).run(CONDO, TOKEN_CONDO);
+    db.prepare(
+      `INSERT OR IGNORE INTO interfone_tokens (condominio_id, bloco_nome, token, tipo)
+       VALUES (?, 'Torre A', ?, 'bloco')`
+    ).run(CONDO, TOKEN_BLOCO);
+  };
+
+  const setPortaria = (valor: string | null) => {
+    if (valor === null) {
+      db.prepare("DELETE FROM condominio_config WHERE condominio_id = ? AND key = 'feature_portaria'").run(CONDO);
+      return;
+    }
+    db.prepare(
+      `INSERT INTO condominio_config (condominio_id, key, value)
+       VALUES (?, 'feature_portaria', ?)
+       ON CONFLICT(condominio_id, key) DO UPDATE SET value = excluded.value`
+    ).run(CONDO, valor);
+  };
+
+  beforeEach(criarTokens);
+
+  it("sem a chave, o condomínio tem portaria (retrocompatível)", async () => {
+    setPortaria(null);
+    for (const t of [TOKEN_CONDO, TOKEN_BLOCO]) {
+      const r = await request(app).get(`/public/${t}`);
+      expect(r.status).toBe(200);
+      expect(r.body.tem_portaria).toBe(true);
+    }
+  });
+
+  it("com feature_portaria=false, esconde a portaria nos dois tipos de QR", async () => {
+    setPortaria("false");
+    for (const t of [TOKEN_CONDO, TOKEN_BLOCO]) {
+      const r = await request(app).get(`/public/${t}`);
+      expect(r.status).toBe(200);
+      expect(r.body.tem_portaria).toBe(false);
+    }
+  });
+
+  it("voltando para true, a portaria reaparece", async () => {
+    setPortaria("true");
+    const r = await request(app).get(`/public/${TOKEN_CONDO}`);
+    expect(r.body.tem_portaria).toBe(true);
+    setPortaria(null);
+  });
+});

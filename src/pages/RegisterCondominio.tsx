@@ -17,6 +17,7 @@ import {
   UserCheck,
   Copy,
   Check,
+  Headphones,
 } from "lucide-react";
 
 export default function RegisterCondominio() {
@@ -31,6 +32,7 @@ export default function RegisterCondominio() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [temPortaria, setTemPortaria] = useState(true);
   // Step 2 - Dados do responsável
   const [adminName, setAdminName] = useState("");
   const [email, setEmail] = useState("");
@@ -142,6 +144,7 @@ export default function RegisterCondominio() {
         address: address || undefined,
         city: city || undefined,
         state: state || undefined,
+        hasPortaria: temPortaria,
         adminName: adminName.trim(),
         email,
         phone: phone || undefined,
@@ -453,6 +456,48 @@ export default function RegisterCondominio() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* ── PORTARIA: destaque no cadastro ─────────────── */}
+                <div className="rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Headphones className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Seu condomínio tem portaria?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Sem portaria, o botão <strong>PORTARIA</strong> não aparece para o visitante.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTemPortaria(true)}
+                      className={`h-11 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                        temPortaria
+                          ? "border-emerald-500 bg-emerald-500/15 text-emerald-400"
+                          : "border-input bg-white dark:bg-secondary/50 text-foreground/70"
+                      }`}
+                    >
+                      Sim, tem porteiro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemPortaria(false)}
+                      className={`h-11 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                        !temPortaria
+                          ? "border-amber-500 bg-amber-500/20 text-amber-400"
+                          : "border-input bg-white dark:bg-secondary/50 text-foreground/70"
+                      }`}
+                    >
+                      Não tem portaria
+                    </button>
+                  </div>
+                  {!temPortaria && (
+                    <p className="text-xs text-amber-400">
+                      O visitante vai chamar apenas os apartamentos. Dá para mudar depois em Configurações.
+                    </p>
+                  )}
                 </div>
 
               </>

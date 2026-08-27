@@ -78,6 +78,7 @@ interface RegisterCondominioData {
   state?: string;
   zipCode?: string;
   unitsCount?: string;
+  hasPortaria?: boolean;
   adminName: string;
   email: string;
   phone?: string;

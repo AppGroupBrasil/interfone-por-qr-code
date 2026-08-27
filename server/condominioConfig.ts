@@ -13,6 +13,7 @@ const ALLOWED_KEYS = new Set([
   "feature_qr_visitante",
   "feature_correspondencias",
   "feature_auto_cadastro",
+  "feature_portaria",
   "vehicle_unique_access",
   "vehicle_auto_cancel_time",
   "vehicle_limit_per_apt",
@@ -63,7 +64,7 @@ router.get("/public", (req: Request, res: Response) => {
       'require_visit_photo','require_visit_document','require_visit_phone',
       'require_visit_reason','require_visit_doc_photo',
       'notify_whatsapp_enabled','notify_whatsapp_phone',
-      'feature_auto_cadastro',
+      'feature_auto_cadastro','feature_portaria',
     ];
     const placeholders = publicKeys.map(() => '?').join(',');
     const rows = db.prepare(

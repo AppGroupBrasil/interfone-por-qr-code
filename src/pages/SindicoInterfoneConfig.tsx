@@ -63,13 +63,20 @@ export default function SindicoInterfoneConfig() {
   const [success, setSuccess] = useState("");
   const [condoToken, setCondoToken] = useState<InterfoneToken | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [temPortaria, setTemPortaria] = useState(true);
+  const [savingPortaria, setSavingPortaria] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [blocksRes, tokensRes] = await Promise.all([
+      const [blocksRes, tokensRes, cfgRes] = await Promise.all([
         apiFetch(`${API}/blocos`),
         apiFetch(`${API}/interfone/tokens`),
+        apiFetch(`${API}/condominio-config`),
       ]);
+      if (cfgRes.ok) {
+        const cfg = await cfgRes.json();
+        setTemPortaria(cfg.feature_portaria !== "false");
+      }
       if (blocksRes.ok) setBlocks(await blocksRes.json());
       if (tokensRes.ok) {
         const allTokens = await tokensRes.json();
@@ -82,6 +89,26 @@ export default function SindicoInterfoneConfig() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Liga/desliga o botão PORTARIA na tela do visitante.
+  const togglePortaria = async (valor: boolean) => {
+    const anterior = temPortaria;
+    setTemPortaria(valor);
+    setSavingPortaria(true);
+    try {
+      const res = await apiFetch(`${API}/condominio-config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature_portaria: valor ? "true" : "false" }),
+      });
+      if (!res.ok) throw new Error();
+      setSuccess(valor ? "Botão PORTARIA ativado para os visitantes." : "Botão PORTARIA removido da tela do visitante.");
+    } catch {
+      setTemPortaria(anterior);
+      setError("Não foi possível salvar. Tente novamente.");
+    }
+    setSavingPortaria(false);
+  };
 
   const getQRUrl = (data: string) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(data)}`;
@@ -441,6 +468,55 @@ export default function SindicoInterfoneConfig() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* ── Condomínio tem portaria? ── */}
+        <div style={{
+          background: temPortaria
+            ? (isDark ? "rgba(16,185,129,0.10)" : "#ecfdf5")
+            : (isDark ? "rgba(245,158,11,0.12)" : "#fffbeb"),
+          border: temPortaria
+            ? (isDark ? "1px solid rgba(16,185,129,0.30)" : "1px solid #a7f3d0")
+            : "2px solid #f59e0b",
+          borderRadius: 16,
+          padding: "1rem 1.25rem",
+          marginBottom: "1.25rem",
+        }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>&#127978;</span>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 14, color: p.textHeading, margin: 0 }}>Seu condomínio tem portaria?</p>
+              <p style={{ fontSize: 12.5, color: isDark ? "#cbd5e1" : "#475569", lineHeight: 1.5, margin: "4px 0 0" }}>
+                Sem portaria, o botão <strong>PORTARIA</strong> não aparece para o visitante — ele chama direto o apartamento.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button
+              onClick={() => togglePortaria(true)}
+              disabled={savingPortaria}
+              style={{
+                height: 44, borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                border: temPortaria ? "2px solid #10b981" : (isDark ? "2px solid rgba(255,255,255,0.15)" : "2px solid #e2e8f0"),
+                background: temPortaria ? "rgba(16,185,129,0.18)" : "transparent",
+                color: temPortaria ? "#10b981" : p.textSecondary,
+              }}
+            >
+              Sim, tem porteiro
+            </button>
+            <button
+              onClick={() => togglePortaria(false)}
+              disabled={savingPortaria}
+              style={{
+                height: 44, borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                border: !temPortaria ? "2px solid #f59e0b" : (isDark ? "2px solid rgba(255,255,255,0.15)" : "2px solid #e2e8f0"),
+                background: !temPortaria ? "rgba(245,158,11,0.20)" : "transparent",
+                color: !temPortaria ? "#f59e0b" : p.textSecondary,
+              }}
+            >
+              Não tem portaria
+            </button>
+          </div>
         </div>
 
         {/* Alerts */}

@@ -50,6 +50,7 @@ interface BlockTokenData {
   condominio_id: number;
   bloco: string;
   apartamentos: Apartamento[];
+  tem_portaria?: boolean;
 }
 
 // Condominium-wide token response
@@ -58,6 +59,7 @@ interface CondoTokenData {
   condominio: string;
   condominio_id: number;
   blocos: BlocoInfo[];
+  tem_portaria?: boolean;
 }
 
 type TokenData = BlockTokenData | CondoTokenData;
@@ -1187,6 +1189,9 @@ export default function InterfoneVisitor() {
     );
   }
 
+  // Condomínio sem portaria (síndico desmarcou no cadastro): esconde o botão.
+  const temPortaria = tokenData?.tem_portaria !== false;
+
   // ═══════════════════════════════════
   // BLOCK SELECTION (condominium-wide QR)
   // ═══════════════════════════════════
@@ -1225,6 +1230,7 @@ export default function InterfoneVisitor() {
         </div>
 
         {/* PORTARIA Button */}
+        {temPortaria && (<>
         <div className="w-full" style={{ maxWidth: 520, paddingLeft: 24, paddingRight: 24, marginBottom: 10 }}>
           <button
             onClick={startPortariaCall}
@@ -1260,6 +1266,7 @@ export default function InterfoneVisitor() {
             <div className="flex-1" style={{ height: 1, background: isDark ? "rgba(255,255,255,0.12)" : "#f0f4f8" }} />
           </div>
         </div>
+        </>)}
 
         {/* Search Bar */}
         <div className="w-full" style={{ maxWidth: 520, paddingLeft: 24, paddingRight: 24, marginBottom: 16 }}>
@@ -1389,6 +1396,7 @@ export default function InterfoneVisitor() {
       {/* Apartments Area */}
       <div className="flex-1 w-full" style={{ maxWidth: 520, paddingLeft: 24, paddingRight: 24, paddingBottom: 24 }}>
         {/* ═══ PORTARIA BUTTON ═══ */}
+        {temPortaria && (<>
         <div style={{ marginBottom: 10 }}>
           <button
             onClick={startPortariaCall}
@@ -1422,6 +1430,7 @@ export default function InterfoneVisitor() {
           <span style={{ fontSize: 12, color: "#7dd3fc", fontWeight: 600 }}>ou escolha um apartamento</span>
           <div className="flex-1" style={{ height: 1, background: isDark ? "rgba(255,255,255,0.12)" : "#f0f4f8" }} />
         </div>
+        </>)}
 
         {/* ═══ Search Bar (shown when >8 apartments) ═══ */}
         {blockInfo && blockInfo.apartamentos.length > 8 && (

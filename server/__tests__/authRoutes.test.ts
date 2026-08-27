@@ -141,3 +141,30 @@ describe("GET /me", () => {
     expect((await request(app).get("/me").set("Authorization", "Bearer nao-e-um-jwt")).status).toBe(401);
   });
 });
+
+describe("POST /register/condominio — portaria opcional", () => {
+  const registrar = async (hasPortaria?: boolean) => {
+    const email = `sindico.portaria.${++seq}.${Date.now()}@exemplo.invalid`;
+    const r = await request(app).post("/register/condominio").send({
+      condominioName: `Condominio Portaria ${seq}`,
+      adminName: "Sindico Teste",
+      email,
+      password: "748213",
+      ...(hasPortaria === undefined ? {} : { hasPortaria }),
+    });
+    expect(r.status).toBe(200);
+    const cid = (db.prepare("SELECT condominio_id c FROM users WHERE email = ?").get(email) as any).c;
+    return db.prepare(
+      "SELECT value FROM condominio_config WHERE condominio_id = ? AND key = 'feature_portaria'"
+    ).get(cid) as { value: string } | undefined;
+  };
+
+  it("sem portaria grava feature_portaria=false", async () => {
+    expect(await registrar(false)).toMatchObject({ value: "false" });
+  });
+
+  it("com portaria não grava nada (padrão continua ligado)", async () => {
+    expect(await registrar(true)).toBeUndefined();
+    expect(await registrar()).toBeUndefined();
+  });
+});
