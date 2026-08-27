@@ -37,6 +37,7 @@ import {
   Camera,
 } from "lucide-react";
 import { apiFetch, getToken, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
+import { EVENTO_REVALIDAR_CHAMADA } from "@/lib/appNav";
 import { useTheme } from "@/hooks/useTheme";
 import ComoFunciona from "@/components/ComoFunciona";
 
@@ -223,6 +224,33 @@ export default function FuncionarioInterfone() {
       appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
     };
   }, []);
+
+  // ─── Push de chamada com o app em 2º plano ───
+  // O socket pode estar ZUMBI (TCP aberto, JS suspenso): nada chega e a tela
+  // fica parada enquanto o telefone toca. Re-registrar no mesmo socket pede a
+  // chamada pendente de volta ao servidor. Só com a tela ociosa: no meio de uma
+  // chamada, re-registrar dispara resend-offer e renegocia a conexão à toa.
+  useEffect(() => {
+    const revalidar = () => {
+      const cs = callStateRef.current;
+      if (cs === "ringing" || cs === "connected" || cs === "calling") return;
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (!user) return;
+        try {
+          ws.send(JSON.stringify({
+            type: "register-funcionario",
+            funcionarioId: user.id,
+            condominioId: user.condominioId,
+          }));
+        } catch {}
+      } else if (connectRef.current) {
+        connectRef.current();
+      }
+    };
+    globalThis.addEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+    return () => globalThis.removeEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+  }, [user]);
 
   // Load call history
   useEffect(() => {
