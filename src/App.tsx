@@ -10,6 +10,7 @@ import LandingPage from "@/pages/LandingPage";
 import DashboardRouter from "@/pages/DashboardRouter";
 import DemoTrialModal from "@/components/DemoTrialModal";
 import PushPermissionModal from "@/components/PushPermissionModal";
+import PreparoDispositivoModal from "@/components/PreparoDispositivoModal";
 import GlobalIncomingCall from "@/components/GlobalIncomingCall";
 
 // Lazy: telas de auth e onboarding
@@ -206,6 +207,13 @@ function PushPermissionListener() {
   return <PushPermissionModal open={!!status} status={status || "prompt"} onClose={() => setStatus(null)} />;
 }
 
+// Só depois do login: antes disso não há morador para receber chamada.
+function PreparoDispositivoListener() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <PreparoDispositivoModal />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -325,6 +333,7 @@ export default function App() {
           <GlobalIncomingCall />
           <DemoBlockedListener />
           <PushPermissionListener />
+          <PreparoDispositivoListener />
           <AppRoutes />
         </AuthProvider>
       </ErrorBoundary>
