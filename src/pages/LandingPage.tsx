@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import LandingTutorialModal from "@/components/LandingTutorialModal";
 import InstalarAgora from "@/components/InstalarAgora";
+import { APK_URL } from "@/lib/pwaInstall";
 import IphoneStories from "@/components/IphoneStories";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
 import { GATE_ENABLED } from "@/lib/config";
@@ -49,6 +50,12 @@ function handleKeyActivate(e: React.KeyboardEvent, action: () => void) {
     action();
   }
 }
+
+const linkInstalacao = (cor: string): React.CSSProperties => ({
+  background: "none", border: "none", padding: 0, cursor: "pointer",
+  color: cor, fontWeight: 700, fontSize: "14px", fontFamily: "inherit",
+  textDecoration: "underline", textUnderlineOffset: "3px",
+});
 
 function modeStyle<T extends string>(mode: "dark" | "light", darkVal: T, lightVal: T): T {
   return mode === "dark" ? darkVal : lightVal;
@@ -354,6 +361,27 @@ export default function LandingPage() {
             <Lock style={{ width: "18px", height: "18px", color: "#ffffff" }} /> Acessar Plataforma
           </button>
           <InstalarAgora mode={mode} variante="hero" />
+        </div>
+
+        {/* Caminhos de instalação por sistema — o morador chega aqui pelo link do síndico */}
+        <div className="fade-up fade-up-d3" style={{
+          marginTop: "20px", display: "flex", gap: "10px", flexWrap: "wrap",
+          justifyContent: "center", alignItems: "center", fontSize: "14px", color: t.text3,
+        }}>
+          <span>É morador?</span>
+          <button
+            type="button"
+            onClick={() => document.getElementById("iphone-stories-titulo")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            style={linkInstalacao(t.text1)}
+          >
+            Instalar no iPhone
+          </button>
+          <span aria-hidden="true">·</span>
+          <button type="button" onClick={() => navigate("/android")} style={linkInstalacao(t.text1)}>
+            Instalar no Android
+          </button>
+          <span aria-hidden="true">·</span>
+          <a href={APK_URL} style={linkInstalacao(t.text1)}>Baixar o APK</a>
         </div>
 
         {/* Highlight features */}

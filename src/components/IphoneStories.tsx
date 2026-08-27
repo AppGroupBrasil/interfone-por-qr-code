@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Bell, ChevronLeft, ChevronRight, CircleCheck, Compass,
+  Bell, ChevronLeft, ChevronRight, CircleCheck, Compass, Download,
   Home, Pause, Play, Share, Smartphone, SquarePlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import InstalarAgora from "@/components/InstalarAgora";
 import { AppLogo } from "@/components/AppLogo";
+import { APK_URL } from "@/lib/pwaInstall";
 
 /* ═══════════════════════════════════════════════
    INSTALAR NO IPHONE — passo a passo em Stories
@@ -92,6 +94,7 @@ export default function IphoneStories({ mode }: Props) {
   };
 
   const corTexto = mode === "dark" ? "#e2e8f0" : "#003580";
+  const navigate = useNavigate();
   const corSuave = mode === "dark" ? "#94a3b8" : "#336699";
   const corCard = mode === "dark" ? "rgba(0,40,100,0.55)" : "#ffffff";
   const corBorda = mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,53,128,0.18)";
@@ -182,6 +185,52 @@ export default function IphoneStories({ mode }: Props) {
               <strong style={{ color: corTexto }}>Precisa de iOS 16.4 ou mais novo.</strong>{" "}
               Toque nos cards para ver cada passo — igual aos Stories.
             </p>
+          </div>
+
+          {/* ─── Android: os dois caminhos, enquanto a Play não libera ─── */}
+          <div style={{
+            marginTop: "22px", background: corCard, border: `1px solid ${corBorda}`,
+            borderLeft: "4px solid #3ddc84", borderRadius: "12px", padding: "16px 18px",
+            textAlign: "left",
+          }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "7px",
+              fontSize: "12.5px", fontWeight: 800, letterSpacing: "0.3px",
+              color: corTexto, marginBottom: "8px",
+            }}>
+              <Smartphone style={{ width: "15px", height: "15px", color: "#3ddc84" }} /> TEM ANDROID?
+            </div>
+            <p style={{ fontSize: "13.5px", lineHeight: 1.6, color: corSuave, marginBottom: "14px" }}>
+              Instale pelo navegador em um toque ou baixe o aplicativo completo, que toca a
+              campainha por 30 segundos e abre a chamada em tela cheia.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/android")}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  background: "linear-gradient(135deg, #0062d1 0%, #003580 100%)",
+                  color: "#ffffff", border: "none", borderRadius: "11px",
+                  padding: "12px 18px", fontSize: "14px", fontWeight: 700,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                <Smartphone style={{ width: "16px", height: "16px" }} /> Instalar no Android
+              </button>
+              <a
+                href={APK_URL}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  background: "transparent", color: corTexto,
+                  border: `1px solid ${corBorda}`, borderRadius: "11px",
+                  padding: "12px 18px", fontSize: "14px", fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <Download style={{ width: "16px", height: "16px" }} /> Baixar o app (APK)
+              </a>
+            </div>
           </div>
         </div>
 
