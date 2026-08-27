@@ -8,9 +8,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // In production, use /app/data/ (Docker volume) for persistence
 // In development, use project root
-const dbPath = process.env.NODE_ENV === "production"
-  ? path.join("/app", "data", "data.db")
-  : path.join(__dirname, "..", "data.db");
+// DB_PATH existe para os testes rodarem contra um banco descartável com o
+// schema real. Não é definido em produção nem em dev.
+const dbPath = process.env.DB_PATH
+  ? process.env.DB_PATH
+  : process.env.NODE_ENV === "production"
+    ? path.join("/app", "data", "data.db")
+    : path.join(__dirname, "..", "data.db");
 
 const db = new Database(dbPath);
 

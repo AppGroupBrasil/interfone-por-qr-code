@@ -651,6 +651,21 @@ export async function emailPreAuthAutoCadastro(data: {
 const JANELA_CHAMADA_PERDIDA_MS = 3 * 60 * 1000;
 const ultimaChamadaPerdida = new Map<number, number>();
 
+/**
+ * Libera (e registra) o aviso deste morador. Exportada porque é a única regra
+ * própria deste e-mail — o resto do caminho é SES.
+ */
+export function podeAvisarChamadaPerdida(moradorId: number, agora = Date.now()): boolean {
+  const anterior = ultimaChamadaPerdida.get(moradorId);
+  if (anterior && agora - anterior < JANELA_CHAMADA_PERDIDA_MS) return false;
+
+  ultimaChamadaPerdida.set(moradorId, agora);
+  for (const [id, ts] of ultimaChamadaPerdida) {
+    if (agora - ts > JANELA_CHAMADA_PERDIDA_MS) ultimaChamadaPerdida.delete(id);
+  }
+  return true;
+}
+
 /** Notify morador: missed intercom call */
 export async function emailChamadaPerdida(data: {
   condominioId: number;
@@ -661,16 +676,9 @@ export async function emailChamadaPerdida(data: {
   apartamento: string;
   horario: string;
 }): Promise<void> {
-  const agora = Date.now();
-  const anterior = ultimaChamadaPerdida.get(data.moradorId);
-  if (anterior && agora - anterior < JANELA_CHAMADA_PERDIDA_MS) return;
-
   const email = getMoradorEmail(data.moradorId);
   if (!email) return;
-  ultimaChamadaPerdida.set(data.moradorId, agora);
-  for (const [id, ts] of ultimaChamadaPerdida) {
-    if (agora - ts > JANELA_CHAMADA_PERDIDA_MS) ultimaChamadaPerdida.delete(id);
-  }
+  if (!podeAvisarChamadaPerdida(data.moradorId)) return;
 
   const condo = getCondominioName(data.condominioId);
 

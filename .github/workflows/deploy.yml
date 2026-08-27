@@ -13,7 +13,24 @@ env:
   APP_PATH: /opt/appinterfone
 
 jobs:
+  # Portão do deploy: a suíte cobre o desfecho da chamada (histórico), o canal
+  # do push da campainha e o login. Vermelho aqui = nada sobe para produção.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

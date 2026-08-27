@@ -14,7 +14,9 @@
     "build:android": "vite build --mode capacitor && npx cap copy android && npx cap sync android",
     "build:ota": "npm run build && node scripts/build-ota-bundle.mjs",
     "cap:open": "npx cap open android",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.999.0",
@@ -69,6 +71,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/supertest": "^7.2.1",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-basic-ssl": "^2.1.4",
@@ -76,10 +79,12 @@
     "adm-zip": "^0.5.18",
     "concurrently": "^9.1.0",
     "selfsigned": "^5.5.0",
+    "supertest": "^7.2.2",
     "tailwindcss": "^4.0.0",
     "tesseract.js": "^7.0.0",
     "tsx": "^4.19.0",
     "typescript": "~5.7.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^4.1.11"
   }
 }

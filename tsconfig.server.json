@@ -12,5 +12,7 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["server"]
+  "include": ["server"],
+  "//": "Os testes rodam pelo vitest; o bundle de produção não leva vitest nem supertest.",
+  "exclude": ["server/__tests__", "server/**/*.test.ts"]
 }

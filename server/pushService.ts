@@ -120,7 +120,7 @@ interface FcmToken {
   appBuild: number;
 }
 
-function toFcmToken(t: TokenRow): FcmToken {
+export function toFcmToken(t: TokenRow): FcmToken {
   // app_build ausente = aparelho que registrou antes deste campo existir ou que
   // não conseguiu ler o versionCode. Tratar como antigo tirava a tela cheia da
   // chamada; hoje não há mais APK sem IncomingCallService em campo.
@@ -228,7 +228,7 @@ export async function sendPushToMoradores(condominioId: number, payload: PushPay
 }
 
 // ─── Monta a MulticastMessage (data-only para chamada em tela cheia, ou notification) ───
-function buildFcmMessage(
+export function buildFcmMessage(
   tokens: string[],
   payload: PushPayload,
   dataOnly: boolean
