@@ -373,20 +373,31 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* Trust badges */}
-        <div className="fade-up" style={{ marginTop: "32px", display: "flex", gap: "32px", flexWrap: "wrap", justifyContent: "center", opacity: 0.6 }}>
+      </section>
+
+      {/* ═══════════════════════════════════
+          FAIXA DE CONFIANÇA — DIVISA DAS SEÇÕES
+      ═══════════════════════════════════ */}
+      <div style={{ background: "#ffffff", padding: "18px 24px" }}>
+        <div style={{
+          maxWidth: "1100px", margin: "0 auto", display: "flex",
+          gap: "clamp(18px, 4vw, 44px)", flexWrap: "wrap", justifyContent: "center",
+        }}>
           {[
             { icon: Lock, text: "Dados criptografados" },
             { icon: Wifi, text: "100% na nuvem" },
             { icon: Eye, text: "Histórico de chamadas" },
             { icon: Bell, text: "Notificações automáticas" },
           ].map((b) => (
-            <div key={b.text} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: t.text3 }}>
-              <b.icon style={{ width: "16px", height: "16px" }} /> {b.text}
+            <div key={b.text} style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              fontSize: "14px", fontWeight: 600, color: "#003580", whiteSpace: "nowrap",
+            }}>
+              <b.icon style={{ width: "17px", height: "17px", color: "#003580" }} /> {b.text}
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* ═══════════════════════════════════
           INSTALAR NO IPHONE — STORIES
