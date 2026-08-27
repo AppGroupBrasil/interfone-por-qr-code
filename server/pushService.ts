@@ -135,6 +135,16 @@ function toFcmToken(t: TokenRow): FcmToken {
  */
 const FULLSCREEN_MIN_BUILD = Number(process.env.PUSH_FULLSCREEN_MIN_BUILD) || 13;
 
+/**
+ * Canal Android da chamada. O app novo monta a notificação no
+ * IncomingCallService (canal interfone_calls_v4, criado no Java — o channelId
+ * do data é ignorado lá, vai junto só para não haver duas verdades). O app
+ * antigo recebe notification message e o Android exige um canal que exista
+ * naquele build: lá o v4 não existe, o canal da chamada é o v2.
+ */
+const CALL_CHANNEL_FULLSCREEN = "interfone_calls_v4";
+const CALL_CHANNEL_LEGACY = "interfone_calls_v2";
+
 // ─── Send push to a specific user ───
 export async function sendPushToUser(userId: number, payload: PushPayload): Promise<number> {
   if (!firebaseInitialized && !webPushInitialized) return 0;
@@ -236,7 +246,7 @@ function buildFcmMessage(
         ...(payload.data || {}),
         title: payload.title,
         body: payload.body,
-        channelId: payload.channelId || "interfone_calls_v2",
+        channelId: payload.channelId || CALL_CHANNEL_FULLSCREEN,
       },
       android: {
         priority: "high",
@@ -263,7 +273,7 @@ function buildFcmMessage(
     android: {
       priority: "high",
       notification: {
-        channelId: payload.channelId || "appinterfone_default",
+        channelId: payload.channelId || (payload.fullScreen === true ? CALL_CHANNEL_LEGACY : "appinterfone_default"),
         sound: payload.sound || "default",
         priority: "max",
         defaultVibrateTimings: false,

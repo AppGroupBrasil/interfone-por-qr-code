@@ -199,7 +199,6 @@ function ringPortaria(params: {
     title: pushTitle,
     body: pushBody,
     data: { type: "interfone-call", callId, destino: "portaria" },
-    channelId: "interfone_calls_v2",
     sound: "ringtone",
     fullScreen: true,
   })
@@ -645,7 +644,6 @@ export function initSignalingServer(_server?: Server) {
                 title: "📞 Chamada do Interfone",
                 body: `${visitanteNome || "Visitante"} está chamando no interfone`,
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
-                channelId: "interfone_calls_v2",
                 sound: "ringtone",
                 fullScreen: true,
               }).catch(() => {});
@@ -680,7 +678,6 @@ export function initSignalingServer(_server?: Server) {
                 title: "\uD83D\uDCDE Chamada do Interfone",
                 body: `${visitanteNome || "Visitante"} está chamando no interfone`,
                 data: { type: "interfone-call", callId, moradorId: String(moradorId) },
-                channelId: "interfone_calls_v2",
                 sound: "ringtone",
                 fullScreen: true,
               }).then((sent) => {
@@ -909,7 +906,6 @@ export function initSignalingServer(_server?: Server) {
                 title: "📞 Chamada da Portaria",
                 body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
-                channelId: "interfone_calls_v2",
                 sound: "ringtone",
                 fullScreen: true,
               }).catch(() => {});
@@ -937,7 +933,6 @@ export function initSignalingServer(_server?: Server) {
                 title: "\uD83D\uDCDE Chamada da Portaria",
                 body: `${iCallerName || authUser.name || "Portaria"} está ligando para você`,
                 data: { type: "interfone-call", callId: iCallId, moradorId: String(targetUserId) },
-                channelId: "interfone_calls_v2",
                 sound: "ringtone",
                 fullScreen: true,
               }).then((sent) => {
