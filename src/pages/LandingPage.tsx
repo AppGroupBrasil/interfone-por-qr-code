@@ -438,6 +438,26 @@ export default function LandingPage() {
           COMECE A USAR — FAIXA
       ═══════════════════════════════════ */}
       <section style={{ background: modeStyle(mode, "#ffffff", "#003580"), padding: "60px 24px", transition: "background 0.4s" }}>
+        {/* Destaque — suporte na implantação */}
+        <a
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            maxWidth: "1100px", margin: "0 auto 36px", display: "flex", alignItems: "center", justifyContent: "center",
+            gap: "14px", flexWrap: "wrap", textAlign: "center", textDecoration: "none",
+            background: modeStyle(mode, "linear-gradient(135deg, #fff7ed, #ffedd5)", "rgba(255,255,255,0.10)"),
+            border: `2px solid ${modeStyle(mode, "#f97316", "rgba(255,255,255,0.35)")}`,
+            borderRadius: "16px", padding: "20px 24px",
+            boxShadow: modeStyle(mode, "0 6px 24px rgba(249,115,22,0.15)", "none"),
+          }}
+        >
+          <MessageCircle style={{ width: "26px", height: "26px", flexShrink: 0, color: modeStyle(mode, "#ea580c", "#ffffff") }} />
+          <p style={{ fontSize: "clamp(15px, 2vw, 17px)", fontWeight: 700, lineHeight: 1.6, margin: 0, color: modeStyle(mode, "#7c2d12", "#ffffff") }}>
+            Alguma dúvida ou dificuldade, entre em contato: configuramos o sistema para você, cadastramos os usuários e tiramos todas as suas dúvidas.
+          </p>
+        </a>
+
         <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "40px" }}>
           {/* Left — text */}
           <div style={{ flex: "1 1 300px", minWidth: "260px", textAlign: "center" }}>

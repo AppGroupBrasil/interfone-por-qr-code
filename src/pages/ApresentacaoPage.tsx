@@ -191,7 +191,7 @@ export default function ApresentacaoPage() {
       }}>
         <AppLogo size={100} rounded={20} border="3px solid #ffffff" objectFit="cover" style={{ marginBottom: "24px" }} />
         <h1 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 900, lineHeight: 1.15, marginBottom: "16px" }}>
-          App Interfone<br />Interfone Digital para o seu Condomínio
+          App Interfone<br />Vídeo Interfone para o seu Condomínio
         </h1>
         <p style={{ fontSize: "17px", color: "rgba(255,255,255,0.8)", maxWidth: "600px", margin: "0 auto 32px", lineHeight: 1.7 }}>
           Visitantes, veículos, correspondências, delivery, protocolo digital e portaria virtual — tudo em um só sistema.
