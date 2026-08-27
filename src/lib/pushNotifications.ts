@@ -9,6 +9,7 @@
 import { apiFetch } from "./api";
 import { isNative } from "./config";
 import { startCallRing, stopCallRing } from "./callRing";
+import { abrirNoApp, abrirSeChamadaNaoAparecer, revalidarChamada } from "./appNav";
 
 let pushInitialized = false;
 let currentToken: string | null = null;
@@ -104,6 +105,9 @@ async function initNativePush(): Promise<void> {
       PushNotifications.addListener("pushNotificationReceived", (notification) => {
         console.log("Push received (foreground):", notification);
         if (notification.data?.type === "interfone-call") {
+          // Chegou push de chamada: conferir com o servidor se o aviso global
+          // recebeu mesmo (socket pode estar zumbi). Não toca nada por si só.
+          revalidarChamada();
           // App em 1º plano com WS ativo: a chamada chega (ou já chegou) pelo WebSocket
           // com o toque próprio — ignorar o push pra não tocar em dobro
           if ((globalThis as any).__interfoneWsOpen) return;
@@ -117,12 +121,19 @@ async function initNativePush(): Promise<void> {
         const data = action.notification.data;
         if (data?.type === "interfone-call") {
           // destino=portaria: a chamada é para o porteiro, não para o morador.
-          globalThis.location.href =
-            data.destino === "portaria" ? "/portaria/interfone" : "/morador/interfone";
+          const rota = data.destino === "portaria" ? "/portaria/interfone" : "/morador/interfone";
+          revalidarChamada();
+          // Não navegar agora: o aviso global monta em qualquer rota e, assim que
+          // o app volta ao 1º plano, reconecta e recebe a chamada de volta do
+          // servidor (pendingPushCalls) já tocando, com o Atender que faz o
+          // handoff. Ir para a tela do interfone aqui derrubaria justamente o
+          // aviso que segura a chamada. Só abre a tela se em 6s não veio nada —
+          // chamada perdida/desistida — pra não deixar o toque sem resposta.
+          abrirSeChamadaNaoAparecer(rota);
         } else if (data?.type === "correspondencia") {
-          globalThis.location.href = "/portaria/correspondencias";
+          abrirNoApp("/portaria/correspondencias");
         } else if (data?.type === "visitor") {
-          globalThis.location.href = "/portaria/visitantes";
+          abrirNoApp("/portaria/visitantes");
         }
       });
 

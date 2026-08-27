@@ -14,6 +14,7 @@ import { buildWsUrl, isNative } from "@/lib/config";
 import { getToken, apiFetch, refreshSession, tokenPertoDeExpirar } from "@/lib/api";
 import { startCallRing, stopCallRing } from "@/lib/callRing";
 import { getDeviceId, reconnectOnUse, WS_REPLACED, WS_BUSY_OTHER_DEVICE } from "@/lib/wsSession";
+import { registrarNavegador, marcarChamadaAtiva, EVENTO_REVALIDAR_CHAMADA } from "@/lib/appNav";
 import { Phone, PhoneOff, PhoneIncoming } from "lucide-react";
 
 const WS_URL = buildWsUrl("/ws/interfone");
@@ -44,7 +45,14 @@ export default function GlobalIncomingCall() {
 
   // A ref so serve se acompanhar o estado; sem isto ela fica null e a guarda
   // por callId nunca bloqueia nada.
-  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+    marcarChamadaAtiva(incomingCall?.callId ?? null);
+  }, [incomingCall]);
+
+  // Os listeners de push vivem fora do React; sem isso navegariam com
+  // location.href, recarregando o WebView por cima de uma chamada.
+  useEffect(() => registrarNavegador((path) => navigate(path)), [navigate]);
 
   // Escuta chamadas fora da tela do interfone: morador e também a portaria.
   // Sem isto o porteiro só recebia chamada com a tela do interfone aberta —
@@ -72,6 +80,23 @@ export default function GlobalIncomingCall() {
   // lá dentro e derrubava o socket da chamada (tela azul + reconexão infinita).
   const shouldConnectRef = useRef(false);
   shouldConnectRef.current = !!user && escutando && !isOnInterfonePage;
+
+  const enviarRegistro = useCallback((ws: WebSocket) => {
+    if (!user) return;
+    ws.send(JSON.stringify(isPortaria
+      ? {
+          type: "register-funcionario",
+          funcionarioId: user.id,
+          condominioId: user.condominioId,
+        }
+      : {
+          type: "register-morador",
+          moradorId: user.id,
+          condominioId: user.condominioId,
+          deviceId: getDeviceId(),
+          page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
+        }));
+  }, [user, isPortaria]);
 
   const connectWs = useCallback(() => {
     if (!user || !escutando || isOnInterfonePage) return;
@@ -102,19 +127,7 @@ export default function GlobalIncomingCall() {
       ws.onopen = () => {
         console.log("[Global Interfone] Connected as morador listener");
         (globalThis as any).__interfoneWsOpen = true;
-        ws.send(JSON.stringify(isPortaria
-          ? {
-              type: "register-funcionario",
-              funcionarioId: user.id,
-              condominioId: user.condominioId,
-            }
-          : {
-              type: "register-morador",
-              moradorId: user.id,
-              condominioId: user.condominioId,
-              deviceId: getDeviceId(),
-              page: "overlay", // não sei falar WebRTC: chamada reatada vai por handoff
-            }));
+        enviarRegistro(ws);
         // Start application-level heartbeat to keep connection alive through proxies
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
@@ -225,7 +238,7 @@ export default function GlobalIncomingCall() {
       console.error("[Global Interfone] WS error:", err);
       reconnectRef.current = setTimeout(connectWs, 2000);
     }
-  }, [user, escutando, isPortaria, isOnInterfonePage, playRingtone, stopRingtone]);
+  }, [user, escutando, isPortaria, isOnInterfonePage, playRingtone, stopRingtone, enviarRegistro]);
 
   useEffect(() => {
     if (!escutando || isOnInterfonePage) {
@@ -251,6 +264,21 @@ export default function GlobalIncomingCall() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
+    // Notificação de chamada tocada com o app em 2º plano: o socket pode estar
+    // ZUMBI (TCP aberto, JS suspenso), e aí nada chega e o aviso nunca aparece.
+    // Re-registrar no mesmo socket faz o servidor reentregar a chamada pendente
+    // (pendingPushCalls); se ele já morreu de verdade, reconecta.
+    const revalidar = () => {
+      const atual = wsRef.current;
+      if (atual && atual.readyState === WebSocket.OPEN) {
+        try { enviarRegistro(atual); } catch {}
+      } else {
+        if (reconnectRef.current) clearTimeout(reconnectRef.current);
+        connectWs();
+      }
+    };
+    globalThis.addEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+
     const appStateListener = isNative
       ? CapacitorApp.addListener("appStateChange", ({ isActive }: { isActive: boolean }) => {
           if (isActive && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
@@ -263,6 +291,7 @@ export default function GlobalIncomingCall() {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
+      globalThis.removeEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
       appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
@@ -273,7 +302,7 @@ export default function GlobalIncomingCall() {
       }
       stopRingtone();
     };
-  }, [escutando, isOnInterfonePage, connectWs, stopRingtone]);
+  }, [escutando, isOnInterfonePage, connectWs, stopRingtone, enviarRegistro]);
 
   const handleAnswer = (e?: React.MouseEvent) => {
     stopRingtone();

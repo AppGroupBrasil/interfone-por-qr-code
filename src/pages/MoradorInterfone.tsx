@@ -8,6 +8,7 @@ import { buildWsUrl, isNative } from "@/lib/config";
 import { getIceServers } from "@/lib/iceServers";
 import { queueOrAddIce, flushPendingIce, type PendingIce } from "@/lib/pendingIce";
 import { getDeviceId, reconnectOnUse, WS_REPLACED, WS_BUSY_OTHER_DEVICE } from "@/lib/wsSession";
+import { EVENTO_REVALIDAR_CHAMADA } from "@/lib/appNav";
 import {
   ensureMediaDevicesAvailable,
   explainMediaError,
@@ -252,6 +253,34 @@ export default function MoradorInterfone() {
       appStateListener?.then((listener: { remove: () => Promise<void> }) => listener.remove()).catch(() => {});
     };
   }, []);
+
+  // ─── Push de chamada com o app em 2º plano ───
+  // O socket pode estar ZUMBI (TCP aberto, JS suspenso): nada chega e a tela
+  // fica parada enquanto o telefone toca. Re-registrar no mesmo socket pede a
+  // chamada pendente de volta ao servidor. Só com a tela ociosa: no meio de uma
+  // chamada, re-registrar dispara resend-offer e renegocia a conexão à toa.
+  useEffect(() => {
+    const revalidar = () => {
+      const vs = viewStateRef.current;
+      if (vs === "incoming" || vs === "connected" || vs === "calling") return;
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (!user) return;
+        try {
+          ws.send(JSON.stringify({
+            type: "register-morador",
+            moradorId: user.id,
+            condominioId: user.condominioId,
+            deviceId: getDeviceId(),
+          }));
+        } catch {}
+      } else if (connectRef.current) {
+        connectRef.current();
+      }
+    };
+    globalThis.addEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+    return () => globalThis.removeEventListener(EVENTO_REVALIDAR_CHAMADA, revalidar);
+  }, [user]);
 
   // Connect WebSocket and listen for calls
   useEffect(() => {
