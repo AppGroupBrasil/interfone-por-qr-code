@@ -103,7 +103,8 @@ const ITENS: {
     id: "bateria",
     icone: BatteryCharging,
     titulo: "Sem economia de bateria",
-    texto: "Impede o Android de segurar a chamada.",
+    texto:
+      "Deixe sem restrição: o interfone gasta menos de 1% da bateria em 24 h (5 chamadas de 30 s). Com a economia ligada, o Android segura a chamada e o telefone não toca.",
     botao: "Abrir ajuste",
     dica: "Bateria → liberar o uso em segundo plano.",
   },
