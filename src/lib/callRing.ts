@@ -17,6 +17,7 @@ interface CallRingerPlugin {
   openFullScreenIntentSettings(): Promise<void>;
   isIgnoringBatteryOptimizations(): Promise<{ value: boolean }>;
   openBatteryOptimizationSettings(): Promise<void>;
+  isAutoRevokeWhitelisted(): Promise<{ value: boolean }>;
   mediaPermissions(): Promise<{ camera: boolean; microphone: boolean }>;
   openAppSettings(): Promise<void>;
 }
@@ -67,6 +68,21 @@ export async function abrirConfigBateria(): Promise<void> {
   try {
     await CallRinger.openBatteryOptimizationSettings();
   } catch {}
+}
+
+/**
+ * Hibernação: sem uso por alguns meses o Android revoga as permissões e para as
+ * notificações. Receber push não conta como uso, então o morador que só espera a
+ * campainha é justamente quem corre o risco. Só consulta — a isenção é do morador.
+ */
+export async function hibernacaoLiberada(): Promise<boolean> {
+  if (!isNative) return true;
+  try {
+    const r = await CallRinger.isAutoRevokeWhitelisted();
+    return r?.value !== false;
+  } catch {
+    return true;
+  }
 }
 
 /**

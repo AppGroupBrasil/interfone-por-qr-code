@@ -57,11 +57,9 @@ public class CallRingerPlugin extends Plugin {
     public void openFullScreenIntentSettings(PluginCall call) {
         if (Build.VERSION.SDK_INT >= 34) {
             try {
-                Intent i = new Intent(
+                abrir(new Intent(
                     Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                    Uri.parse("package:" + getContext().getPackageName()));
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(i);
+                    Uri.parse("package:" + getContext().getPackageName())));
             } catch (Exception ignored) {
                 // Fabricante sem essa tela: nada a fazer.
             }
@@ -99,6 +97,26 @@ public class CallRingerPlugin extends Plugin {
     }
 
     /**
+     * Hibernacao de app sem uso: depois de alguns meses o Android revoga as
+     * permissoes e para as notificacoes. Receber push nao conta como uso, entao
+     * o morador que nunca abre o app perderia a campainha justamente por isso.
+     */
+    @PluginMethod
+    public void isAutoRevokeWhitelisted(PluginCall call) {
+        boolean isento = true;
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                isento = getContext().getPackageManager().isAutoRevokeWhitelisted();
+            } catch (Exception ignored) {
+                // Fabricante sem o recurso: nao inventa alarme.
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("value", isento);
+        call.resolve(ret);
+    }
+
+    /**
      * Estado de camera e microfone. Só consulta: quem pede o acesso é o
      * getUserMedia do WebView, que o Capacitor encaminha para o Android.
      */
@@ -130,7 +148,9 @@ public class CallRingerPlugin extends Plugin {
 
     private boolean abrir(Intent intent) {
         try {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // CLEAR_TASK: sem ele o Android reaproveita a pilha que o usuario
+            // deixou aberta nas Configuracoes e mostra aquela tela, nao a nossa.
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             getContext().startActivity(intent);
             return true;
         } catch (Exception ignored) {

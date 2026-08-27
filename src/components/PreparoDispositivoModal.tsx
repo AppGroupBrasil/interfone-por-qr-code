@@ -6,13 +6,14 @@
  * Só consulta e leva o morador à tela certa: nada é forçado.
  * ═══════════════════════════════════════════════════════════
  */
-import { BatteryCharging, BellRing, Camera, Check, Maximize2, ShieldCheck } from "lucide-react";
+import { BatteryCharging, BellRing, Camera, Check, Maximize2, PowerOff, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   abrirConfigApp,
   abrirConfigBateria,
   abrirConfigTelaCheia,
   bateriaLiberada,
+  hibernacaoLiberada,
   permissoesDeMidia,
   podeUsarTelaCheia,
 } from "@/lib/callRing";
@@ -22,10 +23,26 @@ import { enablePushNotifications } from "@/lib/pushNotifications";
 
 const DISPENSADO_KEY = "appinterfone:preparo-dispensado";
 
-type ItemId = "notificacoes" | "midia" | "telaCheia" | "bateria";
+type ItemId = "notificacoes" | "midia" | "telaCheia" | "bateria" | "hibernacao";
 type Estado = Record<ItemId, boolean>;
 
-const TUDO_OK: Estado = { notificacoes: true, midia: true, telaCheia: true, bateria: true };
+const TUDO_OK: Estado = {
+  notificacoes: true,
+  midia: true,
+  telaCheia: true,
+  bateria: true,
+  hibernacao: true,
+};
+
+/**
+ * Sem estes três a campainha não funciona — são eles que abrem a tela.
+ * Os demais são reforço: em vários aparelhos (Motorola, por exemplo) o
+ * sistema nem oferece a tela que os libera, e um item impossível de marcar
+ * travaria o morador aqui para sempre.
+ */
+const ESSENCIAIS: ItemId[] = ["notificacoes", "midia", "telaCheia"];
+
+const faltaEssencial = (e: Estado) => ESSENCIAIS.some((id) => !e[id]);
 
 async function notificacoesLiberadas(): Promise<boolean> {
   if (!isNative) return true;
@@ -88,7 +105,15 @@ const ITENS: {
     titulo: "Sem economia de bateria",
     texto: "Impede o Android de segurar a chamada.",
     botao: "Abrir ajuste",
-    dica: "Na tela do sistema: Bateria → Sem restrições.",
+    dica: "Bateria → liberar o uso em segundo plano.",
+  },
+  {
+    id: "hibernacao",
+    icone: PowerOff,
+    titulo: "App sempre ativo",
+    texto: "Meses sem abrir, o Android desliga as notificações.",
+    botao: "Abrir ajuste",
+    dica: "Desligue “Gerenciar o app fora de uso”.",
   },
 ];
 
@@ -98,11 +123,12 @@ export default function PreparoDispositivoModal() {
   const [ocupado, setOcupado] = useState<ItemId | null>(null);
 
   const conferir = useCallback(async (): Promise<Estado> => {
-    const [notificacoes, midia, telaCheia, bateria] = await Promise.all([
+    const [notificacoes, midia, telaCheia, bateria, hibernacao] = await Promise.all([
       notificacoesLiberadas(),
       permissoesDeMidia(),
       podeUsarTelaCheia(),
       bateriaLiberada(),
+      hibernacaoLiberada(),
     ]);
     // midia null = navegador ou APK antigo: não dá para saber, então não cobra.
     const proximo: Estado = {
@@ -110,6 +136,7 @@ export default function PreparoDispositivoModal() {
       midia: midia === null || (midia.camera && midia.microfone),
       telaCheia,
       bateria,
+      hibernacao,
     };
     setEstado(proximo);
     return proximo;
@@ -122,17 +149,19 @@ export default function PreparoDispositivoModal() {
     const rodar = async () => {
       const atual = await conferir();
       if (!vivo) return;
+      // Chamada tocando ou em andamento manda na tela — o preparo espera.
+      if (haChamadaAtiva()) {
+        setAberto(false);
+        return;
+      }
       if (!Object.values(atual).includes(false)) {
         setAberto(false);
         // Voltou a faltar algo um dia? A tela aparece de novo.
         localStorage.removeItem(DISPENSADO_KEY);
         return;
       }
-      // Chamada tocando ou em andamento manda na tela — o preparo espera.
-      if (haChamadaAtiva()) {
-        setAberto(false);
-        return;
-      }
+      // Só recomendado pendente não insiste: em muitos aparelhos o sistema nem
+      // oferece a tela que os libera, e o morador ficaria vendo isto para sempre.
       if (localStorage.getItem(DISPENSADO_KEY) !== "1") setAberto(true);
     };
 
@@ -169,6 +198,7 @@ export default function PreparoDispositivoModal() {
       }
       else if (id === "midia") await pedirCameraEMicrofone();
       else if (id === "telaCheia") await abrirConfigTelaCheia();
+      else if (id === "hibernacao") await abrirConfigApp();
       else await abrirConfigBateria();
       await conferir();
     } finally {
@@ -181,7 +211,81 @@ export default function PreparoDispositivoModal() {
     setAberto(false);
   };
 
-  const pendentes = ITENS.filter((i) => !estado[i.id]).length;
+  const pendentes = ITENS.filter((i) => ESSENCIAIS.includes(i.id) && !estado[i.id]).length;
+
+  const linha = ({ id, icone: Icone, titulo, texto, botao, dica }: (typeof ITENS)[number]) => {
+    const ok = estado[id];
+    return (
+      <div
+        key={id}
+        style={{
+          display: "flex",
+          gap: "10px",
+          alignItems: "center",
+          // Fonte grande do sistema: o botão desce para a linha de baixo
+          // em vez de espremer o texto numa coluna de duas palavras.
+          flexWrap: "wrap",
+          background: ok ? "#f0fdf4" : "#f8fafc",
+          border: `1px solid ${ok ? "#bbf7d0" : "#e2e8f0"}`,
+          borderRadius: "12px",
+          padding: "10px 11px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            width: "30px",
+            height: "30px",
+            borderRadius: "9px",
+            flexShrink: 0,
+            background: ok ? "#dcfce7" : "#e2e8f0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {ok ? (
+            <Check style={{ width: "16px", height: "16px", color: "#16a34a" }} />
+          ) : (
+            <Icone style={{ width: "16px", height: "16px", color: "#475569" }} />
+          )}
+        </div>
+
+        <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+          <p style={{ fontSize: "12.5px", fontWeight: 700, color: "#0f172a" }}>{titulo}</p>
+          <p style={{ fontSize: "11px", color: "#64748b", lineHeight: 1.45 }}>{texto}</p>
+          {ok || !dica ? null : (
+            <p style={{ fontSize: "11px", color: "#003580", fontWeight: 600, marginTop: "3px" }}>{dica}</p>
+          )}
+        </div>
+
+        {ok ? null : (
+          <button
+            onClick={() => void resolver(id)}
+            disabled={ocupado !== null}
+            style={{
+              flexShrink: 0,
+              // Com dica, o texto ocupa a largura toda e o botão desce:
+              // lado a lado ele espremeria a frase em três linhas.
+              ...(dica ? { flexBasis: "100%" } : { marginLeft: "auto" }),
+              padding: "8px 12px",
+              borderRadius: "9px",
+              background: "#003580",
+              color: "#ffffff",
+              fontWeight: 700,
+              fontSize: "12px",
+              whiteSpace: "nowrap",
+              border: "none",
+              cursor: ocupado ? "default" : "pointer",
+              opacity: ocupado ? 0.6 : 1,
+            }}
+          >
+            {ocupado === id ? "..." : botao}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -241,85 +345,31 @@ export default function PreparoDispositivoModal() {
           Deixe seu celular pronto
         </h2>
         <p style={{ fontSize: "12.5px", color: "#475569", lineHeight: 1.5, textAlign: "center", marginBottom: "14px" }}>
-          {pendentes === 1
-            ? "Falta 1 ajuste para o interfone tocar sempre que alguém chamar."
-            : `Faltam ${pendentes} ajustes para o interfone tocar sempre que alguém chamar.`}
+          {pendentes === 0
+            ? "O essencial já está pronto. Abaixo, o que deixa a campainha ainda mais garantida."
+            : pendentes === 1
+              ? "Falta 1 ajuste para o interfone tocar sempre que alguém chamar."
+              : `Faltam ${pendentes} ajustes para o interfone tocar sempre que alguém chamar.`}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
-          {ITENS.map(({ id, icone: Icone, titulo, texto, botao, dica }) => {
-            const ok = estado[id];
-            return (
-              <div
-                key={id}
-                style={{
-                  display: "flex",
-                  gap: "10px",
-                  alignItems: "center",
-                  // Fonte grande do sistema: o botão desce para a linha de baixo
-                  // em vez de espremer o texto numa coluna de duas palavras.
-                  flexWrap: "wrap",
-                  background: ok ? "#f0fdf4" : "#f8fafc",
-                  border: `1px solid ${ok ? "#bbf7d0" : "#e2e8f0"}`,
-                  borderRadius: "12px",
-                  padding: "10px 11px",
-                  boxSizing: "border-box",
-                }}
-              >
-                <div
-                  style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "9px",
-                    flexShrink: 0,
-                    background: ok ? "#dcfce7" : "#e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {ok ? (
-                    <Check style={{ width: "16px", height: "16px", color: "#16a34a" }} />
-                  ) : (
-                    <Icone style={{ width: "16px", height: "16px", color: "#475569" }} />
-                  )}
-                </div>
+          {ITENS.filter((i) => ESSENCIAIS.includes(i.id)).map(linha)}
+        </div>
 
-                <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                  <p style={{ fontSize: "12.5px", fontWeight: 700, color: "#0f172a" }}>{titulo}</p>
-                  <p style={{ fontSize: "11px", color: "#64748b", lineHeight: 1.45 }}>{texto}</p>
-                  {ok || !dica ? null : (
-                    <p style={{ fontSize: "11px", color: "#003580", fontWeight: 600, marginTop: "3px" }}>{dica}</p>
-                  )}
-                </div>
-
-                {ok ? null : (
-                  <button
-                    onClick={() => void resolver(id)}
-                    disabled={ocupado !== null}
-                    style={{
-                      flexShrink: 0,
-                      // Com dica, o texto ocupa a largura toda e o botão desce:
-                      // lado a lado ele espremeria a frase em três linhas.
-                      ...(dica ? { flexBasis: "100%" } : { marginLeft: "auto" }),
-                      padding: "8px 12px",
-                      borderRadius: "9px",
-                      background: "#003580",
-                      color: "#ffffff",
-                      fontWeight: 700,
-                      fontSize: "12px",
-                      whiteSpace: "nowrap",
-                      border: "none",
-                      cursor: ocupado ? "default" : "pointer",
-                      opacity: ocupado ? 0.6 : 1,
-                    }}
-                  >
-                    {ocupado === id ? "..." : botao}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+        <p
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            color: "#94a3b8",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}
+        >
+          Recomendado
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+          {ITENS.filter((i) => !ESSENCIAIS.includes(i.id)).map(linha)}
         </div>
 
         <button
@@ -328,16 +378,16 @@ export default function PreparoDispositivoModal() {
             width: "100%",
             padding: "11px",
             borderRadius: "10px",
-            background: "transparent",
-            color: "#334155",
+            background: pendentes === 0 ? "#003580" : "transparent",
+            color: pendentes === 0 ? "#ffffff" : "#334155",
             fontWeight: 700,
             fontSize: "12.5px",
             boxSizing: "border-box",
-            border: "1px solid #cbd5e1",
+            border: pendentes === 0 ? "none" : "1px solid #cbd5e1",
             cursor: "pointer",
           }}
         >
-          Fazer isso depois
+          {pendentes === 0 ? "Pronto" : "Fazer isso depois"}
         </button>
       </div>
     </div>
