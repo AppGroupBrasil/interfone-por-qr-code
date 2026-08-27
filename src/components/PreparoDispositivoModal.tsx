@@ -86,7 +86,7 @@ const ITENS: {
     id: "bateria",
     icone: BatteryCharging,
     titulo: "Sem economia de bateria",
-    texto: "Impede o Android de segurar a chamada com o celular parado.",
+    texto: "Impede o Android de segurar a chamada.",
     botao: "Abrir ajuste",
     dica: "Na tela do sistema: Bateria → Sem restrições.",
   },
@@ -299,7 +299,9 @@ export default function PreparoDispositivoModal() {
                     disabled={ocupado !== null}
                     style={{
                       flexShrink: 0,
-                      marginLeft: "auto",
+                      // Com dica, o texto ocupa a largura toda e o botão desce:
+                      // lado a lado ele espremeria a frase em três linhas.
+                      ...(dica ? { flexBasis: "100%" } : { marginLeft: "auto" }),
                       padding: "8px 12px",
                       borderRadius: "9px",
                       background: "#003580",
