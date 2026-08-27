@@ -65,14 +65,14 @@ const ITENS: {
     id: "notificacoes",
     icone: BellRing,
     titulo: "Notificações",
-    texto: "É por elas que a chamada chega quando o app está fechado.",
+    texto: "A chamada chega mesmo com o app fechado.",
     botao: "Ativar",
   },
   {
     id: "midia",
     icone: Camera,
     titulo: "Câmera e microfone",
-    texto: "Para você falar e ver quem está na portaria durante a chamada.",
+    texto: "Para ver e falar com quem está na portaria.",
     botao: "Permitir",
   },
   {
@@ -200,46 +200,53 @@ export default function PreparoDispositivoModal() {
         // fonte grande do sistema, ainda deixa rolar até o topo em vez de cortar.
         alignItems: "flex-start",
         justifyContent: "center",
-        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom))",
+        padding: "max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom))",
         overflowY: "auto",
+        // Nada de arrastar o cartão para os lados: some com a borda do celular.
+        overflowX: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
         style={{
           background: "#ffffff",
-          borderRadius: "22px",
-          padding: "28px 24px",
-          maxWidth: "460px",
+          borderRadius: "18px",
+          padding: "20px 16px",
+          maxWidth: "380px",
           width: "100%",
           margin: "auto",
+          boxSizing: "border-box",
+          // Palavra longa com fonte grande do sistema não empurra a largura.
+          overflowWrap: "anywhere",
           boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
         }}
       >
         <div
           style={{
-            width: "64px",
-            height: "64px",
+            width: "46px",
+            height: "46px",
             borderRadius: "50%",
             background: "linear-gradient(135deg, #003580, #0062d1)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            margin: "0 auto 16px",
+            margin: "0 auto 12px",
+            flexShrink: 0,
           }}
         >
-          <ShieldCheck style={{ width: "32px", height: "32px", color: "#ffffff" }} />
+          <ShieldCheck style={{ width: "24px", height: "24px", color: "#ffffff" }} />
         </div>
 
-        <h2 style={{ fontSize: "21px", fontWeight: 800, color: "#0f172a", textAlign: "center", marginBottom: "8px" }}>
+        <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", textAlign: "center", marginBottom: "6px" }}>
           Deixe seu celular pronto
         </h2>
-        <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.6, textAlign: "center", marginBottom: "20px" }}>
+        <p style={{ fontSize: "12.5px", color: "#475569", lineHeight: 1.5, textAlign: "center", marginBottom: "14px" }}>
           {pendentes === 1
             ? "Falta 1 ajuste para o interfone tocar sempre que alguém chamar."
             : `Faltam ${pendentes} ajustes para o interfone tocar sempre que alguém chamar.`}
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "18px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
           {ITENS.map(({ id, icone: Icone, titulo, texto, botao, dica }) => {
             const ok = estado[id];
             return (
@@ -247,22 +254,23 @@ export default function PreparoDispositivoModal() {
                 key={id}
                 style={{
                   display: "flex",
-                  gap: "12px",
+                  gap: "10px",
                   alignItems: "center",
                   // Fonte grande do sistema: o botão desce para a linha de baixo
                   // em vez de espremer o texto numa coluna de duas palavras.
                   flexWrap: "wrap",
                   background: ok ? "#f0fdf4" : "#f8fafc",
                   border: `1px solid ${ok ? "#bbf7d0" : "#e2e8f0"}`,
-                  borderRadius: "14px",
-                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  padding: "10px 11px",
+                  boxSizing: "border-box",
                 }}
               >
                 <div
                   style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "9px",
                     flexShrink: 0,
                     background: ok ? "#dcfce7" : "#e2e8f0",
                     display: "flex",
@@ -271,17 +279,17 @@ export default function PreparoDispositivoModal() {
                   }}
                 >
                   {ok ? (
-                    <Check style={{ width: "18px", height: "18px", color: "#16a34a" }} />
+                    <Check style={{ width: "16px", height: "16px", color: "#16a34a" }} />
                   ) : (
-                    <Icone style={{ width: "18px", height: "18px", color: "#475569" }} />
+                    <Icone style={{ width: "16px", height: "16px", color: "#475569" }} />
                   )}
                 </div>
 
-                <div style={{ flex: "1 1 150px", minWidth: 0 }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{titulo}</p>
-                  <p style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.5 }}>{texto}</p>
+                <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                  <p style={{ fontSize: "12.5px", fontWeight: 700, color: "#0f172a" }}>{titulo}</p>
+                  <p style={{ fontSize: "11px", color: "#64748b", lineHeight: 1.45 }}>{texto}</p>
                   {ok || !dica ? null : (
-                    <p style={{ fontSize: "12px", color: "#003580", fontWeight: 600, marginTop: "4px" }}>{dica}</p>
+                    <p style={{ fontSize: "11px", color: "#003580", fontWeight: 600, marginTop: "3px" }}>{dica}</p>
                   )}
                 </div>
 
@@ -292,12 +300,13 @@ export default function PreparoDispositivoModal() {
                     style={{
                       flexShrink: 0,
                       marginLeft: "auto",
-                      padding: "9px 14px",
-                      borderRadius: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "9px",
                       background: "#003580",
                       color: "#ffffff",
                       fontWeight: 700,
-                      fontSize: "13px",
+                      fontSize: "12px",
+                      whiteSpace: "nowrap",
                       border: "none",
                       cursor: ocupado ? "default" : "pointer",
                       opacity: ocupado ? 0.6 : 1,
@@ -315,12 +324,13 @@ export default function PreparoDispositivoModal() {
           onClick={fechar}
           style={{
             width: "100%",
-            padding: "13px",
-            borderRadius: "12px",
+            padding: "11px",
+            borderRadius: "10px",
             background: "transparent",
             color: "#334155",
             fontWeight: 700,
-            fontSize: "14px",
+            fontSize: "12.5px",
+            boxSizing: "border-box",
             border: "1px solid #cbd5e1",
             cursor: "pointer",
           }}
