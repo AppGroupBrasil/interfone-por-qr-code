@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import LandingTutorialModal from "@/components/LandingTutorialModal";
+import IphoneStories from "@/components/IphoneStories";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
 import { GATE_ENABLED } from "@/lib/config";
 import { apiFetch } from "@/lib/api";
@@ -386,6 +387,11 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* ═══════════════════════════════════
+          INSTALAR NO IPHONE — STORIES
+      ═══════════════════════════════════ */}
+      <IphoneStories mode={mode} />
 
       {/* ═══════════════════════════════════
           COMECE A USAR — FAIXA
