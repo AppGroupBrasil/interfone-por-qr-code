@@ -18,6 +18,7 @@ const SearchCondominio = lazy(() => import("@/pages/SearchCondominio"));
 const RegisterMorador = lazy(() => import("@/pages/RegisterMorador"));
 const RegisterCondominio = lazy(() => import("@/pages/RegisterCondominio"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const InstalarAndroid = lazy(() => import("@/pages/InstalarAndroid"));
 
 // Lazy: cadastros
 const Cadastros = lazy(() => import("@/pages/Cadastros"));
@@ -220,6 +221,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingOrDashboard />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/android" element={<InstalarAndroid />} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/register/morador/search" element={<PublicRoute><SearchCondominio /></PublicRoute>} />
         <Route path="/register/morador" element={<PublicRoute><RegisterMorador /></PublicRoute>} />

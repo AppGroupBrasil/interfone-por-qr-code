@@ -82,3 +82,10 @@ export function detectarPlataforma(): Plataforma {
   if (typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)) return "android";
   return "desktop";
 }
+
+// APK oficial para quem nao quer esperar a Play Store. O link "latest" do
+// GitHub sempre aponta para a ultima release publicada com esse nome de
+// arquivo — nao precisa mexer no site a cada versao nova.
+export const APK_URL =
+  "https://github.com/AppGroupBrasil/interfone-por-qr-code/releases/latest/download/app-interfone.apk";
+export const APK_VERSAO = "1.0.20";

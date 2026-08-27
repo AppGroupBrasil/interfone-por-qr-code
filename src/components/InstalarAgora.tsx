@@ -118,6 +118,7 @@ export default function InstalarAgora({ mode, variante = "secao", rotulo }: Read
           qr={qr}
           copiado={copiado}
           onCopiar={copiarLink}
+          onBaixarApk={() => { setAberto(false); navigate("/android"); }}
           onFechar={() => setAberto(false)}
         />
       )}
@@ -131,10 +132,11 @@ interface OverlayProps {
   qr: string;
   copiado: boolean;
   onCopiar: () => void;
+  onBaixarApk: () => void;
   onFechar: () => void;
 }
 
-function Overlay({ plataforma, escuro, qr, copiado, onCopiar, onFechar }: Readonly<OverlayProps>) {
+function Overlay({ plataforma, escuro, qr, copiado, onCopiar, onBaixarApk, onFechar }: Readonly<OverlayProps>) {
   const fundo = escuro ? "#0b1220" : "#ffffff";
   const corTitulo = escuro ? "#f8fafc" : "#0f172a";
   const corpo = escuro ? "#cbd5e1" : "#475569";
@@ -278,11 +280,25 @@ function Overlay({ plataforma, escuro, qr, copiado, onCopiar, onFechar }: Readon
         )}
 
         {plataforma === "android" && (
-          <ol style={{ display: "flex", flexDirection: "column", gap: "16px", margin: 0, padding: 0 }}>
-            {passo(1, SquarePlus, "Abra o menu do navegador", "Os três pontinhos, no canto superior direito.")}
-            {passo(2, Download, "Toque em Instalar aplicativo", "Em alguns aparelhos aparece como Adicionar à tela inicial.")}
-            {passo(3, Bell, "Abra pelo ícone e permita as notificações", "É o que faz a chamada tocar com o app fechado.")}
-          </ol>
+          <>
+            <ol style={{ display: "flex", flexDirection: "column", gap: "16px", margin: 0, padding: 0 }}>
+              {passo(1, SquarePlus, "Abra o menu do navegador", "Os três pontinhos, no canto superior direito.")}
+              {passo(2, Download, "Toque em Instalar aplicativo", "Em alguns aparelhos aparece como Adicionar à tela inicial.")}
+              {passo(3, Bell, "Abra pelo ícone e permita as notificações", "É o que faz a chamada tocar com o app fechado.")}
+            </ol>
+            <button
+              type="button"
+              onClick={onBaixarApk}
+              style={{
+                width: "100%", marginTop: "20px", padding: "13px",
+                background: "transparent", color: escuro ? "#93c5fd" : AZUL,
+                border: "1px solid " + linha, borderRadius: "12px",
+                fontSize: "14px", fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              Prefere baixar o aplicativo completo?
+            </button>
+          </>
         )}
 
         {plataforma === "desktop" && (
