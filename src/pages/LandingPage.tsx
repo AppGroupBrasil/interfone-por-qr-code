@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import LandingTutorialModal from "@/components/LandingTutorialModal";
+import InstalarAgora from "@/components/InstalarAgora";
 import IphoneStories from "@/components/IphoneStories";
 import { BRANDS, INTEGRATION_LABELS } from "@/lib/deviceLibrary";
 import { GATE_ENABLED } from "@/lib/config";
@@ -352,6 +353,7 @@ export default function LandingPage() {
           >
             <Lock style={{ width: "18px", height: "18px", color: "#ffffff" }} /> Acessar Plataforma
           </button>
+          <InstalarAgora mode={mode} variante="hero" />
         </div>
 
         {/* Highlight features */}

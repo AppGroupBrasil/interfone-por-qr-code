@@ -4,6 +4,8 @@ import { Capacitor } from "@capacitor/core";
 import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import App from "./App";
 import "./index.css";
+// Registra o listener de beforeinstallprompt antes de qualquer tela montar.
+import "./lib/pwaInstall";
 
 // OTA: sem notifyAppReady dentro de appReadyTimeout o plugin considera o
 // bundle quebrado e faz rollback automático para a versão embutida no APK.

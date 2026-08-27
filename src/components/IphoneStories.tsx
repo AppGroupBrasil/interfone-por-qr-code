@@ -4,6 +4,7 @@ import {
   Home, Pause, Play, Share, Smartphone, SquarePlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import InstalarAgora from "@/components/InstalarAgora";
 import { AppLogo } from "@/components/AppLogo";
 
 /* ═══════════════════════════════════════════════
@@ -167,6 +168,10 @@ export default function IphoneStories({ mode }: Props) {
                 <CircleCheck style={{ width: "15px", height: "15px", color: "#30d158" }} /> {b}
               </span>
             ))}
+          </div>
+
+          <div className="ifs-col-lista" style={{ display: "flex", marginBottom: "22px" }}>
+            <InstalarAgora mode={mode} />
           </div>
 
           <div style={{
