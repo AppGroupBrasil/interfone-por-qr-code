@@ -11,6 +11,13 @@ type Navegador = (path: string) => void;
 /** Pede ao aviso global que se re-registre e reveja se há chamada pendente. */
 export const EVENTO_REVALIDAR_CHAMADA = "appinterfone:revalidar-chamada";
 
+/** Avisa a interface quando uma chamada entra ou sai da tela. */
+export const EVENTO_CHAMADA_ATIVA = "appinterfone:chamada-ativa";
+
+export function haChamadaAtiva(): boolean {
+  return callAtiva !== null;
+}
+
 export function revalidarChamada(): void {
   globalThis.dispatchEvent(new Event(EVENTO_REVALIDAR_CHAMADA));
 }
@@ -35,10 +42,15 @@ export function abrirNoApp(path: string): void {
 
 /** Chamada tocando/em andamento no aviso global. */
 export function marcarChamadaAtiva(callId: string | null): void {
+  const antes = callAtiva !== null;
   callAtiva = callId;
   if (callId && timerAbertura) {
     clearTimeout(timerAbertura);
     timerAbertura = null;
+  }
+  // Só na virada: o aviso global reafirma a chamada a cada render.
+  if (antes !== (callId !== null)) {
+    globalThis.dispatchEvent(new CustomEvent(EVENTO_CHAMADA_ATIVA, { detail: callId !== null }));
   }
 }
 

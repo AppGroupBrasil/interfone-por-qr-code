@@ -16,6 +16,7 @@ import {
   permissoesDeMidia,
   podeUsarTelaCheia,
 } from "@/lib/callRing";
+import { EVENTO_CHAMADA_ATIVA, haChamadaAtiva } from "@/lib/appNav";
 import { isNative } from "@/lib/config";
 import { enablePushNotifications } from "@/lib/pushNotifications";
 
@@ -109,7 +110,7 @@ export default function PreparoDispositivoModal() {
     if (!isNative) return;
     let vivo = true;
 
-    const rodar = async (podeAbrir: boolean) => {
+    const rodar = async () => {
       const atual = await conferir();
       if (!vivo) return;
       if (!Object.values(atual).includes(false)) {
@@ -118,19 +119,32 @@ export default function PreparoDispositivoModal() {
         localStorage.removeItem(DISPENSADO_KEY);
         return;
       }
-      if (podeAbrir && localStorage.getItem(DISPENSADO_KEY) !== "1") setAberto(true);
+      // Chamada tocando ou em andamento manda na tela — o preparo espera.
+      if (haChamadaAtiva()) {
+        setAberto(false);
+        return;
+      }
+      if (localStorage.getItem(DISPENSADO_KEY) !== "1") setAberto(true);
     };
 
-    void rodar(true);
+    void rodar();
 
     // Volta das configurações do sistema: reconfere o que o morador liberou.
     const onVis = () => {
-      if (document.visibilityState === "visible") void rodar(false);
+      if (document.visibilityState === "visible") void rodar();
+    };
+    // Cold start pela notificação: a chamada chega depois do mount e tem
+    // prioridade; quando ela acaba, o preparo volta se ainda faltar algo.
+    const onChamada = (e: Event) => {
+      if ((e as CustomEvent<boolean>).detail) setAberto(false);
+      else void rodar();
     };
     document.addEventListener("visibilitychange", onVis);
+    globalThis.addEventListener(EVENTO_CHAMADA_ATIVA, onChamada);
     return () => {
       vivo = false;
       document.removeEventListener("visibilitychange", onVis);
+      globalThis.removeEventListener(EVENTO_CHAMADA_ATIVA, onChamada);
     };
   }, [conferir]);
 
