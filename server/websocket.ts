@@ -16,6 +16,7 @@ import type { IncomingMessage } from "http";
 import jwt from "jsonwebtoken";
 import db, { type DbUser } from "./db.js";
 import { sendPushToUser, sendPushToCondominioRole } from "./pushService.js";
+import { registrarAtendimento, finalizarChamada } from "./callLog.js";
 import { JWT_SECRET } from "./config.js";
 import { log } from "./logger.js";
 
@@ -764,6 +765,7 @@ export function initSignalingServer(_server?: Server) {
             if (msg.callId) {
               client.callId = msg.callId;
             }
+            registrarAtendimento(msg.callId);
             if (msg.callId && client.connKey) {
               answeredCalls.set(client.connKey, {
                 callId: msg.callId,
@@ -801,6 +803,7 @@ export function initSignalingServer(_server?: Server) {
             if (recusada?.portariaCondominioId) {
               cancelarToquePortaria(recusada.portariaCondominioId, msg.callId, clientId);
             }
+            finalizarChamada(msg.callId, { recusada: true });
             forgetAnsweredCall(msg.callId);
             const rejectPeer = findPeerByCallId(msg.callId, clientId);
             if (rejectPeer) {
@@ -870,6 +873,7 @@ export function initSignalingServer(_server?: Server) {
             if (encerrada?.portariaCondominioId) {
               cancelarToquePortaria(encerrada.portariaCondominioId, msg.callId, clientId);
             }
+            finalizarChamada(msg.callId);
             forgetAnsweredCall(msg.callId);
             const endPeer = findPeerByCallId(msg.callId, clientId);
             if (endPeer) {
@@ -1043,6 +1047,8 @@ export function initSignalingServer(_server?: Server) {
           cancelarToquePortaria(pendenteFechada.portariaCondominioId, closedCallId, clientId);
         }
         const notifyEnd = () => {
+          // Ninguem mais vai avisar o desfecho: gravar antes de soltar a chamada.
+          finalizarChamada(closedCallId, { resultado: "desconectado" });
           const otherType = client.type === "visitor" ? "morador" : "visitor";
           const other = findClientByCallId(closedCallId, otherType);
           if (!other) {

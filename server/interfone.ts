@@ -518,7 +518,9 @@ router.put("/calls/:id", (req: Request, res: Response) => {
 
     // Endpoint público: casar SOMENTE pelo call_id não-sequencial (ICALL-...),
     // nunca pelo id inteiro — evita enumeração e spam de e-mail de chamada perdida.
-    sql += " WHERE call_id = ?";
+    // Chamada ja finalizada (o desfecho vem do servidor, em callLog.ts) nao
+    // volta atras por um PUT atrasado do app.
+    sql += " WHERE call_id = ? AND encerrado_at IS NULL";
     const idParam = String(req.params.id);
     params.push(idParam);
 
