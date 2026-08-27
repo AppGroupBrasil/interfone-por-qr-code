@@ -581,6 +581,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   animation: spin-slow 0.8s linear infinite;
 }
 
+/* No app, a barra de navegação do Android fica por cima do rodapé e env() volta
+   zero em vários aparelhos — sem um piso fixo os rótulos "Home"/"Minha Conta"
+   somem atrás dela. No navegador não há barra, então só o env() vale. */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+html.capacitor-native .safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 52px);
+}
+
 /* ═══════════ Premium Bottom Nav ═══════════ */
 .premium-bottom-nav {
   background: oklch(0.13 0.025 250 / 0.85);
