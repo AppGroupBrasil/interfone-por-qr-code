@@ -160,9 +160,11 @@ export default function PreparoDispositivoModal() {
         localStorage.removeItem(DISPENSADO_KEY);
         return;
       }
-      // Só recomendado pendente não insiste: em muitos aparelhos o sistema nem
-      // oferece a tela que os libera, e o morador ficaria vendo isto para sempre.
-      if (localStorage.getItem(DISPENSADO_KEY) !== "1") setAberto(true);
+      // Sem um essencial a campainha não toca — aí insiste mesmo que o morador
+      // já tenha dispensado, senão ele fica sem interfone sem saber por quê.
+      // Só recomendado pendente respeita a dispensa: em muitos aparelhos o
+      // sistema nem oferece a tela que os libera, e isto apareceria para sempre.
+      if (faltaEssencial(atual) || localStorage.getItem(DISPENSADO_KEY) !== "1") setAberto(true);
     };
 
     void rodar();
@@ -304,7 +306,9 @@ export default function PreparoDispositivoModal() {
         // fonte grande do sistema, ainda deixa rolar até o topo em vez de cortar.
         alignItems: "flex-start",
         justifyContent: "center",
-        padding: "max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom))",
+        // Piso de 34px no topo: em vários Android o env() volta zero mesmo com
+        // viewport-fit=cover, e aí o cabeçalho do cartão fica sob a barra de status.
+        padding: "max(34px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))",
         overflowY: "auto",
         // Nada de arrastar o cartão para os lados: some com a borda do celular.
         overflowX: "hidden",
