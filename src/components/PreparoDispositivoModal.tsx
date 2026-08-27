@@ -306,9 +306,10 @@ export default function PreparoDispositivoModal() {
         // fonte grande do sistema, ainda deixa rolar até o topo em vez de cortar.
         alignItems: "flex-start",
         justifyContent: "center",
-        // Piso de 34px no topo: em vários Android o env() volta zero mesmo com
-        // viewport-fit=cover, e aí o cabeçalho do cartão fica sob a barra de status.
-        padding: "max(34px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))",
+        // Pisos fixos: em vários Android o env() volta zero mesmo com
+        // viewport-fit=cover, e aí o cartão some sob a barra de status em cima e
+        // sob a barra de navegação embaixo — o botão "Pronto" fica cortado.
+        padding: "max(34px, env(safe-area-inset-top)) 12px max(56px, env(safe-area-inset-bottom))",
         overflowY: "auto",
         // Nada de arrastar o cartão para os lados: some com a borda do celular.
         overflowX: "hidden",
