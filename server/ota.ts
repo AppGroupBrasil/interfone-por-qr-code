@@ -4,7 +4,9 @@
  * O app nativo consulta POST /api/app-update a cada abertura.
  * Bundles são gerados no build Docker (scripts/build-ota-bundle.mjs),
  * copiados para o volume persistente no boot (initOta) e publicados
- * no canal beta; produção só muda via /promote (master).
+ * no canal beta e, por padrão, também em produção — sem isso o app fica
+ * preso no primeiro bundle, porque não há tela para chamar /promote.
+ * OTA_AUTO_PROMOTE=0 mantém produção travada até /promote (master).
  * Canais: beta = usuários em OTA_BETA_USERS ou devices em
  * OTA_BETA_DEVICES; todos os demais recebem production.
  * ═══════════════════════════════════════════════════════════
@@ -30,6 +32,9 @@ const APP_URL = (process.env.APP_URL || "https://appinterfone.com.br").replace(/
 // versionCode nativo mínimo exigido para receber bundles (subir quando um
 // bundle passar a depender de plugin nativo ausente em APKs antigos)
 const MIN_NATIVE_CODE = parseInt(process.env.OTA_MIN_NATIVE_CODE || "0", 10) || 0;
+// Cada deploy publica o bundle novo também em produção. Desligar (=0) só se
+// alguém for promover manualmente pelo /promote.
+const AUTO_PROMOTE = (process.env.OTA_AUTO_PROMOTE || "1") !== "0";
 const BETA_USERS = new Set(
   (process.env.OTA_BETA_USERS || "").split(",").map((s) => s.trim()).filter(Boolean)
 );
@@ -95,7 +100,7 @@ export function initOta() {
       state.bundles[version] = { file, checksum: manifest.checksum, builtAt: manifest.builtAt };
     }
     state.beta = version;
-    if (!state.production) state.production = version;
+    if (AUTO_PROMOTE || !state.production) state.production = version;
     cleanupOldBundles();
     saveState();
     log.info(`OTA: bundle ${version} registrado`, { beta: state.beta, production: state.production });
