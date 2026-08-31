@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { DOC_LABEL, DOC_PLACEHOLDER, formatDocTipo, isDocCompleto, onlyDigits, type DocTipo } from "@/lib/documento";
 
 interface CondominioResult {
   id: number;
@@ -25,27 +26,27 @@ interface CondominioResult {
 export default function SearchCondominio() {
   const navigate = useNavigate();
 
+  const [docTipo, setDocTipo] = useState<DocTipo>("cnpj");
   const [cnpj, setCnpj] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState("");
   const [condominio, setCondominio] = useState<CondominioResult | null>(null);
 
-  const formatCnpj = (value: string) => {
-    const n = value.replace(/\D/g, "");
-    if (n.length <= 2) return n;
-    if (n.length <= 5) return `${n.slice(0, 2)}.${n.slice(2)}`;
-    if (n.length <= 8) return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5)}`;
-    if (n.length <= 12) return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5, 8)}/${n.slice(8)}`;
-    return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5, 8)}/${n.slice(8, 12)}-${n.slice(12, 14)}`;
+  const trocarDocTipo = (tipo: DocTipo) => {
+    if (tipo === docTipo) return;
+    setDocTipo(tipo);
+    setCnpj("");
+    setCondominio(null);
+    setError("");
   };
 
   const handleSearch = async () => {
     setError("");
     setCondominio(null);
 
-    const clean = cnpj.replace(/\D/g, "");
-    if (clean.length !== 14) {
-      setError("CNPJ deve ter 14 dígitos.");
+    const clean = onlyDigits(cnpj);
+    if (!isDocCompleto(clean, docTipo)) {
+      setError(docTipo === "cpf" ? "CPF deve ter 11 dígitos." : "CNPJ deve ter 14 dígitos.");
       return;
     }
 
@@ -107,22 +108,42 @@ export default function SearchCondominio() {
             Buscar Condomínio
           </h1>
           <p className="text-sm text-muted-foreground">
-            Informe o CNPJ do seu condomínio para continuar
+            Informe o CPF ou CNPJ do seu condomínio para continuar
           </p>
         </div>
 
         {/* Search Card */}
         <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/20">
           <div style={{ display: "flex", flexDirection: "column", gap: "19px" }}>
-            {/* CNPJ Input */}
+            {/* CPF/CNPJ Input */}
             <div className="space-y-2">
-              <Label htmlFor="cnpj">CNPJ do Condomínio *</Label>
+              <Label htmlFor="documento">{DOC_LABEL[docTipo]} do Condomínio *</Label>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted/40 border border-border">
+                {(["cnpj", "cpf"] as DocTipo[]).map((tipo) => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => trocarDocTipo(tipo)}
+                    aria-pressed={docTipo === tipo}
+                    className={`h-9 rounded-lg text-xs font-semibold uppercase tracking-wide transition-colors ${
+                      docTipo === tipo
+                        ? "bg-primary text-primary-foreground shadow"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {DOC_LABEL[tipo]}
+                  </button>
+                ))}
+              </div>
               <Input
-                id="cnpj"
-                placeholder="00.000.000/0000-00"
+                id="documento"
+                inputMode="numeric"
+                placeholder={DOC_PLACEHOLDER[docTipo]}
                 value={cnpj}
                 onChange={(e) => {
-                  setCnpj(formatCnpj(e.target.value));
+                  const tipo = onlyDigits(e.target.value).length > 11 ? "cnpj" : docTipo;
+                  if (tipo !== docTipo) setDocTipo(tipo);
+                  setCnpj(formatDocTipo(e.target.value, tipo));
                   setCondominio(null);
                   setError("");
                 }}

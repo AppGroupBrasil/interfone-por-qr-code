@@ -519,12 +519,12 @@ const tutorials: Record<string, ReactNode> = {
   "Gestão de Condomínio": (
     <>
       <S icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
-        <p><strong>Painel Master</strong> para criar, editar e gerenciar todos os condomínios. Cadastra com nome, CNPJ, endereço, vincula administradoras e síndicos.</p>
+        <p><strong>Painel Master</strong> para criar, editar e gerenciar todos os condomínios. Cadastra com nome, CPF ou CNPJ, endereço, vincula administradoras e síndicos.</p>
       </S>
       <S icon={<span>🏗️</span>} title="COMO CADASTRAR">
         <St n={1}>Clique em <strong>"+"</strong> para abrir o formulário</St>
         <St n={2}>Preencha o <strong>nome</strong></St>
-        <St n={3}>Informe o <strong>CNPJ</strong> (se houver)</St>
+        <St n={3}>Escolha <strong>CPF ou CNPJ</strong> e informe o documento (se houver)</St>
         <St n={4}>Preencha o <strong>endereço completo</strong></St>
         <St n={5}>Informe o <strong>número de unidades</strong></St>
         <St n={6}>Vincule uma <strong>administradora</strong> (opcional)</St>
@@ -533,7 +533,7 @@ const tutorials: Record<string, ReactNode> = {
       <S icon={<span>⭐</span>} title="DICAS IMPORTANTES">
         <B>Ordem ideal: Condomínio → Administradora → Síndico → Blocos → Moradores → Funcionários</B>
         <B>Excluir condomínio <strong>apaga TODOS os dados</strong></B>
-        <B>CNPJ é <strong>opcional mas recomendado</strong></B>
+        <B>CPF/CNPJ é <strong>opcional mas recomendado</strong></B>
       </S>
     </>
   ),

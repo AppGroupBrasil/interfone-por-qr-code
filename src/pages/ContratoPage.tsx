@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Printer, Share2, FileText, Copy, MessageCircle, ArrowRight, Check } from "lucide-react";
 import { useState } from "react";
 import { EXTRAS_ENABLED } from "@/lib/config";
+import { docLabelFinal } from "@/lib/documento";
 
 const WHATSAPP_NUMBER = "5511933284364";
 
@@ -238,7 +239,7 @@ export default function ContratoPage() {
           <p style={{ marginTop: "16px" }}><strong>CONTRATANTE:</strong></p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
             <FieldRow label="Condomínio / Razão Social" value={condo} onChange={setCondo} />
-            <FieldRow label="CNPJ" value={cnpj} onChange={setCnpj} placeholder="00.000.000/0000-00" />
+            <FieldRow label="CNPJ / CPF" value={cnpj} onChange={setCnpj} placeholder="00.000.000/0000-00 ou 000.000.000-00" />
             <FieldRow label="Endereço" value={endereco} onChange={setEndereco} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <FieldRow label="Nº" value={numero} onChange={setNumero} />
@@ -492,7 +493,7 @@ export default function ContratoPage() {
             {condo && (
               <div style={{ marginBottom: "20px", padding: "16px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
                 <p style={{ fontWeight: 700, color: "#003580", marginBottom: "4px" }}>CONTRATANTE</p>
-                <p style={{ fontSize: "14px" }}><strong>{condo}</strong>{cnpj ? ` — CNPJ: ${cnpj}` : ""}</p>
+                <p style={{ fontSize: "14px" }}><strong>{condo}</strong>{cnpj ? ` — ${docLabelFinal(cnpj) ? `${docLabelFinal(cnpj)}: ` : ""}${cnpj}` : ""}</p>
                 {endereco && <p style={{ fontSize: "13px", color: "#64748b" }}>{endereco}{numero ? `, ${numero}` : ""}{bairro ? ` — ${bairro}` : ""}{cidadeUf ? ` — ${cidadeUf}` : ""}{cep ? ` — CEP: ${cep}` : ""}</p>}
                 {sindico && <p style={{ fontSize: "13px", color: "#64748b" }}>Representante: {sindico}{cpfSindico ? ` (CPF: ${cpfSindico})` : ""}</p>}
               </div>
@@ -589,7 +590,7 @@ export default function ContratoPage() {
             <SignatureBlock
               label="CONTRATANTE"
               name={condo || "________________________"}
-              detail={cnpj ? `CNPJ: ${cnpj}` : "CNPJ: ___.___.___/____-__"}
+              detail={cnpj ? `${docLabelFinal(cnpj) ? `${docLabelFinal(cnpj)}: ` : ""}${cnpj}` : "CNPJ / CPF: ______________________"}
             />
           </div>
 

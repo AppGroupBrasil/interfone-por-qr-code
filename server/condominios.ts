@@ -123,12 +123,28 @@ router.put("/:id", authorize("master", "administradora", "sindico"), (req, res) 
       return;
     }
 
-    const { name, address, city, state, unitsCount } = req.body;
+    const { name, cnpj, address, city, state, unitsCount } = req.body;
 
     const updates: string[] = [];
     const params: any[] = [];
 
     if (name) { updates.push("name = ?"); params.push(name.trim()); }
+    if (cnpj !== undefined) {
+      const cleanDoc = String(cnpj ?? "").replace(/\D/g, "");
+      if (cleanDoc && cleanDoc.length !== 11 && cleanDoc.length !== 14) {
+        res.status(400).json({ error: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido." });
+        return;
+      }
+      if (cleanDoc) {
+        const emUso = db.prepare("SELECT id FROM condominios WHERE cnpj = ? AND id != ?").get(cleanDoc, parseInt(id));
+        if (emUso) {
+          res.status(409).json({ error: `Este ${cleanDoc.length === 11 ? "CPF" : "CNPJ"} já está cadastrado.` });
+          return;
+        }
+      }
+      updates.push("cnpj = ?");
+      params.push(cleanDoc || null);
+    }
     if (address !== undefined) { updates.push("address = ?"); params.push(address?.trim() || null); }
     if (city !== undefined) { updates.push("city = ?"); params.push(city?.trim() || null); }
     if (state !== undefined) { updates.push("state = ?"); params.push(state?.trim() || null); }

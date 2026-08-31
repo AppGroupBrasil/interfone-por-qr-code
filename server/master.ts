@@ -134,7 +134,8 @@ router.get("/condominios-dashboard", (req, res) => {
     if (search) {
       where += " AND (c.name LIKE ? OR c.cnpj LIKE ? OR c.city LIKE ?)";
       const term = `%${search}%`;
-      params.push(term, term, term);
+      const docDigits = String(search).replace(/D/g, "");
+      params.push(term, docDigits ? `%${docDigits}%` : term, term);
     }
 
     if (status_pagamento && status_pagamento !== "todos") {

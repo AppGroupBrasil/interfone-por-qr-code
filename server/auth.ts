@@ -231,19 +231,20 @@ router.get("/condominio/search", (req, res) => {
   try {
     const { cnpj } = req.query;
     if (!cnpj || typeof cnpj !== "string") {
-      res.status(400).json({ error: "Informe o CNPJ." });
+      res.status(400).json({ error: "Informe o CPF ou CNPJ." });
       return;
     }
 
     const cleanCnpj = cnpj.replaceAll(/\D/g, "");
-    if (cleanCnpj.length !== 14) {
-      res.status(400).json({ error: "CNPJ deve ter 14 dígitos." });
+    if (cleanCnpj.length !== 11 && cleanCnpj.length !== 14) {
+      res.status(400).json({ error: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido." });
       return;
     }
+    const docLabel = cleanCnpj.length === 11 ? "CPF" : "CNPJ";
 
     const condo = db.prepare("SELECT * FROM condominios WHERE cnpj = ?").get(cleanCnpj) as DbCondominio | undefined;
     if (!condo) {
-      res.status(404).json({ error: "Condomínio não encontrado. Verifique o CNPJ." });
+      res.status(404).json({ error: `Condomínio não encontrado. Verifique o ${docLabel}.` });
       return;
     }
 
@@ -358,10 +359,15 @@ router.post("/register/condominio", async (req, res) => {
       return;
     }
 
-    if (cnpj) {
-      const existingCondo = db.prepare("SELECT id FROM condominios WHERE cnpj = ?").get(cnpj.replaceAll(/\D/g, ""));
+    const cleanDoc = cnpj ? String(cnpj).replaceAll(/\D/g, "") : "";
+    if (cleanDoc) {
+      if (cleanDoc.length !== 11 && cleanDoc.length !== 14) {
+        res.status(400).json({ error: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido." });
+        return;
+      }
+      const existingCondo = db.prepare("SELECT id FROM condominios WHERE cnpj = ?").get(cleanDoc);
       if (existingCondo) {
-        res.status(409).json({ error: "Este CNPJ já está cadastrado." });
+        res.status(409).json({ error: `Este ${cleanDoc.length === 11 ? "CPF" : "CNPJ"} já está cadastrado.` });
         return;
       }
     }
@@ -373,7 +379,7 @@ router.post("/register/condominio", async (req, res) => {
       "INSERT INTO condominios (name, cnpj, address, city, state, zip_code, units_count) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).run(
       condominioName.trim(),
-      cnpj?.replaceAll(/\D/g, "") || null,
+      cleanDoc || null,
       address?.trim() || null,
       city?.trim() || null,
       state?.trim() || null,

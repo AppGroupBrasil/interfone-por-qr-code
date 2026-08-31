@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkPin } from "@/lib/passwordPolicy";
+import { DOC_LABEL, DOC_PLACEHOLDER, formatDocTipo, isDocCompleto, onlyDigits, type DocTipo } from "@/lib/documento";
 import {
   Eye,
   EyeOff,
@@ -28,6 +29,7 @@ export default function RegisterCondominio() {
 
   // Step 1 - Dados do condomínio
   const [condominioName, setCondominioName] = useState("");
+  const [docTipo, setDocTipo] = useState<DocTipo>("cnpj");
   const [cnpj, setCnpj] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -58,13 +60,12 @@ export default function RegisterCondominio() {
   const [copied, setCopied] = useState("");
 
   // Formatações
-  const formatCnpj = (value: string) => {
-    const n = value.replace(/\D/g, "");
-    if (n.length <= 2) return n;
-    if (n.length <= 5) return `${n.slice(0, 2)}.${n.slice(2)}`;
-    if (n.length <= 8) return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5)}`;
-    if (n.length <= 12) return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5, 8)}/${n.slice(8)}`;
-    return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5, 8)}/${n.slice(8, 12)}-${n.slice(12, 14)}`;
+  const trocarDocTipo = (tipo: DocTipo) => {
+    if (tipo === docTipo) return;
+    setDocTipo(tipo);
+    setCnpj("");
+    setCnpjFound(false);
+    setCnpjNotFound(false);
   };
 
   // Buscar dados do CNPJ na BrasilAPI
@@ -111,6 +112,9 @@ export default function RegisterCondominio() {
 
   const validateStep1 = () => {
     if (!condominioName.trim()) return "Informe o nome do condomínio.";
+    if (cnpj && !isDocCompleto(cnpj, docTipo)) {
+      return docTipo === "cpf" ? "CPF deve ter 11 dígitos." : "CNPJ deve ter 14 dígitos.";
+    }
     return null;
   };
 
@@ -371,21 +375,42 @@ export default function RegisterCondominio() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {step === 1 && (
               <>
-                {/* CNPJ - primeiro campo */}
+                {/* CPF ou CNPJ - primeiro campo */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="cnpj" className="text-xs font-semibold uppercase tracking-wide text-foreground/70">CNPJ</Label>
+                  <Label htmlFor="documento" className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
+                    {DOC_LABEL[docTipo]} do responsável ou do condomínio
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted/40 border border-border">
+                    {(["cnpj", "cpf"] as DocTipo[]).map((tipo) => (
+                      <button
+                        key={tipo}
+                        type="button"
+                        onClick={() => trocarDocTipo(tipo)}
+                        aria-pressed={docTipo === tipo}
+                        className={`h-9 rounded-lg text-xs font-semibold uppercase tracking-wide transition-colors ${
+                          docTipo === tipo
+                            ? "bg-primary text-primary-foreground shadow"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {DOC_LABEL[tipo]}
+                      </button>
+                    ))}
+                  </div>
                   <div className="relative">
                     <Input
-                      id="cnpj"
-                      placeholder="00.000.000/0000-00"
+                      id="documento"
+                      inputMode="numeric"
+                      placeholder={DOC_PLACEHOLDER[docTipo]}
                       value={cnpj}
                       onChange={(e) => {
-                        const formatted = formatCnpj(e.target.value);
+                        const tipo = onlyDigits(e.target.value).length > 11 ? "cnpj" : docTipo;
+                        if (tipo !== docTipo) setDocTipo(tipo);
+                        const formatted = formatDocTipo(e.target.value, tipo);
                         setCnpj(formatted);
                         setCnpjFound(false);
                         setCnpjNotFound(false);
-                        const digits = formatted.replace(/\D/g, "");
-                        if (digits.length === 14) lookupCnpj(formatted);
+                        if (tipo === "cnpj" && isDocCompleto(formatted, "cnpj")) lookupCnpj(formatted);
                       }}
                     />
                     {cnpjLoading && (

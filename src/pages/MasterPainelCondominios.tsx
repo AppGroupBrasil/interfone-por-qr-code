@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/api";
+import { formatDoc, docLabelOf } from "@/lib/documento";
 import TutorialButton, { TSection, TStep, TBullet } from "@/components/TutorialButton";
 import {
   ArrowLeft,
@@ -328,7 +329,7 @@ export default function MasterPainelCondominios() {
             <Search style={{ width: "16px", height: "16px", color: isDark ? "#64748b" : "#94a3b8" }} />
             <input
               type="text"
-              placeholder="Buscar por nome, CNPJ ou cidade..."
+              placeholder="Buscar por nome, CPF/CNPJ ou cidade..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -539,7 +540,7 @@ export default function MasterPainelCondominios() {
 
                       {/* CNPJ / Location */}
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", fontSize: "11px", color: "#64748b" }}>
-                        {condo.cnpj && <span>CNPJ: {condo.cnpj}</span>}
+                        {condo.cnpj && <span>{docLabelOf(condo.cnpj)}: {formatDoc(condo.cnpj)}</span>}
                         {condo.city && <span>📍 {condo.city}{condo.state ? ` - ${condo.state}` : ""}</span>}
                       </div>
 

@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { formatDoc, docLabelOf, onlyDigits } from "@/lib/documento";
 import { useTheme } from "@/hooks/useTheme";
 
 const API = "/api";
@@ -93,7 +94,7 @@ export default function MasterCondominios() {
     setEditingId(c.id);
     setForm({
       name: c.name,
-      cnpj: c.cnpj || "",
+      cnpj: formatDoc(c.cnpj),
       address: c.address || "",
       city: c.city || "",
       state: c.state || "",
@@ -154,7 +155,7 @@ export default function MasterCondominios() {
   const filtered = condominios.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.cnpj && c.cnpj.includes(search))
+      (c.cnpj && (c.cnpj.includes(search) || (onlyDigits(search) !== "" && c.cnpj.includes(onlyDigits(search)))))
   );
 
   return (
@@ -169,12 +170,12 @@ export default function MasterCondominios() {
           <span className="font-semibold text-sm">Gestão de Condomínios</span>
           <TutorialButton title="Gestão de Condomínios">
             <TSection icon={<span>📋</span>} title="O QUE É ESTA FUNÇÃO?">
-              <p><strong>Painel Master</strong> para criar, editar e gerenciar todos os condomínios do sistema. Aqui você cadastra cada condomínio com seus dados (nome, CNPJ, endereço), vincula administradoras e síndicos, e acompanha a quantidade de moradores, blocos e unidades de cada um.</p>
+              <p><strong>Painel Master</strong> para criar, editar e gerenciar todos os condomínios do sistema. Aqui você cadastra cada condomínio com seus dados (nome, CPF ou CNPJ, endereço), vincula administradoras e síndicos, e acompanha a quantidade de moradores, blocos e unidades de cada um.</p>
             </TSection>
             <TSection icon={<span>🏗️</span>} title="COMO CADASTRAR UM CONDOMÍNIO">
               <TStep n={1}>Clique no botão <strong>"+"</strong> para abrir o formulário de novo condomínio</TStep>
               <TStep n={2}>Preencha o <strong>nome</strong> do condomínio (ex: "Residencial Flores")</TStep>
-              <TStep n={3}>Informe o <strong>CNPJ</strong> do condomínio (se houver)</TStep>
+              <TStep n={3}>Escolha <strong>CPF ou CNPJ</strong> e informe o documento do condomínio (se houver)</TStep>
               <TStep n={4}>Preencha o <strong>endereço completo</strong> (rua, número, bairro, cidade, estado)</TStep>
               <TStep n={5}>Informe o <strong>número de unidades</strong> (total de apartamentos/casas)</TStep>
               <TStep n={6}>Vincule uma <strong>administradora</strong> (opcional — pode vincular depois)</TStep>
@@ -182,9 +183,9 @@ export default function MasterCondominios() {
               <p style={{ marginTop: "8px", fontSize: "13px", color: p.textSecondary }}>👉 Após cadastrar, vincule um síndico para que ele configure o condomínio (blocos, moradores, funcionários).</p>
             </TSection>
             <TSection icon={<span>🔧</span>} title="GERENCIANDO CONDOMÍNIOS">
-              <TBullet><strong>Editar</strong> — Altere nome, endereço, CNPJ ou número de unidades</TBullet>
+              <TBullet><strong>Editar</strong> — Altere nome, endereço, CPF/CNPJ ou número de unidades</TBullet>
               <TBullet><strong>Excluir</strong> — Remove o condomínio e todos os dados associados (moradores, funcionários, etc.)</TBullet>
-              <TBullet><strong>Buscar</strong> — Encontre condomínios por nome ou CNPJ</TBullet>
+              <TBullet><strong>Buscar</strong> — Encontre condomínios por nome, CPF ou CNPJ</TBullet>
               <TBullet><strong>Contadores</strong> — Veja quantos moradores, blocos e unidades cada condomínio tem</TBullet>
               <TBullet><strong>Vínculos</strong> — Veja qual administradora e síndico estão associados</TBullet>
             </TSection>
@@ -192,7 +193,7 @@ export default function MasterCondominios() {
               <TBullet>A ordem de configuração ideal: <strong>Condomínio → Administradora → Síndico → Blocos → Moradores → Funcionários</strong></TBullet>
               <TBullet>Excluir um condomínio <strong>apaga TODOS os dados</strong> (moradores, funcionários, visitantes, etc.) — use com cuidado</TBullet>
               <TBullet>Se um condomínio trocar de administradora, <strong>edite o vínculo</strong> em vez de excluir e recadastrar</TBullet>
-              <TBullet>O CNPJ é opcional mas recomendado para identificação formal</TBullet>
+              <TBullet>O CPF/CNPJ é opcional mas recomendado — condomínios sem CNPJ podem usar o CPF do síndico ou responsável</TBullet>
             </TSection>
           </TutorialButton>
           <div className="flex-1" />
@@ -211,7 +212,7 @@ export default function MasterCondominios() {
           <Search className="w-4 h-4 shrink-0" style={{ color: p.textMuted }} />
           <input
             type="text"
-            placeholder="Buscar por nome ou CNPJ..."
+            placeholder="Buscar por nome, CPF ou CNPJ..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 bg-transparent text-sm focus:outline-none"
@@ -240,9 +241,10 @@ export default function MasterCondominios() {
               className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/40"
             />
             <input
-              placeholder="CNPJ"
+              placeholder="CPF ou CNPJ"
+              inputMode="numeric"
               value={form.cnpj}
-              onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+              onChange={(e) => setForm({ ...form, cnpj: formatDoc(e.target.value) })}
               className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/40"
             />
             <input
@@ -306,7 +308,7 @@ export default function MasterCondominios() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: p.textAccent }}>{c.name}</p>
                   <p className="text-[10px]" style={{ color: p.textSecondary }}>
-                    {c.cnpj || "Sem CNPJ"} • {c.units_count || 0} unidades
+                    {c.cnpj ? `${docLabelOf(c.cnpj)}: ${formatDoc(c.cnpj)}` : "Sem CPF/CNPJ"} • {c.units_count || 0} unidades
                   </p>
                 </div>
                 <div className="flex gap-3 shrink-0">
