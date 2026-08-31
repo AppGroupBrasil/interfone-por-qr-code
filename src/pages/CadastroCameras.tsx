@@ -513,7 +513,6 @@ export default function CadastroCameras() {
                   <input
                     style={inputStyle}
                     type="password"
-                    placeholder="••••••"
                     value={form.senha || ""}
                     onChange={(e) => setForm({ ...form, senha: e.target.value })}
                   />

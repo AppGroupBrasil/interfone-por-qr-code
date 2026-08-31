@@ -318,7 +318,7 @@ export default function CadastroMoradores() {
                   <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Nova senha (6 dígitos)</label>
                   <p style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "#64748b", marginBottom: 4 }}>Deixe em branco para manter a senha atual.</p>
                   <div className="relative">
-                    <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6} placeholder="••••••"
+                    <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6}
                       value={editPassword} onChange={(e) => setEditPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} className="pr-10" style={{ paddingLeft: 24 }} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
@@ -330,7 +330,7 @@ export default function CadastroMoradores() {
                 {editPassword && (
                   <div style={{ marginBottom: 19 }}>
                     <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: isDark ? "#ffffff" : "#003580", marginBottom: 4 }}>Confirmar senha</label>
-                    <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6} placeholder="••••••"
+                    <Input type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={6}
                       value={editConfirmPassword} onChange={(e) => setEditConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ paddingLeft: 24 }} />
                   </div>
                 )}

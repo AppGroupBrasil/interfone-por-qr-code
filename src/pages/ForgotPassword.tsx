@@ -385,7 +385,6 @@ export default function ForgotPassword() {
                   type={showPassword ? "text" : "password"}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="h-12 rounded-xl bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#2d3354] focus:ring-[#2d3354]"
@@ -410,7 +409,6 @@ export default function ForgotPassword() {
                   type={showConfirm ? "text" : "password"}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="h-12 rounded-xl bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#2d3354] focus:ring-[#2d3354]"

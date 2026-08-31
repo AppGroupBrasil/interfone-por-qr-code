@@ -143,7 +143,6 @@ export default function Login() {
                   type={showPassword ? "text" : "password"}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="h-12 rounded-xl pr-12"

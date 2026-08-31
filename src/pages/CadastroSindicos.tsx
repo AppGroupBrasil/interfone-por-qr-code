@@ -294,7 +294,6 @@ export default function CadastroSindicos() {
                         type={showPassword ? "text" : "password"}
                         inputMode="numeric"
                         maxLength={6}
-                        placeholder="••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                         className="pr-10"
@@ -312,7 +311,6 @@ export default function CadastroSindicos() {
                       type={showPassword ? "text" : "password"}
                       inputMode="numeric"
                       maxLength={6}
-                      placeholder="••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       style={{ paddingLeft: "24px" }}
