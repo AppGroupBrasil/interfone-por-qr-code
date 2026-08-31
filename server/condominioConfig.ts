@@ -14,6 +14,7 @@ const ALLOWED_KEYS = new Set([
   "feature_correspondencias",
   "feature_auto_cadastro",
   "feature_portaria",
+  "setup_skip_funcionarios",
   "vehicle_unique_access",
   "vehicle_auto_cancel_time",
   "vehicle_limit_per_apt",

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronRight,
   ChevronLeft,
@@ -16,6 +17,7 @@ import {
   Lock,
   Sparkles,
   Rocket,
+  SkipForward,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════
@@ -95,7 +97,7 @@ const STEPS: WizardStep[] = [
       "Informe nome, e-mail e cargo",
       "O porteiro terá acesso ao scanner de QR Code",
     ],
-    tip: "O porteiro é essencial para validar visitantes e operar o interfone.",
+    tip: "Se o condomínio não tem funcionários, pule este passo — dá para cadastrar depois.",
     route: "/cadastros/funcionarios",
     actionLabel: "Cadastrar Funcionários",
   },
@@ -128,6 +130,8 @@ interface WelcomeWizardProps {
 
 export default function WelcomeWizard({ userRole, onSetupComplete }: WelcomeWizardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const condominioId = user?.condominioId;
 
   const [status, setStatus] = useState<StepStatus>({
     blocos: false,
@@ -137,6 +141,8 @@ export default function WelcomeWizard({ userRole, onSetupComplete }: WelcomeWiza
   });
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState("");
 
   const allComplete = status.blocos && status.moradores && status.funcionarios && status.interfone;
 
@@ -144,17 +150,20 @@ export default function WelcomeWizard({ userRole, onSetupComplete }: WelcomeWiza
   const checkStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const [blocosRes, moradoresRes, funcsRes, tokensRes] = await Promise.all([
+      const [blocosRes, moradoresRes, funcsRes, tokensRes, configRes] = await Promise.all([
         apiFetch(`${API}/blocos`).then(r => r.ok ? r.json() : []),
         apiFetch(`${API}/moradores`).then(r => r.ok ? r.json() : []),
         apiFetch(`${API}/funcionarios`).then(r => r.ok ? r.json() : []),
         apiFetch(`${API}/interfone/tokens`).then(r => r.ok ? r.json() : []),
+        apiFetch(`${API}/condominio-config`).then(r => (r.ok ? r.json() : {})) as Promise<Record<string, string>>,
       ]);
 
       const newStatus: StepStatus = {
         blocos: Array.isArray(blocosRes) && blocosRes.length > 0,
         moradores: Array.isArray(moradoresRes) && moradoresRes.length > 0,
-        funcionarios: Array.isArray(funcsRes) && funcsRes.length > 0,
+        funcionarios:
+          (Array.isArray(funcsRes) && funcsRes.length > 0) ||
+          configRes?.setup_skip_funcionarios === "true",
         interfone: Array.isArray(tokensRes) && tokensRes.length > 0,
       };
       setStatus(newStatus);
@@ -170,6 +179,25 @@ export default function WelcomeWizard({ userRole, onSetupComplete }: WelcomeWiza
       setLoading(false);
     }
   }, []);
+
+  const pularFuncionarios = async () => {
+    setSkipping(true);
+    setSkipError("");
+    try {
+      const qs = condominioId ? `?condominio_id=${condominioId}` : "";
+      const res = await apiFetch(`${API}/condominio-config${qs}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ setup_skip_funcionarios: "true" }),
+      });
+      if (!res.ok) throw new Error();
+      await checkStatus();
+    } catch {
+      setSkipError("Não foi possível pular agora. Tente de novo.");
+    } finally {
+      setSkipping(false);
+    }
+  };
 
   useEffect(() => {
     if (!["sindico", "administradora", "master"].includes(userRole)) {
@@ -487,6 +515,33 @@ export default function WelcomeWizard({ userRole, onSetupComplete }: WelcomeWiza
             <ChevronRight style={{ width: 18, height: 18 }} />
           </button>
         </div>
+
+        {step.key === "funcionarios" && !stepDone && (
+          <div style={{ marginTop: 10 }}>
+            <button
+              onClick={pularFuncionarios}
+              disabled={skipping}
+              style={{
+                width: "100%", padding: "10px", borderRadius: 10,
+                border: "1px dashed rgba(255,255,255,0.18)",
+                background: "transparent", color: "#94a3b8",
+                fontWeight: 600, fontSize: 13,
+                cursor: skipping ? "wait" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}
+            >
+              {skipping ? (
+                <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
+              ) : (
+                <SkipForward style={{ width: 14, height: 14 }} />
+              )}
+              Não tenho funcionários — pular este passo
+            </button>
+            {skipError && (
+              <p style={{ color: "#f87171", fontSize: 11, marginTop: 6, textAlign: "center" }}>{skipError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Lock notice ── */}
